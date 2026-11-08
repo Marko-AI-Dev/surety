@@ -9,3 +9,4 @@ services/signer/data/
 docs/reference/
 .playwright-mcp/
 .superpowers/
+.claude/settings.local.json
