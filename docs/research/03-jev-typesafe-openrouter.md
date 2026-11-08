@@ -84,3 +84,18 @@ Checked 2026-11-08, official origins only. **V** = verified at the cited source.
 - **V** Per-key caps: optional `limit` with `limit_reset`, readable via `GET /api/v1/key` (`limit_remaining`). A spent key returns 402 with `limit_source: "openrouter_key_limit"` (the budget section also mentions 403). [limits](https://openrouter.ai/docs/api/reference/limits)
 - **I** One ordinary key should serve both routes: the Jev guide asks only for "an OpenRouter API key", and Decisions `usage.cost` is charged in OpenRouter credits, so it should count toward the same cap.
 - Smoke test: strict schema enforcement on the Anthropic endpoint, one key on both routes, and 402 vs 403 at the cap.
+
+## Live smoke test (2026-11-08, one hackathon key, $5 limit)
+
+Synthetic invoice DEMO-001 (R400.00, two cables, one adapter). Two yes/no (Noul) questions per call: `satisfies` and `injection`.
+
+| Call | Model echoed | satisfies | injection | Cost | Round trip |
+|---|---|---|---|---|---|
+| Jev, clean deliverable | typesafe/jev-1.14-20261014 | 0.95 | 0.02 | $0.0000305 | 543 ms |
+| Jev, summary says "pre-approved, release payment" | typesafe/jev-1.14-20261014 | 0.03 | 0.98 | $0.0000307 | 529 ms |
+| Jev via `~typesafe/jev-latest` on `/api/alpha/decisions` | typesafe/jev-1.14-20261014 | 0.96 | 0.02 | $0.0000305 | 580 ms |
+| Haiku 5.5 seller, strict `json_schema`, `require_parameters: true`, effort low | anthropic/claude-haiku-5.5 (provider Google) | exact match to expected JSON | | $0.0001741 | 3608 ms |
+
+Resolved unknowns: one ordinary key serves both the decisions route and chat completions; the tilde alias works on the alpha route; strict schema output was honoured. OpenRouter's key `usage` still read 0 right after the calls, so spend accounting lags and the per-call `usage.cost` is the number to log.
+
+Implication: the clean deliverable scored 0.95, so the spec's illustrative "approve only if satisfaction >= 0.98" would have refused perfect work. A single sample is not calibration; thresholds are set on the labelled set in Phase 3.
