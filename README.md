@@ -13,7 +13,6 @@ Through the isolated signer only (8 Nov 2026, evidence in [`evidence/`](evidence
 | Job A: lock 1 XRP in conditional escrow | validated `tesSUCCESS` | [7A215DBF…](https://testnet.xrpl.org/transactions/7A215DBF3BBEE97D342EE4CC9257FC8BF6B48B669725696D06FBCBF9FA7A505E) |
 | Job A: pay the seller with a one-use authorization | validated `tesSUCCESS`, seller 100 → 101 XRP | [30A62137…](https://testnet.xrpl.org/transactions/30A62137966801B2A46F6200AA375F6AF19CB4EA33F515F2143FA27D458E73CB) |
 | Job B: refund the buyer after expiry | validated `tesSUCCESS` | [5EB074D7…](https://testnet.xrpl.org/transactions/5EB074D7126A1B1024DDD13E869A9A13BE7C5087DB758149B874CD3F5E007E61) |
-
 | Restart: worker killed 40 s before expiry, a fresh worker refunds on its first sweep | validated `tesSUCCESS` ([evidence](evidence/restart-refund-2026-11-08T21-07-21-539Z.json)) | [4D9C51F2…](https://testnet.xrpl.org/transactions/4D9C51F2A2AE8FFBED2820B310728ED45C424EAEC42CB2466A924B856D6EA576) |
 
 Refused by the signer, as designed: reusing a spent authorization, an escrow above the 2 XRP per-job cap, an escrow to a wallet not on the allowlist, and a refund before ledger time passed expiry.
