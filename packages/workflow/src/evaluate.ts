@@ -68,20 +68,37 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
   const { repo } = deps;
   const job = await repo.getJob(jobId);
   if (!job) throw new Error(`job ${jobId} not found`);
-  if (job.state !== "DELIVERED") throw new TransitionError(job.state, "EVALUATING");
+  if (job.state !== "DELIVERED" && job.state !== "EVALUATING") throw new TransitionError(job.state, "EVALUATING");
   const escrow = await repo.getEscrow(job.id);
   if (!escrow) throw new Error(`job ${job.id} has no escrow`);
   const deliverableHash = job.deliverableHash;
   if (deliverableHash === null) throw new Error(`job ${job.id} has no deliverable`);
 
+  // An EVALUATING job here is one a dead worker claimed and never finished (one worker runs at a
+  // time). A decision it recorded for this deliverable is applied as it stands, never asked again.
+  if (job.state === "EVALUATING") {
+    const prior = await repo.latestDecision(job.id);
+    if (prior && prior.deliverableHash === deliverableHash) {
+      return repo.transition(job.id, "EVALUATING", NEXT_STATE[prior.outcome], {
+        actor: GATE_ACTOR,
+        reasonCodes: prior.reasonCodes,
+        correlationId: prior.id,
+        detail: { decisionId: prior.id, outcome: prior.outcome, resumed: true, policyVersion: prior.policyVersion },
+      });
+    }
+  }
+
   // Read ledger time before claiming the job, so an unreachable ledger leaves it DELIVERED.
   const closeTime = await deps.ledgerCloseTime();
   const cutoff = escrow.cancelAfter - DECISION_CUTOFF_SECONDS;
-  const claimed = await repo.transition(job.id, "DELIVERED", "EVALUATING", {
-    actor: GATE_ACTOR,
-    reasonCodes: ["evaluation_started"],
-    detail: { deliverableHash, closeTime, cutoff },
-  });
+  const claimed =
+    job.state === "EVALUATING"
+      ? job
+      : await repo.transition(job.id, "DELIVERED", "EVALUATING", {
+          actor: GATE_ACTOR,
+          reasonCodes: ["evaluation_started"],
+          detail: { deliverableHash, closeTime, cutoff },
+        });
   const hold = (reason: string) =>
     repo.transition(claimed.id, "EVALUATING", "REVIEW_REQUIRED", {
       actor: GATE_ACTOR,

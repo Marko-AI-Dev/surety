@@ -48,8 +48,9 @@ export async function runEngineOnce(deps: EngineDeps): Promise<EngineReport> {
     }
   };
 
+  // EVALUATING jobs are ones a dead worker left behind: passes never overlap and one worker runs.
   await each(
-    await deps.repo.listJobsInStates(["DELIVERED"]),
+    await deps.repo.listJobsInStates(["DELIVERED", "EVALUATING"]),
     (job) => evaluateJob(deps, job.id),
     (job, after) => {
       report.evaluated.push(job.id);

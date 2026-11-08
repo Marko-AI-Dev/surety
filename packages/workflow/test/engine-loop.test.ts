@@ -105,6 +105,74 @@ describe("runEngineOnce", () => {
     expect(offline.inputs).toHaveLength(1);
   });
 
+  it("resumes a job whose worker died right after claiming it for evaluation: re-judged once, paid once", async () => {
+    const job = await deliveredJob(EXACT);
+    const engine = demoEngine();
+    let decisions = 0;
+    let crash = true;
+    // The claim commits, then the process dies before anything else happens.
+    const crashing: JobsRepo = {
+      ...repo,
+      async transition(jobId, from, to, event) {
+        const moved = await repo.transition(jobId, from, to, event);
+        if (crash && to === "EVALUATING") {
+          crash = false;
+          throw new Error("worker crashed after the claim");
+        }
+        return moved;
+      },
+      async recordDecision(d) {
+        decisions += 1;
+        return repo.recordDecision(d);
+      },
+    };
+    const run = () =>
+      runEngineOnce({ repo: crashing, signer, engine, gateSecret: GATE_SECRET, ledgerCloseTime: async () => closeTime });
+
+    const first = await run();
+    expect(first.pending).toEqual([job.id]);
+    expect((await repo.getJob(job.id))?.state).toBe("EVALUATING");
+    expect(await repo.latestDecision(job.id)).toBeNull();
+
+    const second = await run();
+    expect(second.evaluated).toEqual([job.id]);
+    expect(second.paid).toEqual([job.id]);
+    expect(decisions).toBe(1);
+    expect(engine.inputs).toHaveLength(1);
+    expect(signer.settled).toEqual([{ method: "finish", opId: operationId(job.id, "finish", 0) }]);
+  });
+
+  it("resumes a job whose worker died after recording the decision: applies it without asking the engine again", async () => {
+    const job = await deliveredJob(EXACT);
+    const engine = demoEngine();
+    let decisions = 0;
+    let crash = true;
+    const crashing: JobsRepo = {
+      ...repo,
+      async recordDecision(d) {
+        decisions += 1;
+        const row = await repo.recordDecision(d);
+        if (crash) {
+          crash = false;
+          throw new Error("worker crashed after recording the decision");
+        }
+        return row;
+      },
+    };
+    const run = () =>
+      runEngineOnce({ repo: crashing, signer, engine, gateSecret: GATE_SECRET, ledgerCloseTime: async () => closeTime });
+
+    await run();
+    expect((await repo.getJob(job.id))?.state).toBe("EVALUATING");
+
+    const second = await run();
+    expect(second.paid).toEqual([job.id]);
+    expect(decisions).toBe(1);
+    expect(engine.inputs).toHaveLength(1);
+    expect(signer.settled).toHaveLength(1);
+    expect((await repo.listEvents(job.id)).find((e) => e.toState === "APPROVED")?.reasonCodes).toEqual(["approved"]);
+  });
+
   it("keeps going when one job fails: the other jobs in the pass still settle", async () => {
     const stuck = await deliveredJob(EXACT);
     const fine = await deliveredJob(EXACT);
