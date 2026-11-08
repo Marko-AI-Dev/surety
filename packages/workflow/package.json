@@ -5,7 +5,10 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@surety/contracts": "workspace:*",
+    "postgres": "4.1.0"
+  },
   "devDependencies": {
     "zod": "4.6.7"
   }

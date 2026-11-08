@@ -20,6 +20,7 @@
   "devDependencies": {
     "@surety/contracts": "workspace:*",
     "@surety/signer-client": "workspace:*",
+    "@surety/workflow": "workspace:*",
     "@surety/xrpl-settlement": "workspace:*",
     "@types/node": "24.19.2",
     "postgres": "4.1.0",
