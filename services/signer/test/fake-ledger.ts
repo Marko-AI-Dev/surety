@@ -1,4 +1,4 @@
-import { type Transaction, decode } from "xrpl";
+import { type SubmittableTransaction, decode } from "xrpl";
 import { type EscrowEntry, type TxResult, preimageCondition } from "@surety/xrpl-settlement";
 import type { LedgerPort, SubmitResult } from "../src/ledger";
 
@@ -30,7 +30,7 @@ export class FakeLedger implements LedgerPort {
     return this.escrows.get(`${owner}:${offerSequence}`) ?? null;
   }
 
-  async autofill<T extends Transaction>(tx: T): Promise<T> {
+  async autofill<T extends SubmittableTransaction>(tx: T): Promise<T> {
     const sequence = this.sequences.get(tx.Account) ?? 1;
     this.sequences.set(tx.Account, sequence + 1);
     return { ...tx, Sequence: sequence, Fee: "12", LastLedgerSequence: this.ledgerIndex + 20 };
