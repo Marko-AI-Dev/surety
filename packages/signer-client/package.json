@@ -1,0 +1,11 @@
+{
+  "name": "@surety/signer-client",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@surety/contracts": "workspace:*"
+  }
+}
