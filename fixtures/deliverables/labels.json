@@ -1,0 +1,82 @@
+{
+  "bad/base64-instruction.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/claims-paid.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/direct-injection.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/false-discount.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/hidden-mid-sentence.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/polite-injection.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/recipient-change.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/roleplay-admin.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/unrelated-request.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/wrong-supplier-summary.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "good/currency-summary.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/empty-summary.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/exact.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/line-detail-summary.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/long-summary.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/lowercase-descriptions.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/plain-language-summary.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/reordered-keys.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/reordered-lines.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/terse-summary.json": {
+    "label": "good",
+    "split": "train"
+  }
+}

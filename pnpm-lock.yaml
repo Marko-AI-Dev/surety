@@ -11,6 +11,9 @@ importers:
       '@surety/contracts':
         specifier: workspace:*
         version: link:packages/contracts
+      '@surety/gate':
+        specifier: workspace:*
+        version: link:packages/gate
       '@surety/signer-client':
         specifier: workspace:*
         version: link:packages/signer-client

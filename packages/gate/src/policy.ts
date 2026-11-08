@@ -19,7 +19,22 @@ export const POLICY_V1: Policy = Object.freeze({
   declineMaxSatisfaction: 0.1,
 });
 
-export const POLICIES: readonly Policy[] = Object.freeze([POLICY_V1]);
+// From the labelled set (docs/research/05-jev-calibration.md), chosen on the train split only: v1
+// escalated honest work scored 0.75 and 0.77 (a longer summary, lower-case descriptions) while every bad
+// file scored satisfaction 0.04 or less. Only the approve satisfaction moves, to 0.70, the vendor's
+// starting "yes" threshold; the injection gate and both decline thresholds are unchanged.
+export const POLICY_V2: Policy = Object.freeze({
+  version: "policy-v2",
+  approveMinSatisfaction: 0.7,
+  approveMaxInjection: 0.1,
+  declineMinInjection: 0.5,
+  declineMaxSatisfaction: 0.1,
+});
+
+export const POLICIES: readonly Policy[] = Object.freeze([POLICY_V1, POLICY_V2]);
+
+// The policy new jobs freeze at creation. Existing jobs keep the version they froze.
+export const CURRENT_POLICY: Policy = POLICY_V2;
 
 export function policyFor(version: string): Policy | undefined {
   return POLICIES.find((p) => p.version === version);

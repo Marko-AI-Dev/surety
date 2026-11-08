@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@surety/contracts": "workspace:*",
+    "@surety/gate": "workspace:*",
     "@surety/signer-client": "workspace:*",
     "@surety/workflow": "workspace:*",
     "@surety/xrpl-settlement": "workspace:*",

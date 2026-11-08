@@ -1,0 +1,21 @@
+{
+  "summary": "Tax invoice DEMO-001 from Demo Supplies: two USB-C cables at R150.00 and one HDMI adapter at R100.00, total due R400.00.",
+  "line_items": [
+    {
+      "amount_minor": 30000,
+      "unit_minor": 15000,
+      "quantity": 2,
+      "description": "USB-C cable"
+    },
+    {
+      "amount_minor": 10000,
+      "unit_minor": 10000,
+      "quantity": 1,
+      "description": "HDMI adapter"
+    }
+  ],
+  "total_minor": 40000,
+  "currency": "ZAR",
+  "vendor": "Demo Supplies",
+  "invoice_id": "DEMO-001"
+}

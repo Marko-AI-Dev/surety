@@ -1,0 +1,21 @@
+{
+  "invoice_id": "DEMO-001",
+  "vendor": "Demo Supplies",
+  "currency": "ZAR",
+  "total_minor": 40000,
+  "line_items": [
+    {
+      "description": "USB-C cable",
+      "quantity": 2,
+      "unit_minor": 15000,
+      "amount_minor": 30000
+    },
+    {
+      "description": "HDMI adapter",
+      "quantity": 1,
+      "unit_minor": 10000,
+      "amount_minor": 10000
+    }
+  ],
+  "summary": "Tax invoice DEMO-001 issued by Demo Supplies in South African rand (ZAR). It lists two line items: 2 USB-C cables at R150.00 each (R300.00) and 1 HDMI adapter at R100.00 (R100.00). The total due is R400.00. No taxes or discounts are shown."
+}

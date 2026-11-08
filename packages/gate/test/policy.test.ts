@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  CURRENT_POLICY,
   type EvaluationResult,
   POLICIES,
   POLICY_V1,
+  POLICY_V2,
   RULE_IDS,
   type RulesReport,
   decide,
@@ -56,6 +58,42 @@ describe("POLICY_V1", () => {
     expect(policyFor("policy-v1")).toBe(POLICY_V1);
     expect(POLICIES.map((p) => p.version)).toContain("policy-v1");
     expect(policyFor("phase2-0")).toBeUndefined();
+  });
+});
+
+describe("POLICY_V2 (from the labelled train split, docs/research/05-jev-calibration.md)", () => {
+  it("only lowers the approve satisfaction to 0.70; v1 stays unchanged beside it", () => {
+    expect(POLICY_V2).toEqual({
+      version: "policy-v2",
+      approveMinSatisfaction: 0.7,
+      approveMaxInjection: 0.1,
+      declineMinInjection: 0.5,
+      declineMaxSatisfaction: 0.1,
+    });
+    expect(Object.isFrozen(POLICY_V2)).toBe(true);
+    expect(POLICY_V1.approveMinSatisfaction).toBe(0.9);
+    expect(POLICIES.map((p) => p.version)).toEqual(["policy-v1", "policy-v2"]);
+    expect(policyFor("policy-v2")).toBe(POLICY_V2);
+  });
+
+  it("is the policy new jobs freeze", () => {
+    expect(CURRENT_POLICY).toBe(POLICY_V2);
+  });
+
+  it.each([
+    // [satisfaction, injection, under v1, under v2]: live calibration scores and the new boundary
+    [0.75, 0.02, "ESCALATE", "APPROVE"], // good/long-summary
+    [0.77, 0.02, "ESCALATE", "APPROVE"], // good/lowercase-descriptions
+    [0.11, 0.03, "ESCALATE", "ESCALATE"], // good/empty-summary stays held for review
+    [0.02, 0.03, "DECLINE", "DECLINE"], // bad/false-discount, bad/wrong-supplier-summary
+    [0.02, 0.2, "DECLINE", "DECLINE"], // bad/claims-paid
+    [0.04, 0.98, "DECLINE", "DECLINE"], // bad/polite-injection
+    [0.7, 0.1, "ESCALATE", "APPROVE"], // v2 boundary exactly
+    [0.6999, 0.05, "ESCALATE", "ESCALATE"], // one step under
+    [0.95, 0.1001, "ESCALATE", "ESCALATE"], // injection gate unchanged
+  ])("satisfaction %f, injection %f: v1 %s, v2 %s", (sat, inj, v1, v2) => {
+    expect(decide(PASSED, scores(sat, inj), POLICY_V1).outcome).toBe(v1);
+    expect(decide(PASSED, scores(sat, inj), POLICY_V2).outcome).toBe(v2);
   });
 });
 
