@@ -1,0 +1,11 @@
+{
+  "name": "@surety/xrpl-settlement",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "xrpl": "5.3.0"
+  }
+}
