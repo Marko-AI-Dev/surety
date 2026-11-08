@@ -1,4 +1,5 @@
 import { DELIVERABLE_MAX_BYTES, type InvoiceDeliverable, InvoiceDeliverableSchema } from "@surety/contracts";
+import { parseInvoiceSource } from "./source";
 
 // Deterministic acceptance: facts code can check. These run before Jev, and a failure here is final:
 // no model can turn it into a pass.
@@ -56,24 +57,46 @@ function totalCheck(d: InvoiceDeliverable): string | undefined {
   return sum === BigInt(d.total_minor) ? undefined : `line amounts sum to ${sum}, total_minor is ${d.total_minor}`;
 }
 
+const norm = (s: string) => s.trim().toLowerCase();
+
+// Field by field against the parsed source: each value must sit in its own place, not merely occur
+// somewhere in the text. Line items match as a multiset: every deliverable line uses exactly one
+// source line (description, quantity, unit and amount all equal), and every source line is used once.
 function sourceValues(d: InvoiceDeliverable, sourceText: string): string | undefined {
-  const source = sourceText.toLowerCase();
-  const missing: string[] = [];
-  const text = (field: string, value: string) => {
-    if (!source.includes(value.toLowerCase())) missing.push(`${field} "${value}"`);
+  const source = parseInvoiceSource(sourceText);
+  if (!source) return "source_unparseable";
+  const wrong: string[] = [];
+  const text = (field: string, given: string, expected: string) => {
+    if (norm(given) !== norm(expected)) wrong.push(`${field} "${given}" is not the source's "${expected}"`);
   };
-  const money = (field: string, minor: number) => {
-    if (!sourceText.includes(rands(minor))) missing.push(`${field} ${rands(minor)}`);
-  };
-  text("invoice_id", d.invoice_id);
-  text("vendor", d.vendor);
+  text("invoice_id", d.invoice_id, source.invoiceId);
+  text("vendor", d.vendor, source.supplier);
+  text("currency", d.currency, source.currency);
+  if (d.total_minor !== source.totalMinor) {
+    wrong.push(`total_minor ${rands(d.total_minor)} is not the source's Total due ${rands(source.totalMinor)}`);
+  }
+
+  const unused = [...source.lines];
   d.line_items.forEach((l, i) => {
-    text(`line ${i + 1} description`, l.description);
-    money(`line ${i + 1} unit_minor`, l.unit_minor);
-    money(`line ${i + 1} amount_minor`, l.amount_minor);
+    const at = unused.findIndex(
+      (s) =>
+        norm(s.description) === norm(l.description) &&
+        s.quantity === l.quantity &&
+        s.unitMinor === l.unit_minor &&
+        s.amountMinor === l.amount_minor,
+    );
+    if (at === -1) {
+      wrong.push(
+        `line ${i + 1} "${l.description}" ${l.quantity} x ${rands(l.unit_minor)} = ${rands(l.amount_minor)} matches no unused source line`,
+      );
+    } else {
+      unused.splice(at, 1);
+    }
   });
-  money("total_minor", d.total_minor);
-  return missing.length > 0 ? `not in the source: ${missing.join(", ")}` : undefined;
+  for (const s of unused) {
+    wrong.push(`source line "${s.description}" ${s.quantity} x ${rands(s.unitMinor)} is missing from the deliverable`);
+  }
+  return wrong.length > 0 ? wrong.join("; ") : undefined;
 }
 
 export function runRules(input: RulesInput): RulesReport {

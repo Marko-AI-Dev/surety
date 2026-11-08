@@ -103,6 +103,77 @@ describe("runRules", () => {
     expect(statuses(check(d))).toMatchObject({ line_arithmetic: "pass", total: "pass", source_values: "fail" });
   });
 
+  describe("source_values binds each value to its own field and line", () => {
+    const CABLE = { description: "USB-C cable", quantity: 2, unit_minor: 15000, amount_minor: 30000 };
+    const ADAPTER = { description: "HDMI adapter", quantity: 1, unit_minor: 10000, amount_minor: 10000 };
+    const sourceValues = (report: ReturnType<typeof runRules>) => report.results.find((r) => r.id === "source_values");
+
+    it("fails a deliverable that drops the cables line and reports the adapter alone as the total", () => {
+      const report = check({ ...exact(), line_items: [ADAPTER], total_minor: 10000 });
+      expect(statuses(report)).toMatchObject({ line_arithmetic: "pass", total: "pass", source_values: "fail" });
+      expect(sourceValues(report)?.detail).toMatch(/total_minor/);
+      expect(sourceValues(report)?.detail).toMatch(/USB-C cable/);
+      expect(report.passed).toBe(false);
+    });
+
+    it("fails when a source line is missing from the deliverable", () => {
+      const report = check({ ...exact(), line_items: [CABLE] });
+      expect(statuses(report).source_values).toBe("fail");
+      expect(sourceValues(report)?.detail).toMatch(/missing/);
+    });
+
+    it("fails when the deliverable adds a line the source does not have", () => {
+      const extra = { description: "Delivery", quantity: 1, unit_minor: 0, amount_minor: 0 };
+      const report = check({ ...exact(), line_items: [CABLE, ADAPTER, extra] });
+      expect(statuses(report)).toMatchObject({ total: "pass", source_values: "fail" });
+      expect(sourceValues(report)?.detail).toMatch(/Delivery/);
+    });
+
+    it("fails when a source line is duplicated", () => {
+      const report = check({ ...exact(), line_items: [CABLE, ADAPTER, ADAPTER], total_minor: 50000 });
+      expect(statuses(report)).toMatchObject({ total: "pass", source_values: "fail" });
+    });
+
+    it("fails when quantities and prices are swapped between lines, even though every sum still holds", () => {
+      const report = check({
+        ...exact(),
+        line_items: [
+          { description: "USB-C cable", quantity: 1, unit_minor: 10000, amount_minor: 10000 },
+          { description: "HDMI adapter", quantity: 2, unit_minor: 15000, amount_minor: 30000 },
+        ],
+      });
+      expect(statuses(report)).toMatchObject({ line_arithmetic: "pass", total: "pass", source_values: "fail" });
+    });
+
+    it("fails a one-letter description that merely occurs somewhere in the source", () => {
+      const report = check({ ...exact(), line_items: [CABLE, { ...ADAPTER, description: "a" }] });
+      expect(statuses(report).source_values).toBe("fail");
+    });
+
+    it("fails a currency that differs from the source's Currency line, even when the job permits it", () => {
+      const report = check({ ...exact(), currency: "USD" }, ["ZAR", "USD"]);
+      expect(statuses(report)).toMatchObject({ currency: "pass", source_values: "fail" });
+      expect(sourceValues(report)?.detail).toMatch(/currency/);
+    });
+
+    it("fails with source_unparseable when the source is not a recognisable invoice", () => {
+      const report = runRules({ sourceText: "hello", allowedCurrencies: ["ZAR"], deliverable: exact() });
+      expect(statuses(report).source_values).toBe("fail");
+      expect(sourceValues(report)?.detail).toBe("source_unparseable");
+    });
+
+    it("passes reordered lines with lower-case, padded descriptions", () => {
+      const report = check({
+        ...exact(),
+        line_items: [
+          { ...ADAPTER, description: "  hdmi ADAPTER " },
+          { ...CABLE, description: "usb-c cable" },
+        ],
+      });
+      expect(statuses(report)).toEqual(ALL_PASS);
+    });
+  });
+
   it("matches ids and descriptions case-insensitively", () => {
     const d = exact();
     d.invoice_id = "demo-001";
