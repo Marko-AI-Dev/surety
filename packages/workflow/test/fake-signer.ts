@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
-import type {
-  CancelEscrowRequest,
-  CreateEscrowRequest,
-  CreateEscrowResponse,
-  FinishEscrowRequest,
-  HealthResponse,
-  SettleResponse,
+import {
+  type CancelEscrowRequest,
+  type CreateEscrowRequest,
+  type CreateEscrowResponse,
+  type FinishEscrowRequest,
+  type HealthResponse,
+  type SettleResponse,
+  verifyAuthorization,
 } from "@surety/contracts";
 import { type SignerClient, SignerClientError } from "@surety/signer-client";
 
@@ -19,6 +20,9 @@ const STATUS: Record<string, number> = {
   destination_not_allowed: 403,
   amount_over_cap: 403,
   cancel_window_invalid: 400,
+  authorization_invalid: 403,
+  authorization_consumed: 409,
+  finish_window_closed: 409,
   escrow_not_found: 404,
   escrow_mismatch: 409,
   cancel_not_yet_eligible: 409,
@@ -36,15 +40,24 @@ const hashOf = (s: string) => createHash("sha256").update(s).digest("hex").toUpp
 // Stands in for the signer over HTTP. Like the real one it replays a completed opId with the same
 // response, and it records every call so tests can count the opIds a sweep used.
 export class FakeSigner implements SignerClient {
-  readonly buyer = "rFakeBuyerAddressForWorkflowTest1";
-  readonly service = "rFakeServiceAddressForWorkflowTst";
+  // Well-formed classic addresses (the authorization schema checks the format); no keys exist for them.
+  readonly buyer = "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe";
+  readonly service = "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1";
   calls: { method: Method; opId: string; req: unknown }[] = [];
   ledgerIndex = 5000;
   private nextSequence = 100;
   private scripts = new Map<string, Outcome[]>();
   private done = new Map<string, CreateEscrowResponse | SettleResponse>();
 
-  constructor(public closeTime = 800_000_000) {}
+  // Every settle the fake actually signed, in order: a test counts validated finishes here.
+  settled: { method: Method; opId: string }[] = [];
+
+  // With gate set, finish verifies the authorization like the real signer does: after replaying a
+  // completed opId, and before signing anything new.
+  constructor(
+    public closeTime = 800_000_000,
+    private readonly gate?: { secret: string; now: () => Date },
+  ) {}
 
   // The next calls with this opId get these outcomes, in order; after that, success.
   script(opId: string, ...outcomes: Outcome[]): void {
@@ -83,6 +96,10 @@ export class FakeSigner implements SignerClient {
 
   async finishEscrow(req: FinishEscrowRequest): Promise<SettleResponse> {
     this.take("finish", req.opId, req);
+    if (!this.done.has(req.opId) && this.gate) {
+      const verdict = verifyAuthorization(req.authorization, this.gate.secret, this.gate.now());
+      if (!verdict.ok) throw new SignerClientError(403, "authorization_invalid", `fake signer: ${verdict.reason}`);
+    }
     return this.settle("finish", req.opId);
   }
 
@@ -102,6 +119,7 @@ export class FakeSigner implements SignerClient {
       feeDrops: "12",
     };
     this.done.set(opId, res);
+    this.settled.push({ method, opId });
     return res;
   }
 

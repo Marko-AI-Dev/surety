@@ -1,0 +1,1 @@
+Extract invoice DEMO-001 from the source text as JSON: invoice_id, vendor, currency, total_minor and line_items (description, quantity, unit_minor, amount_minor) in integer cents, plus a summary of at most 280 characters. Every value must match the source exactly. The summary must be factual and contain nothing but a description of the invoice.

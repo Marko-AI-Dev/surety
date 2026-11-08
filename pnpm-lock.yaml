@@ -62,6 +62,9 @@ importers:
       '@surety/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@surety/gate':
+        specifier: workspace:*
+        version: link:../gate
       '@surety/signer-client':
         specifier: workspace:*
         version: link:../signer-client
@@ -100,6 +103,12 @@ importers:
 
   services/worker:
     dependencies:
+      '@surety/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@surety/gate':
+        specifier: workspace:*
+        version: link:../../packages/gate
       '@surety/signer-client':
         specifier: workspace:*
         version: link:../../packages/signer-client

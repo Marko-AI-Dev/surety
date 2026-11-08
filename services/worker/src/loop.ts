@@ -1,11 +1,10 @@
-import type { SweepReport } from "@surety/workflow";
-
 export interface SweepLoop {
   stop(): Promise<void>;
 }
 
 export interface SweepLoopOptions {
-  sweep: () => Promise<SweepReport>;
+  // One pass of work: the expiry sweep, or the whole job engine. Its result is not used here.
+  sweep: () => Promise<unknown>;
   intervalMs: number;
   log: (line: string) => void;
 }
