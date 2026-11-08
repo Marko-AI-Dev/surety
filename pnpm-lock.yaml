@@ -92,6 +92,21 @@ importers:
         specifier: workspace:*
         version: link:../../packages/signer-client
 
+  services/worker:
+    dependencies:
+      '@surety/signer-client':
+        specifier: workspace:*
+        version: link:../../packages/signer-client
+      '@surety/workflow':
+        specifier: workspace:*
+        version: link:../../packages/workflow
+      '@surety/xrpl-settlement':
+        specifier: workspace:*
+        version: link:../../packages/xrpl-settlement
+      xrpl:
+        specifier: 5.3.0
+        version: 5.3.0
+
 packages:
 
   '@esbuild/aix-ppc64@0.28.2':
