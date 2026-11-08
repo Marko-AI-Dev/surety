@@ -44,7 +44,7 @@ Green is built and proven on testnet. Dashed is planned for the rest of the hack
 
 ## Trust boundaries
 
-- **Keys live only in the signer.** It is a separate process on 127.0.0.1 with its own secrets file. A repo-wide check (`pnpm check:boundaries`) fails if any other code reads a seed or the preimage key.
+- **Keys live only in the signer.** It is a separate process on 127.0.0.1 with its own secrets file, and it is the only code that ever loads a seed. A repo-wide lint (`pnpm check:boundaries`) flags known key-handling calls and secret variable names anywhere else. It catches mistakes, not a determined bypass; the separate process and secrets file are the real boundary.
 - **The signer accepts three operations, nothing else.** Create escrow for a job, finish with a one-use authorization, cancel an expired escrow. There is no endpoint that signs an arbitrary transaction.
 - **Limits are enforced outside the agents.** The signer checks the per-job cap and the destination allowlist on every create, and checks the authorization against the escrow on the validated ledger before every finish.
 - **Payment needs a secret only the signer holds.** Each escrow is locked with a PREIMAGE-SHA-256 condition. The matching fulfillment is encrypted at rest and only released on chain inside an authorized EscrowFinish.

@@ -1,4 +1,6 @@
-// Fails if any code outside services/signer could hold or derive a key.
+// A tripwire lint: fails if any file outside services/signer uses a known key-handling call or
+// secret variable name. It catches mistakes, not a determined bypass; the real boundary is that
+// the seeds live only in the signer's own secrets file and process.
 // Patterns are assembled from pieces so this file does not match itself.
 import { readFileSync, readdirSync } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
@@ -11,6 +13,12 @@ export interface Violation {
 
 const PATTERNS = [
   ["from", "Seed"],
+  ["from", "Secret"],
+  ["from", "Mnemonic"],
+  ["from", "Entropy"],
+  ["fund", "Wallet"],
+  ["derive", "Keypair"],
+  ["new ", "Wallet("],
   ["Wallet.", "generate"],
   ["_", "SEED"],
   ["PREIMAGE", "_KEY"],
@@ -19,7 +27,10 @@ const PATTERNS = [
 
 const SKIP_DIRS = new Set(["node_modules", ".git", ".superpowers", "dist", "docs", "evidence"]);
 const SIGNER_DIR = "services/signer";
-const CODE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
+const SCANNED_EXTENSIONS = new Set([
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+  ".json", ".yaml", ".yml", ".sh", ".ps1", ".py",
+]);
 
 export function checkBoundaries(root: string): Violation[] {
   const violations: Violation[] = [];
@@ -30,7 +41,7 @@ export function checkBoundaries(root: string): Violation[] {
       if (entry.isDirectory()) {
         if (SKIP_DIRS.has(entry.name) || rel === SIGNER_DIR) continue;
         walk(full);
-      } else if (CODE_EXTENSIONS.has(extname(entry.name))) {
+      } else if (SCANNED_EXTENSIONS.has(extname(entry.name))) {
         const text = readFileSync(full, "utf8");
         for (const pattern of PATTERNS) {
           if (text.includes(pattern)) violations.push({ file: rel, pattern });

@@ -160,6 +160,13 @@ export function createSigner(deps: SignerDeps): Signer {
     if (entry.status === "failed") throw new SignerError("ledger_failure", entry.error ?? "operation failed");
     const r = await ledger.lookup(entry.txHash);
     if (!r.validated) {
+      const pastLastLedger =
+        entry.lastLedgerSequence !== undefined && (await ledger.validatedLedgerIndex()) > entry.lastLedgerSequence;
+      if (pastLastLedger) {
+        const error = "transaction never validated and its LastLedgerSequence has passed, so it can never be included";
+        writeJournal({ ...entry, status: "failed", error });
+        throw new SignerError("ledger_failure", error);
+      }
       throw new SignerError("op_pending", "transaction is not validated yet; retry with the same opId");
     }
     return finalize(entry, {
@@ -168,6 +175,15 @@ export function createSigner(deps: SignerDeps): Signer {
       ledgerIndex: r.ledgerIndex ?? 0,
       feeDrops: r.feeDrops ?? "0",
     }) as R;
+  }
+
+  // Nothing is signed yet when this fails, so the same opId can safely retry.
+  async function prepare<T extends Parameters<LedgerPort["autofill"]>[0]>(tx: T): Promise<T> {
+    try {
+      return await ledger.autofill(tx);
+    } catch {
+      throw new SignerError("ledger_failure", "could not prepare the transaction; retry with the same opId");
+    }
   }
 
   // The hash is journaled before submission so a crash or timeout can be resolved by lookup.
@@ -207,7 +223,7 @@ export function createSigner(deps: SignerDeps): Signer {
       const secretRef = randomUUID();
       secrets.update((s) => ({ ...s, [secretRef]: seal(config.preimageKey, fulfillment) }));
 
-      const prepared = await ledger.autofill(
+      const prepared = await prepare(
         buildEscrowCreate({
           account: buyer.classicAddress,
           destination: req.destination,
@@ -258,7 +274,12 @@ export function createSigner(deps: SignerDeps): Signer {
         const verdict = verifyAuthorization(req.authorization, config.gateSecret, now());
         if (!verdict.ok) throw new SignerError("authorization_invalid", `authorization rejected: ${verdict.reason}`);
         const p = verdict.payload;
-        if (consumed.get()[p.nonce]) throw new SignerError("authorization_consumed", "authorization was already used");
+        // A nonce consumed by this same opId with no journal entry (replay found none) means the
+        // earlier attempt failed before signing, so retrying it cannot double-submit.
+        const used = consumed.get()[p.nonce];
+        if (used && used.opId !== req.opId) {
+          throw new SignerError("authorization_consumed", "authorization was already used");
+        }
 
         const record = escrows.get()[key];
         if (!record || record.status !== "locked") {
@@ -266,12 +287,15 @@ export function createSigner(deps: SignerDeps): Signer {
         }
         const onLedger = await ledger.getEscrow(owner, offerSequence);
         if (!onLedger) throw new SignerError("escrow_not_found", "escrow is not on the validated ledger");
+        // The validated ledger is settlement truth; the local record must agree with it.
         const matches =
+          onLedger.Account === owner &&
           p.amountDrops === record.amountDrops &&
           p.amountDrops === onLedger.Amount &&
           p.destination === record.destination &&
           p.destination === onLedger.Destination &&
-          onLedger.Condition === record.condition;
+          onLedger.Condition === record.condition &&
+          onLedger.CancelAfter === record.cancelAfter;
         if (!matches) throw new SignerError("escrow_mismatch", "authorization does not match the escrow on the ledger");
 
         const closeTime = await ledger.validatedCloseTime();
@@ -283,7 +307,7 @@ export function createSigner(deps: SignerDeps): Signer {
         const sealed = secrets.get()[record.secretRef];
         if (!sealed) throw new SignerError("internal_error", "sealed fulfillment is missing");
 
-        const prepared = await ledger.autofill(
+        const prepared = await prepare(
           buildEscrowFinish({
             account: service.classicAddress,
             owner,
@@ -325,8 +349,11 @@ export function createSigner(deps: SignerDeps): Signer {
         }
         const onLedger = await ledger.getEscrow(req.owner, req.offerSequence);
         if (!onLedger) throw new SignerError("escrow_not_found", "escrow is not on the validated ledger");
+        if (onLedger.Account !== req.owner || onLedger.CancelAfter !== record.cancelAfter) {
+          throw new SignerError("escrow_mismatch", "escrow on the ledger does not match the signer's record");
+        }
 
-        const cancelAfter = onLedger.CancelAfter ?? record.cancelAfter;
+        const cancelAfter = record.cancelAfter;
         const closeTime = await ledger.validatedCloseTime();
         if (closeTime <= cancelAfter) {
           throw new SignerError(
@@ -335,7 +362,7 @@ export function createSigner(deps: SignerDeps): Signer {
           );
         }
 
-        const prepared = await ledger.autofill(
+        const prepared = await prepare(
           buildEscrowCancel({ account: service.classicAddress, owner: req.owner, offerSequence: req.offerSequence }),
         );
         const signed = service.sign(prepared);

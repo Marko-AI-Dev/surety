@@ -21,7 +21,16 @@ export function createHttpServer(
 
   return http.createServer((req, res) => {
     const method = req.method ?? "GET";
-    const path = new URL(req.url ?? "/", "http://signer.local").pathname;
+    let path: string;
+    try {
+      path = new URL(req.url ?? "/", "http://signer.local").pathname;
+    } catch {
+      // Node accepts some targets the URL parser rejects; never let one take the signer down.
+      req.resume();
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "bad_request", message: "invalid request target" }));
+      return;
+    }
     const chunks: Buffer[] = [];
     let size = 0;
     let tooLarge = false;

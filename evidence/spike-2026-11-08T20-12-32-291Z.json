@@ -1,0 +1,83 @@
+{
+  "network": "XRPL Testnet",
+  "recordedAt": "2026-11-08T20:12:32.291Z",
+  "accounts": {
+    "buyer": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+    "service": "rKzZaoLNcBE1qRmpMVxwP1zXLNBnRde6Lm",
+    "seller": "raLLbmUHV3GJuTN8GbqGvzSzsrUcwszb8T"
+  },
+  "jobA_paid": {
+    "create": {
+      "txHash": "29AD1953FE85AE9B91FC82BE0AC49F2F19FC0568A9379AFD71C9EE15F294827C",
+      "validated": true,
+      "result": "tesSUCCESS",
+      "ledgerIndex": 22172676,
+      "feeDrops": "12",
+      "explorer": "https://testnet.xrpl.org/transactions/29AD1953FE85AE9B91FC82BE0AC49F2F19FC0568A9379AFD71C9EE15F294827C",
+      "offerSequence": 22166562,
+      "condition": "A0258020C08982A7FD4CEC097DFD9E68F95070F523DCB43A8200A7921FA0CE268C22C8F3810120",
+      "cancelAfter": "2026-11-08T20:14:02.000Z"
+    },
+    "escrowOnLedgerAfterCreate": true,
+    "finish": {
+      "txHash": "2FDA01B14438DBA27B30E942691AFC25E210D79BED836BED3130B440FF71BC76",
+      "validated": true,
+      "result": "tesSUCCESS",
+      "ledgerIndex": 22172678,
+      "feeDrops": "423",
+      "explorer": "https://testnet.xrpl.org/transactions/2FDA01B14438DBA27B30E942691AFC25E210D79BED836BED3130B440FF71BC76"
+    },
+    "escrowOnLedgerAfterFinish": false,
+    "sellerBalanceXrp": {
+      "before": 101,
+      "after": 102
+    }
+  },
+  "jobB_refunded": {
+    "create": {
+      "txHash": "90A619C7CAD6AF373263456D5ABD493D43B2F9A3134996C8C5071C3F712C34C9",
+      "validated": true,
+      "result": "tesSUCCESS",
+      "ledgerIndex": 22172680,
+      "feeDrops": "12",
+      "explorer": "https://testnet.xrpl.org/transactions/90A619C7CAD6AF373263456D5ABD493D43B2F9A3134996C8C5071C3F712C34C9",
+      "offerSequence": 22166563,
+      "cancelAfter": "2026-11-08T20:12:20.000Z"
+    },
+    "cancel": {
+      "txHash": "38F3D43F681DF9E49CCB551724A4002AD565A82781467731E81A836FE9E6DCC6",
+      "validated": true,
+      "result": "tesSUCCESS",
+      "ledgerIndex": 22172701,
+      "feeDrops": "12",
+      "explorer": "https://testnet.xrpl.org/transactions/38F3D43F681DF9E49CCB551724A4002AD565A82781467731E81A836FE9E6DCC6"
+    },
+    "escrowOnLedgerAfterCancel": false
+  },
+  "refusals": [
+    {
+      "label": "reuse of job A's authorization",
+      "status": 409,
+      "code": "authorization_consumed",
+      "message": "authorization was already used"
+    },
+    {
+      "label": "escrow above the 2 XRP per-job cap",
+      "status": 403,
+      "code": "amount_over_cap",
+      "message": "amount exceeds the per-job cap of 2000000 drops"
+    },
+    {
+      "label": "escrow to a destination not on the allowlist",
+      "status": 403,
+      "code": "destination_not_allowed",
+      "message": "destination is not on the allowlist"
+    },
+    {
+      "label": "refund before expiry",
+      "status": 409,
+      "code": "cancel_not_yet_eligible",
+      "message": "ledger close time 847483882 has not passed CancelAfter 847483940"
+    }
+  ]
+}

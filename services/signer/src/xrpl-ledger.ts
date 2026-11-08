@@ -6,8 +6,8 @@ import type { LedgerPort, SubmitResult } from "./ledger";
 export class XrplLedger implements LedgerPort {
   readonly client: Client;
 
-  constructor(url: string) {
-    this.client = new Client(url, { maxFeeXRP: "0.01" });
+  constructor(url: string, client?: Client) {
+    this.client = client ?? new Client(url, { maxFeeXRP: "0.01" });
   }
 
   async connect(): Promise<void> {
@@ -27,6 +27,11 @@ export class XrplLedger implements LedgerPort {
     return getValidatedCloseTime(this.client);
   }
 
+  async validatedLedgerIndex(): Promise<number> {
+    const r = await this.client.request({ command: "ledger", ledger_index: "validated" });
+    return r.result.ledger_index;
+  }
+
   getEscrow(owner: string, offerSequence: number): Promise<EscrowEntry | null> {
     return getEscrow(this.client, owner, offerSequence);
   }
@@ -35,7 +40,7 @@ export class XrplLedger implements LedgerPort {
     return this.client.autofill(tx) as Promise<T>;
   }
 
-  async submitSigned(txBlob: string, _hash: string): Promise<SubmitResult> {
+  async submitSigned(txBlob: string, hash: string): Promise<SubmitResult> {
     try {
       const r = await this.client.submitAndWait(txBlob);
       const meta = r.result.meta;
@@ -46,8 +51,18 @@ export class XrplLedger implements LedgerPort {
         feeDrops: r.result.tx_json.Fee ?? "0",
       };
     } catch (e) {
-      // Past LastLedgerSequence without validation is conclusive: it can never be included.
+      // xrpl.js can report expiry before it checks the hash, so look the hash up first.
+      // Only a hash absent from the validated ledger after LastLedgerSequence is a conclusive failure.
       if (e instanceof Error && e.message.includes("LastLedgerSequence")) {
+        const found = await getTxResult(this.client, hash);
+        if (found.validated) {
+          return {
+            validated: true,
+            result: found.result ?? "unknown",
+            ledgerIndex: found.ledgerIndex ?? 0,
+            feeDrops: found.feeDrops ?? "0",
+          };
+        }
         return { validated: false, result: "expired_past_last_ledger_sequence", ledgerIndex: 0, feeDrops: "0" };
       }
       throw e;

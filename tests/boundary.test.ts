@@ -35,6 +35,25 @@ describe("key boundary", () => {
     expect(checkBoundaries(key)).toEqual([{ file: "apps/api/src/k.ts", pattern: wantPreimageKey }]);
   });
 
+  it.each([
+    ["from", "Secret("],
+    ["from", "Mnemonic("],
+    ["from", "Entropy("],
+    ["fund", "Wallet("],
+    ["derive", "Keypair("],
+    ["new ", "Wallet("],
+  ])("flags the key-handling alias %s%s", (a, b) => {
+    const root = fixture("packages/web/src/alias.ts", `const w = x.${a}${b}y);`);
+    expect(checkBoundaries(root).map((v) => v.file)).toEqual(["packages/web/src/alias.ts"]);
+  });
+
+  it("scans scripts and config files, not only code", () => {
+    const ps1 = fixture("scripts/setup.ps1", `Write-Host $env:BUYER${"_SE"}ED`);
+    expect(checkBoundaries(ps1)).toEqual([{ file: "scripts/setup.ps1", pattern: wantEnvSeed }]);
+    const json = fixture("config/x.json", `{"k": "PREIMAGE${"_KEY"}"}`);
+    expect(checkBoundaries(json)).toEqual([{ file: "config/x.json", pattern: wantPreimageKey }]);
+  });
+
   it("allows the same code inside services/signer", () => {
     const root = fixture("services/signer/src/main.ts", `const w = Wallet.${"from"}Seed(process.env.BUYER${"_SE"}ED);`);
     expect(checkBoundaries(root)).toEqual([]);

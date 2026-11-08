@@ -31,9 +31,9 @@ Requires Node 24 and pnpm 10.
 
 ```bash
 pnpm install
-pnpm test                 # 81 tests
+pnpm test                 # 96 tests
 pnpm typecheck
-pnpm check:boundaries     # fails if any code outside the signer touches a key
+pnpm check:boundaries     # lint: flags key-handling code outside the signer
 
 pnpm --filter @surety/signer init-wallets   # funds 3 testnet wallets from the official faucet, writes .env files
 pnpm signer                                 # terminal 1: the isolated signer on 127.0.0.1:4100

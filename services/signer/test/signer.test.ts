@@ -218,6 +218,53 @@ describe("finishEscrow", () => {
     expect(ledger.lookups).toHaveLength(1);
   });
 
+  it("marks a journaled finish that never reached the ledger as failed once LastLedgerSequence has passed", async () => {
+    const signer = makeSigner();
+    const created = await signer.createEscrow(createReq());
+    const req = { opId: randomUUID(), authorization: authFor(created.offerSequence) };
+    ledger.dropNextSubmit = true;
+    await expectCode(signer.finishEscrow(req), "ledger_failure");
+    await expectCode(signer.finishEscrow(req), "op_pending");
+    ledger.ledgerIndex += 50;
+    await expectCode(signer.finishEscrow(req), "ledger_failure");
+    const journal = JSON.parse(readFileSync(join(dataDir, "journal.json"), "utf8"));
+    expect(journal[req.opId].status).toBe("failed");
+    expect(ledger.count("EscrowFinish")).toBe(0);
+    expect(ledger.escrows.size).toBe(1);
+  });
+
+  it("lets the same request retry when preparing the transaction failed before anything was signed", async () => {
+    const signer = makeSigner();
+    const created = await signer.createEscrow(createReq());
+    const auth = authFor(created.offerSequence);
+    const req = { opId: randomUUID(), authorization: auth };
+    ledger.throwOnNextAutofill = true;
+    await expectCode(signer.finishEscrow(req), "ledger_failure");
+    const res = await signer.finishEscrow(req);
+    expect(res.result).toBe("tesSUCCESS");
+    expect(ledger.count("EscrowFinish")).toBe(1);
+    await expectCode(signer.finishEscrow({ opId: randomUUID(), authorization: auth }), "authorization_consumed");
+  });
+
+  it("refuses to finish when the ledger's CancelAfter or owner disagrees with the signer's record", async () => {
+    const signer = makeSigner();
+    const created = await signer.createEscrow(createReq());
+    const key = `${buyer.classicAddress}:${created.offerSequence}`;
+    const entry = ledger.escrows.get(key);
+    if (!entry) throw new Error("escrow missing from fake ledger");
+    ledger.escrows.set(key, { ...entry, CancelAfter: created.cancelAfter + 1000 });
+    await expectCode(
+      signer.finishEscrow({ opId: randomUUID(), authorization: authFor(created.offerSequence) }),
+      "escrow_mismatch",
+    );
+    ledger.escrows.set(key, { ...entry, Account: service.classicAddress });
+    await expectCode(
+      signer.finishEscrow({ opId: randomUUID(), authorization: authFor(created.offerSequence) }),
+      "escrow_mismatch",
+    );
+    expect(ledger.count("EscrowFinish")).toBe(0);
+  });
+
   it("treats the same opId with a different body as a conflict", async () => {
     const signer = makeSigner();
     const created = await signer.createEscrow(createReq());

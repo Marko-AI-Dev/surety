@@ -1,4 +1,4 @@
-import type { AddressInfo } from "node:net";
+import { type AddressInfo, connect } from "node:net";
 import type { Server } from "node:http";
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -87,6 +87,24 @@ describe("signer http boundary", () => {
     expect((await signedFetch("POST", "/escrows/create", "{not json")).status).toBe(400);
     expect((await signedFetch("GET", "/health", "")).status).toBe(200);
   });
+
+  it.each(["//[", "//%", "http://["])(
+    "survives the unparseable request target %s and keeps serving",
+    async (target) => {
+      const port = (server.address() as AddressInfo).port;
+      const reply = await new Promise<string>((resolve) => {
+        let data = "";
+        const socket = connect(port, "127.0.0.1", () =>
+          socket.write(`GET ${target} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n`),
+        );
+        socket.on("data", (d) => (data += d));
+        socket.on("close", () => resolve(data));
+        socket.on("error", () => resolve(data));
+      });
+      expect(reply).toMatch(/^HTTP\/1\.1 400/);
+      expect((await signedFetch("GET", "/health", "")).status).toBe(200);
+    },
+  );
 
   it("maps a SignerError to its status and code through the client", async () => {
     behaviour.createEscrow = async () => {

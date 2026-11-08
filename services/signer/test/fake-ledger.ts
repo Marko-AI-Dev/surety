@@ -12,6 +12,8 @@ export class FakeLedger implements LedgerPort {
   submitted: Decoded[] = [];
   lookups: string[] = [];
   throwOnNextSubmit = false;
+  dropNextSubmit = false;
+  throwOnNextAutofill = false;
   nextResult: string | undefined;
   private results = new Map<string, TxResult>();
   private sequences = new Map<string, number>();
@@ -26,17 +28,30 @@ export class FakeLedger implements LedgerPort {
     return this.closeTime;
   }
 
+  async validatedLedgerIndex(): Promise<number> {
+    return this.ledgerIndex;
+  }
+
   async getEscrow(owner: string, offerSequence: number): Promise<EscrowEntry | null> {
     return this.escrows.get(`${owner}:${offerSequence}`) ?? null;
   }
 
   async autofill<T extends SubmittableTransaction>(tx: T): Promise<T> {
+    if (this.throwOnNextAutofill) {
+      this.throwOnNextAutofill = false;
+      throw new Error("websocket closed while fetching account_info");
+    }
     const sequence = this.sequences.get(tx.Account) ?? 1;
     this.sequences.set(tx.Account, sequence + 1);
     return { ...tx, Sequence: sequence, Fee: "12", LastLedgerSequence: this.ledgerIndex + 20 };
   }
 
   async submitSigned(txBlob: string, hash: string): Promise<SubmitResult> {
+    if (this.dropNextSubmit) {
+      // Lost before reaching the network: nothing recorded, nothing applied.
+      this.dropNextSubmit = false;
+      throw new Error("ECONNRESET before send");
+    }
     const tx = decode(txBlob) as Decoded;
     this.submitted.push(tx);
     const result = this.nextResult ?? this.apply(tx);

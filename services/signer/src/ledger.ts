@@ -12,6 +12,7 @@ export interface SubmitResult {
 export interface LedgerPort {
   networkId(): Promise<number>;
   validatedCloseTime(): Promise<number>;
+  validatedLedgerIndex(): Promise<number>;
   getEscrow(owner: string, offerSequence: number): Promise<EscrowEntry | null>;
   autofill<T extends SubmittableTransaction>(tx: T): Promise<T>;
   submitSigned(txBlob: string, hash: string): Promise<SubmitResult>;
