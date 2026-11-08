@@ -9,3 +9,5 @@ export {
   type JevEngineOptions,
 } from "./jev-engine";
 export { createFixtureEngine, type FixtureScores } from "./fixture-engine";
+export { POLICIES, POLICY_V1, decide, policyFor, type Decision, type Outcome, type Policy } from "./policy";
+export { AUTHORIZATION_TTL_MS, mintAuthorization, type MintInput } from "./authorize";
