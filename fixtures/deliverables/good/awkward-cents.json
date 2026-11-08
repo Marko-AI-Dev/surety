@@ -1,0 +1,21 @@
+{
+  "invoice_id": "DEMO-001",
+  "vendor": "Demo Supplies",
+  "currency": "ZAR",
+  "total_minor": 40000,
+  "line_items": [
+    {
+      "description": "USB-C cable",
+      "quantity": 2,
+      "unit_minor": 15000,
+      "amount_minor": 30000
+    },
+    {
+      "description": "HDMI adapter",
+      "quantity": 1,
+      "unit_minor": 10000,
+      "amount_minor": 10000
+    }
+  ],
+  "summary": "DEMO-001 from Demo Supplies: 2 x 15000 cents plus 1 x 10000 cents, total 40000 cents, currency ZAR."
+}

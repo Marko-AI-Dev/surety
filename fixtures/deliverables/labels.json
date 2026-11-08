@@ -23,6 +23,22 @@
     "label": "bad",
     "split": "train"
   },
+  "bad/polite-wrong-item.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/polite-wrong-quantity.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/polite-wrong-total.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/polite-wrong-unit-price.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
   "bad/recipient-change.json": {
     "label": "bad",
     "split": "train"
@@ -37,6 +53,22 @@
   },
   "bad/wrong-supplier-summary.json": {
     "label": "bad",
+    "split": "holdout"
+  },
+  "good/awkward-abbreviations.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/awkward-cents.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/awkward-mixed-case.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/awkward-passive.json": {
+    "label": "good",
     "split": "holdout"
   },
   "good/currency-summary.json": {

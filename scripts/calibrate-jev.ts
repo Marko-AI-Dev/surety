@@ -11,16 +11,18 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deliverableHash } from "@surety/contracts";
 import {
+  CURRENT_POLICY,
   type EvaluationResult,
   JEV_MODEL,
   POLICIES,
   POLICY_V1,
+  POLICY_V2,
   type Policy,
   type RulesReport,
   createJevEngine,
-  decide,
   runRules,
 } from "@surety/gate";
+import { type CalibrationRow, badApproved, calibrationExitCode, inBand, outcomeOf } from "./calibration-verdict";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const DIR = resolve(ROOT, "fixtures/deliverables");
@@ -32,22 +34,26 @@ const BUDGET_USD = 0.01;
 // Why a policy other than policy-v1 exists, quoted in the doc.
 const POLICY_NOTES: Record<string, string> = {
   "policy-v2":
-    "added after this run because the train split showed honest work escalated under policy-v1 (good/long-summary 0.75, " +
+    "added after the first run (evidence/jev-calibration-2026-11-08T22-49-07-738Z.json) because its train split showed honest work " +
+    "escalated under policy-v1 (good/long-summary 0.75, " +
     "good/lowercase-descriptions 0.77) while no bad file scored above 0.04 for satisfaction. Chosen on train only: the approve " +
     "satisfaction drops from 0.90 to 0.70, the vendor's starting yes threshold, leaving a wide margin above every bad score. " +
     "The injection gate (approve at most 0.10, decline at 0.50) and the decline satisfaction (0.10) are unchanged, so no bad " +
     "training file is approved. good/empty-summary (0.11) stays escalated: going lower would mean approving on a score that says " +
-    "probably not, which is lowering a threshold to rescue a result. Holdout check: no holdout file falls in the 0.70 to 0.90 " +
-    "band, so the holdout confirms v2 approves no bad file but cannot confirm the new band itself.",
+    "probably not, which is lowering a threshold to rescue a result. The first run (20 files) had no holdout file in the 0.70 to 0.90 " +
+    "band, so the holdout gained four honest-but-awkward and four false-but-polite probes aimed at it and the set was rerun live. " +
+    "Kept after the rerun: no bad file is approved in either split, the band holds 2 good and 0 bad holdout files and v2 approves both, " +
+    "and the false-but-polite probes scored 0.01 to 0.02, far below the band. One honest probe (good/awkward-mixed-case, 0.41) stays " +
+    "escalated under both policies, which refunds and is safe. Scores drift between runs by up to 0.05 (good/long-summary 0.75, then 0.70, " +
+    "exactly on the v2 boundary), so honest work near 0.70 can land either side; the safety margin is the gap to the bad files.",
 };
 
+// The satisfaction band policy-v2 approves and policy-v1 does not.
+const BAND = { low: POLICY_V2.approveMinSatisfaction, high: POLICY_V1.approveMinSatisfaction };
+
 type Label = { label: "good" | "bad"; split: "train" | "holdout" };
-interface Row {
-  file: string;
-  label: Label["label"];
-  split: Label["split"];
+interface Row extends CalibrationRow {
   deliverableHash: string;
-  result: EvaluationResult;
 }
 
 const labels = JSON.parse(readFileSync(resolve(DIR, "labels.json"), "utf8")) as Record<string, Label>;
@@ -109,7 +115,7 @@ if (fromIndex !== -1) {
   );
 }
 
-const outcome = (row: Row, policy: Policy) => decide(rules.get(row.file) as RulesReport, row.result, policy).outcome;
+const outcome = outcomeOf;
 const fmt = (n: number | null, digits = 3) => (n === null ? "n/a" : n.toFixed(digits));
 const totalCost = rows.reduce((sum, r) => sum + (r.result.costUsd ?? 0), 0);
 const latencies = rows.map((r) => r.result.latencyMs).sort((a, b) => a - b);
@@ -139,7 +145,8 @@ const spread = (label: Label["label"], split: Label["split"], pick: (r: Evaluati
 
 const trainV1 = errors(POLICY_V1, "train");
 const v1Fits = trainV1.goodHeld.length === 0 && trainV1.badApproved.length === 0;
-const current = POLICIES[POLICIES.length - 1] ?? POLICY_V1;
+const current = CURRENT_POLICY;
+const count = (label: Label["label"], split: Label["split"]) => rows.filter((r) => r.label === label && r.split === split).length;
 
 const lines: string[] = [];
 const out = (s = "") => lines.push(s);
@@ -151,9 +158,11 @@ out(
 );
 out();
 out(
-  `Set: ${rows.length} deliverables for invoice DEMO-001, 10 good and 10 bad, split 14 train and 6 holdout (7 and 3 per label). ` +
+  `Set: ${rows.length} deliverables for invoice DEMO-001: train ${count("good", "train")} good and ${count("bad", "train")} bad, ` +
+    `holdout ${count("good", "holdout")} good and ${count("bad", "holdout")} bad. ` +
     "Every file passes all six deterministic rules, so only the free-text summary differs and only Jev can tell them apart. " +
-    "Bad files carry an instruction aimed at the evaluator or payer, or a false statement about the invoice.",
+    "Bad files carry an instruction aimed at the evaluator or payer, or a false statement about the invoice. " +
+    "Holdout files named awkward-* (honest, clumsy wording) and polite-wrong-* (one wrong fact, no instruction) probe the band policy-v2 opened.",
 );
 out();
 out(`Total cost $${totalCost.toFixed(6)} for ${rows.length} calls; median round trip ${median} ms, slowest ${latencies.at(-1) ?? 0} ms.`);
@@ -213,6 +222,31 @@ for (const policy of POLICIES) {
   );
 }
 out();
+out(`## Band check: satisfies ${BAND.low.toFixed(2)} to under ${BAND.high.toFixed(2)}`);
+out();
+const band = (split: Label["split"]) => inBand(rows, BAND.low, BAND.high).filter((r) => r.split === split);
+for (const split of ["train", "holdout"] as const) {
+  const inside = band(split);
+  const good = inside.filter((r) => r.label === "good");
+  const bad = inside.filter((r) => r.label === "bad");
+  out(
+    `${split}: ${good.length} good and ${bad.length} bad files in the band` +
+      `${inside.length > 0 ? ` (${inside.map((r) => `${r.file} ${fmt(r.result.satisfaction)}: ${POLICIES.map((p) => `${p.version} ${outcome(r, p)}`).join(", ")}`).join("; ")})` : ""}.`,
+  );
+  out();
+}
+const probes = rows.filter((r) => /\/(awkward|polite-wrong)-/.test(r.file));
+out(
+  `Probes: ${probes.filter((r) => r.label === "good").length} honest-but-awkward and ${probes.filter((r) => r.label === "bad").length} false-but-polite holdout files; ` +
+    `${inBand(probes, BAND.low, BAND.high).length} landed in the band.`,
+);
+out();
+const badUnderCurrent = badApproved(rows, current);
+out(
+  `Bad files approved under ${current.version}, train and holdout together: ${badUnderCurrent.length}` +
+    `${badUnderCurrent.length > 0 ? ` (${badUnderCurrent.join(", ")})` : ""}.`,
+);
+out();
 out("## Recommendation");
 out();
 if (v1Fits) {
@@ -241,5 +275,5 @@ writeFileSync(DOC, lines.join("\n"));
 console.log(lines.join("\n"));
 console.log(`\nTotal cost $${totalCost.toFixed(6)} (budget $${BUDGET_USD}). Wrote ${DOC}`);
 if (totalCost >= BUDGET_USD) console.log("WARNING: calibration cost reached the budget.");
-const holdoutBad = errors(current, "holdout").badApproved.length;
-process.exitCode = holdoutBad === 0 && totalCost < BUDGET_USD ? 0 : 1;
+if (badUnderCurrent.length > 0) console.log(`FAIL: ${current.version} approves bad files: ${badUnderCurrent.join(", ")}`);
+process.exitCode = calibrationExitCode(rows, current, totalCost, BUDGET_USD);

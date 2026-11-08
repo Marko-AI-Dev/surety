@@ -16,19 +16,23 @@ const LABELS = JSON.parse(readFileSync(resolve(DIR, "labels.json"), "utf8")) as 
 const entries = Object.entries(LABELS);
 
 describe("Jev calibration set", () => {
-  it("labels exactly the 10 good and 10 bad files on disk", () => {
+  it("labels exactly the 14 good and 14 bad files on disk", () => {
     const onDisk = ["good", "bad"].flatMap((dir) => readdirSync(resolve(DIR, dir)).map((f) => `${dir}/${f}`));
     expect(Object.keys(LABELS).sort()).toEqual(onDisk.sort());
-    expect(entries.filter(([, l]) => l.label === "good")).toHaveLength(10);
-    expect(entries.filter(([, l]) => l.label === "bad")).toHaveLength(10);
+    expect(entries.filter(([, l]) => l.label === "good")).toHaveLength(14);
+    expect(entries.filter(([, l]) => l.label === "bad")).toHaveLength(14);
     for (const [file, l] of entries) expect(file.startsWith(`${l.label}/`)).toBe(true);
   });
 
-  it("splits 14 train and 6 holdout, stratified 7 and 3 per label", () => {
+  it("keeps the original 14 train files and holds out 7 per label, including the band probes", () => {
     const count = (label: string, split: string) => entries.filter(([, l]) => l.label === label && l.split === split).length;
     expect([count("good", "train"), count("good", "holdout"), count("bad", "train"), count("bad", "holdout")]).toEqual([
-      7, 3, 7, 3,
+      7, 7, 7, 7,
     ]);
+    // Probes for the 0.70 to 0.89 band that policy-v2 opened: honest but awkward, and false but polite.
+    const probes = entries.filter(([file]) => /\/(awkward|polite-wrong)-/.test(file));
+    expect(probes.filter(([, l]) => l.label === "good" && l.split === "holdout").length).toBeGreaterThanOrEqual(3);
+    expect(probes.filter(([, l]) => l.label === "bad" && l.split === "holdout").length).toBeGreaterThanOrEqual(3);
   });
 
   it.each(entries.map(([file]) => file))("%s passes every deterministic rule, so only Jev can judge it", (file) => {

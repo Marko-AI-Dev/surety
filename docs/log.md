@@ -23,6 +23,8 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | Phase 3 gate: deterministic rules, then Jev (two yes/no questions), then a versioned policy; the worker became the job engine (evaluate, settle, refund) | Rules decide facts; Jev judges the free-text summary; nothing pays without a validated `tesSUCCESS` |
 | 2026-11-09 | `source_values` compares field by field and line items as a multiset against the parsed source invoice, not substring presence | Substring matching let a deliverable drop a line and report a smaller total while passing every rule |
 | 2026-11-09 | `policy-v2`: approve from Jev satisfaction 0.70 (was 0.90); injection and decline thresholds unchanged; `policy-v1` kept | Labelled train split: honest work scored 0.75 and 0.77 and was escalated under v1, while every bad file scored 0.04 or less. No bad file approved on train or holdout. See docs/research/05-jev-calibration.md |
+| 2026-11-09 | `policy-v2` kept after a rerun with 8 holdout probes aimed at the 0.70 to 0.89 band (4 honest but awkward, 4 false but polite) | 0 bad files approved in either split; the band held 2 good and 0 bad holdout files, both approved; false-but-polite probes scored 0.01 to 0.02. The calibration script now exits 1 if any bad file is approved under the current policy |
+| 2026-11-09 | The job engine resumes jobs left in `EVALUATING` by a dead worker (re-judged if no decision was recorded, otherwise the recorded decision is applied) | A crash between the claim and the verdict no longer costs an honest seller the job. Assumes one worker; a lease comes before scaling out |
 | 2026-11-09 | Decision cutoff 30 s before `CancelAfter` by ledger time: no evaluation, no authorization, no finish call after it | A late approval must refund, not race the expiry |
 | 2026-11-09 | Settlement retries replay the open authorization's operation id first, even after it expires; only a refusal of an expired one mints the next attempt | A finish the signer already submitted is found by its own id, never replaced |
 | 2026-11-09 | Worker `JEV_MODE` is `live` or `fixture`, default live; fixture decisions are labelled `fixture` and the boot line names the mode | Fixtures never pass for live Jev |
@@ -42,6 +44,7 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-08 | OpenRouter smoke test: 3 Jev calls + 1 Haiku call | $0.000266 |
 | 2026-11-08 | Restart refund demo on testnet: 1 create + 1 cancel (12 drops each); the 1 test XRP principal came back | 24 drops = 0.000024 test XRP |
 | 2026-11-09 | Jev calibration: 20 labelled deliverables, one live call each | $0.000639 |
+| 2026-11-09 | Jev calibration rerun: 28 labelled deliverables, one live call each | $0.000894 |
 | 2026-11-09 | Outcomes demo: 2 live Jev calls (paid, blocked); the rejected job never called Jev and the offline job hit a dead local endpoint | $0.000064 |
 | 2026-11-09 | Outcomes demo on testnet: 4 creates (12 drops each), 1 finish (423), 3 cancels (12 each); 3 test XRP principal came back, 1 test XRP paid to the seller | 507 drops = 0.000507 test XRP |
 

@@ -23,6 +23,10 @@ export const POLICY_V1: Policy = Object.freeze({
 // escalated honest work scored 0.75 and 0.77 (a longer summary, lower-case descriptions) while every bad
 // file scored satisfaction 0.04 or less. Only the approve satisfaction moves, to 0.70, the vendor's
 // starting "yes" threshold; the injection gate and both decline thresholds are unchanged.
+// Holdout provenance (rerun with band probes, evidence/jev-calibration-2026-11-08T23-16-37-395Z.json, 28 files):
+// in the 0.70 to 0.89 band the holdout has 2 good files (0.75, 0.89, both approved by v2, escalated by v1) and
+// 0 bad files; v2 approves 6 of 7 good and 0 of 7 bad holdout files, and 0 bad files in either split. Every bad
+// file scored satisfaction 0.04 or less, the four false-but-polite probes 0.01 to 0.02.
 export const POLICY_V2: Policy = Object.freeze({
   version: "policy-v2",
   approveMinSatisfaction: 0.7,

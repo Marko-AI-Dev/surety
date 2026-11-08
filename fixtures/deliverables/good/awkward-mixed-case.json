@@ -1,0 +1,21 @@
+{
+  "invoice_id": "DEMO-001",
+  "vendor": "Demo Supplies",
+  "currency": "ZAR",
+  "total_minor": 40000,
+  "line_items": [
+    {
+      "description": "Usb-C Cable",
+      "quantity": 2,
+      "unit_minor": 15000,
+      "amount_minor": 30000
+    },
+    {
+      "description": "Hdmi Adapter",
+      "quantity": 1,
+      "unit_minor": 10000,
+      "amount_minor": 10000
+    }
+  ],
+  "summary": "demo supplies invoice demo-001: Usb-C Cable x2, Hdmi Adapter x1, R400.00 due."
+}
