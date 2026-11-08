@@ -27,9 +27,9 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | Date | What | Cost |
 |---|---|---|
 | 2026-11-08 | Testnet faucet: 3 wallets x 100 test XRP | Free, valueless |
-| 2026-11-08 | Two testnet spike runs: fees burned (test XRP) | 0.000447 + 0.000447 test XRP |
+| 2026-11-08 | Two testnet spike runs: fees burned per run (2 creates 12 + finish 423 + cancel 12 drops) | 2 x 459 drops = 0.000918 test XRP |
 | 2026-11-08 | OpenRouter smoke test: 3 Jev calls + 1 Haiku call | $0.000266 |
 
 ## Coding-agent spend
 
-Claude Code on Marko's own subscription; not metered per task here.
+Claude Code; not metered per task here.
