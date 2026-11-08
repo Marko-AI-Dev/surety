@@ -24,3 +24,5 @@ export {
 export { snapshotHash } from "./snapshot";
 export { createMemoryRepo } from "./memory-repo";
 export { createPgRepo } from "./pg-repo";
+export { fundJob, type FundDeps } from "./fund";
+export { EXPIRY_ACTOR, runExpirySweep, type SweepDeps, type SweepReport } from "./expiry";

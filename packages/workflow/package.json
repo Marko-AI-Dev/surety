@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@surety/contracts": "workspace:*",
+    "@surety/signer-client": "workspace:*",
     "postgres": "4.1.0"
   },
   "devDependencies": {
