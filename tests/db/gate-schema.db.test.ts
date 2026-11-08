@@ -34,13 +34,19 @@ function insertDecision(overrides: { mode?: string | null; outcome?: string; del
 
 describe("gate schema", () => {
   it("accepts every outcome and both modes, and a null mode when no engine was called", async () => {
-    for (const outcome of ["APPROVE", "DECLINE", "ESCALATE", "UNAVAILABLE"]) {
-      await insertDecision({ outcome });
+    const hashes = ["1", "2", "3", "4", "5", "6"].map((c) => c.repeat(64));
+    for (const [i, outcome] of ["APPROVE", "DECLINE", "ESCALATE", "UNAVAILABLE"].entries()) {
+      await insertDecision({ outcome, deliverableHash: hashes[i] });
     }
-    await insertDecision({ mode: "fixture" });
-    await insertDecision({ mode: null, outcome: "DECLINE" });
+    await insertDecision({ mode: "fixture", deliverableHash: hashes[4] });
+    await insertDecision({ mode: null, outcome: "DECLINE", deliverableHash: hashes[5] });
     const [row] = await sql`select count(*)::int as n from decisions`;
     expect(row?.n).toBe(6);
+  });
+
+  it("rejects a second decision for the same job and deliverable hash", async () => {
+    await insertDecision();
+    await expect(insertDecision({ outcome: "DECLINE" })).rejects.toThrow(/decisions_job_id_deliverable_hash_key/);
   });
 
   it("rejects an unknown outcome", async () => {

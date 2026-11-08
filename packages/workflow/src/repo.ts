@@ -152,7 +152,10 @@ export interface JobsRepo {
   // Stores the first deliverable for a job. The same hash again is "duplicate" and changes nothing; a
   // different hash throws DeliverableConflict: a delivered answer is never replaced.
   saveDeliverable(jobId: string, raw: unknown, hash: string): Promise<"saved" | "duplicate">;
+  // Throws DecisionConflict when the job already has a decision for this deliverable hash.
   recordDecision(d: NewDecision): Promise<Decision>;
+  // Adds one to the job's evaluation resume count and returns the new count.
+  noteEvaluationResume(jobId: string): Promise<number>;
   latestDecision(jobId: string): Promise<Decision | null>;
   // Throws AuthorizationConflict when the decision already has this attempt or the opId is taken.
   recordAuthorization(a: NewAuthorization): Promise<AuthorizationRow>;
@@ -177,6 +180,17 @@ export class DeliverableConflict extends Error {
   ) {
     super(`job ${jobId} already has a different deliverable`);
     this.name = "DeliverableConflict";
+  }
+}
+
+// The job already has a decision for this deliverable: another evaluator recorded it first.
+export class DecisionConflict extends Error {
+  constructor(
+    readonly jobId: string,
+    readonly deliverableHash: string,
+  ) {
+    super(`job ${jobId} already has a decision for this deliverable`);
+    this.name = "DecisionConflict";
   }
 }
 

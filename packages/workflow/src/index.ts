@@ -10,6 +10,7 @@ export {
 export { operationId, type Operation } from "./operation-id";
 export {
   AuthorizationConflict,
+  DecisionConflict,
   DeliverableConflict,
   TransitionConflict,
   type AuthorizationRow,
@@ -34,6 +35,6 @@ export { createPgRepo } from "./pg-repo";
 export { fundJob, type FundDeps } from "./fund";
 export { EXPIRY_ACTOR, runExpirySweep, type SweepDeps, type SweepReport } from "./expiry";
 export { SELLER_ACTOR, deliverJob, type DeliverDeps } from "./deliver";
-export { DECISION_CUTOFF_SECONDS, GATE_ACTOR, evaluateJob, type EvaluateDeps } from "./evaluate";
+export { DECISION_CUTOFF_SECONDS, GATE_ACTOR, MAX_EVALUATION_RESUMES, evaluateJob, type EvaluateDeps } from "./evaluate";
 export { settleJob, type SettleDeps } from "./settle";
 export { runEngineOnce, type EngineDeps, type EngineReport } from "./engine-loop";

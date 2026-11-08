@@ -30,8 +30,8 @@ const reasonOf = (e: unknown) => (e instanceof SignerClientError ? e.code : e in
 const lostRace = (e: unknown) =>
   e instanceof TransitionConflict || e instanceof AuthorizationConflict || e instanceof TransitionError;
 
-// One pass of the job engine: judge delivered work, pay approved work, then refund whatever has
-// expired. Every step reads its state from the database, so a restarted process carries on.
+// One pass of the job engine: refund whatever has expired, judge delivered work, then pay approved
+// work. Every step reads its state from the database, so a restarted process carries on.
 export async function runEngineOnce(deps: EngineDeps): Promise<EngineReport> {
   const log = deps.log ?? (() => {});
   const report: Omit<EngineReport, "sweep"> = { evaluated: [], paid: [], pending: [] };
@@ -48,7 +48,11 @@ export async function runEngineOnce(deps: EngineDeps): Promise<EngineReport> {
     }
   };
 
-  // EVALUATING jobs are ones a dead worker left behind: passes never overlap and one worker runs.
+  // Refunds first: a slow or failing evaluation must never delay money owed back to a buyer.
+  const sweep = await runExpirySweep({ repo: deps.repo, signer: deps.signer, ledgerCloseTime: deps.ledgerCloseTime, log });
+
+  // EVALUATING jobs are ones an evaluator left behind; evaluateJob bounds how often they are resumed
+  // and the one-decision-per-deliverable constraint keeps a racing twin from recording a second verdict.
   await each(
     await deps.repo.listJobsInStates(["DELIVERED", "EVALUATING"]),
     (job) => evaluateJob(deps, job.id),
@@ -71,6 +75,5 @@ export async function runEngineOnce(deps: EngineDeps): Promise<EngineReport> {
     },
   );
 
-  const sweep = await runExpirySweep({ repo: deps.repo, signer: deps.signer, ledgerCloseTime: deps.ledgerCloseTime, log });
   return { ...report, sweep };
 }

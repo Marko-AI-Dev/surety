@@ -3,6 +3,7 @@ import {
   AuthorizationConflict,
   type AuthorizationRow,
   type Decision,
+  DecisionConflict,
   DeliverableConflict,
   type DueForCancel,
   type EscrowRow,
@@ -29,6 +30,7 @@ export function createMemoryRepo(): JobsRepo {
   const events: JobEvent[] = [];
   const decisions: Decision[] = [];
   const authorizations: AuthorizationRow[] = [];
+  const resumes = new Map<string, number>();
   const copy = structuredClone;
 
   return {
@@ -168,9 +170,19 @@ export function createMemoryRepo(): JobsRepo {
       if (decisions.some((x) => x.requestId === d.requestId)) {
         throw new Error(`decision request ${d.requestId} is already recorded`);
       }
+      if (decisions.some((x) => x.jobId === d.jobId && x.deliverableHash === d.deliverableHash)) {
+        throw new DecisionConflict(d.jobId, d.deliverableHash);
+      }
       const row: Decision = { ...copy(d), id: randomUUID(), decidedAt: new Date().toISOString() };
       decisions.push(row);
       return copy(row);
+    },
+
+    async noteEvaluationResume(jobId) {
+      if (!jobs.has(jobId)) throw new Error(`job ${jobId} not found`);
+      const count = (resumes.get(jobId) ?? 0) + 1;
+      resumes.set(jobId, count);
+      return count;
     },
 
     async latestDecision(jobId) {

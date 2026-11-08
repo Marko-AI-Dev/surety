@@ -173,6 +173,48 @@ describe("runEngineOnce", () => {
     expect((await repo.listEvents(job.id)).find((e) => e.toState === "APPROVED")?.reasonCodes).toEqual(["approved"]);
   });
 
+  it("stops re-judging a job whose evaluation fails every time: REVIEW_REQUIRED after 3 resumes, at most 3 engine calls", async () => {
+    const job = await deliveredJob(EXACT);
+    const engine = demoEngine();
+    // The verdict can never be stored (after the Jev call), so every attempt dies the same way.
+    const poisoned: JobsRepo = {
+      ...repo,
+      async recordDecision() {
+        throw new Error("decision store rejects this job");
+      },
+    };
+    const run = () =>
+      runEngineOnce({ repo: poisoned, signer, engine, gateSecret: GATE_SECRET, ledgerCloseTime: async () => closeTime });
+
+    for (let pass = 0; pass < 6; pass++) await run();
+
+    expect((await repo.getJob(job.id))?.state).toBe("REVIEW_REQUIRED");
+    expect(engine.inputs.length).toBeLessThanOrEqual(3);
+    const last = (await repo.listEvents(job.id)).at(-1);
+    expect(last).toMatchObject({ fromState: "EVALUATING", toState: "REVIEW_REQUIRED", reasonCodes: ["evaluation_resume_exhausted"] });
+    expect(last?.detail).toMatchObject({ resumes: 3 });
+
+    closeTime = AFTER_EXPIRY;
+    await run();
+    expect((await repo.getJob(job.id))?.state).toBe("REFUNDED");
+  });
+
+  it("refunds expired escrows before it judges anything in the same pass", async () => {
+    const expiring = await deliveredJob(WRONG_TOTAL);
+    await pass(demoEngine()); // rejected, waits for expiry
+    signer.closeTime = CLOSE + 200; // the next escrow expires later
+    const fresh = await deliveredJob(EXACT);
+    closeTime = CLOSE + WINDOW + 1; // past the first escrow, well before the second one's cutoff
+    const lines: string[] = [];
+
+    await pass(demoEngine(), (l) => lines.push(l));
+
+    const refundedAt = lines.findIndex((l) => l.startsWith("refunded") && l.includes(expiring.id));
+    const evaluatedAt = lines.findIndex((l) => l.startsWith("evaluated") && l.includes(fresh.id));
+    expect(refundedAt).toBeGreaterThanOrEqual(0);
+    expect(evaluatedAt).toBeGreaterThan(refundedAt);
+  });
+
   it("keeps going when one job fails: the other jobs in the pass still settle", async () => {
     const stuck = await deliveredJob(EXACT);
     const fine = await deliveredJob(EXACT);

@@ -8,11 +8,22 @@ import {
   policyFor,
   runRules,
 } from "@surety/gate";
-import type { DecisionOutcome, Job, JobsRepo } from "./repo";
+import {
+  type Decision,
+  DecisionConflict,
+  type DecisionOutcome,
+  type Job,
+  type JobsRepo,
+  TransitionConflict,
+  type TransitionEvent,
+} from "./repo";
 import type { JobState } from "./states";
 import { TransitionError } from "./states";
 
 export const GATE_ACTOR = "gate";
+
+// How many times an EVALUATING job may be picked up again before it is held for review.
+export const MAX_EVALUATION_RESUMES = 3;
 
 // No evaluation and no settlement in the last 30 seconds before CancelAfter, by ledger time: the
 // job waits for expiry and refunds instead.
@@ -74,16 +85,47 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
   const deliverableHash = job.deliverableHash;
   if (deliverableHash === null) throw new Error(`job ${job.id} has no deliverable`);
 
-  // An EVALUATING job here is one a dead worker claimed and never finished (one worker runs at a
-  // time). A decision it recorded for this deliverable is applied as it stands, never asked again.
+  // Every move out of EVALUATING is guarded; if another evaluator moved the job first, its outcome
+  // stands and this call returns the job as that one left it.
+  const current = async () => (await repo.getJob(job.id)) ?? job;
+  const move = async (to: JobState, event: TransitionEvent): Promise<Job> => {
+    try {
+      return await repo.transition(job.id, "EVALUATING", to, event);
+    } catch (e) {
+      if (e instanceof TransitionConflict) return current();
+      throw e;
+    }
+  };
+  let resumes = 0;
+  const apply = (d: Decision) =>
+    move(NEXT_STATE[d.outcome], {
+      actor: GATE_ACTOR,
+      reasonCodes: d.reasonCodes,
+      correlationId: d.id,
+      detail: {
+        decisionId: d.id,
+        outcome: d.outcome,
+        mode: d.mode,
+        satisfaction: d.satisfaction,
+        injectionRisk: d.injectionRisk,
+        policyVersion: d.policyVersion,
+        ...(resumes > 0 ? { resumes } : {}),
+      },
+    });
+
+  // An EVALUATING job here was claimed by an evaluator that died, or by a twin still running. A
+  // decision already recorded for this deliverable is applied, never asked again. Resumes are
+  // counted and bounded, so a job whose evaluation fails every time is held for review (and
+  // refunds at expiry) instead of costing a Jev call every pass.
   if (job.state === "EVALUATING") {
+    resumes = await repo.noteEvaluationResume(job.id);
     const prior = await repo.latestDecision(job.id);
-    if (prior && prior.deliverableHash === deliverableHash) {
-      return repo.transition(job.id, "EVALUATING", NEXT_STATE[prior.outcome], {
+    if (prior && prior.deliverableHash === deliverableHash) return apply(prior);
+    if (resumes >= MAX_EVALUATION_RESUMES) {
+      return move("REVIEW_REQUIRED", {
         actor: GATE_ACTOR,
-        reasonCodes: prior.reasonCodes,
-        correlationId: prior.id,
-        detail: { decisionId: prior.id, outcome: prior.outcome, resumed: true, policyVersion: prior.policyVersion },
+        reasonCodes: ["evaluation_resume_exhausted"],
+        detail: { resumes },
       });
     }
   }
@@ -91,19 +133,24 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
   // Read ledger time before claiming the job, so an unreachable ledger leaves it DELIVERED.
   const closeTime = await deps.ledgerCloseTime();
   const cutoff = escrow.cancelAfter - DECISION_CUTOFF_SECONDS;
-  const claimed =
-    job.state === "EVALUATING"
-      ? job
-      : await repo.transition(job.id, "DELIVERED", "EVALUATING", {
-          actor: GATE_ACTOR,
-          reasonCodes: ["evaluation_started"],
-          detail: { deliverableHash, closeTime, cutoff },
-        });
+  if (job.state === "DELIVERED") {
+    try {
+      await repo.transition(job.id, "DELIVERED", "EVALUATING", {
+        actor: GATE_ACTOR,
+        reasonCodes: ["evaluation_started"],
+        detail: { deliverableHash, closeTime, cutoff },
+      });
+    } catch (e) {
+      // Another evaluator claimed it first and owns the verdict.
+      if (e instanceof TransitionConflict) return current();
+      throw e;
+    }
+  }
   const hold = (reason: string) =>
-    repo.transition(claimed.id, "EVALUATING", "REVIEW_REQUIRED", {
+    move("REVIEW_REQUIRED", {
       actor: GATE_ACTOR,
       reasonCodes: [reason],
-      detail: { closeTime, cutoff, policyVersion: job.policyVersion },
+      detail: { closeTime, cutoff, policyVersion: job.policyVersion, ...(resumes > 0 ? { resumes } : {}) },
     });
 
   if (closeTime >= cutoff) return hold("decision_window_closed");
@@ -132,34 +179,30 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
   const verdict = decide(rules, evaluation, policy);
   const rulesRecord: Omit<RulesReport, "parsed"> = { passed: rules.passed, results: rules.results };
 
-  const decision = await repo.recordDecision({
-    jobId: job.id,
-    requestId,
-    mode: evaluation?.mode ?? null,
-    outcome: verdict.outcome,
-    satisfaction: evaluation?.satisfaction ?? null,
-    injectionRisk: evaluation?.injectionRisk ?? null,
-    provider: evaluation?.provider ?? null,
-    model: evaluation?.model ?? null,
-    latencyMs: evaluation?.latencyMs ?? null,
-    costUsd: evaluation?.costUsd ?? null,
-    reasonCodes: verdict.reasonCodes,
-    rules: rulesRecord,
-    policyVersion: policy.version,
-    deliverableHash,
-  });
-
-  return repo.transition(claimed.id, "EVALUATING", NEXT_STATE[verdict.outcome], {
-    actor: GATE_ACTOR,
-    reasonCodes: verdict.reasonCodes,
-    correlationId: decision.id,
-    detail: {
-      decisionId: decision.id,
+  let decision: Decision;
+  try {
+    decision = await repo.recordDecision({
+      jobId: job.id,
+      requestId,
+      mode: evaluation?.mode ?? null,
       outcome: verdict.outcome,
-      mode: decision.mode,
-      satisfaction: decision.satisfaction,
-      injectionRisk: decision.injectionRisk,
+      satisfaction: evaluation?.satisfaction ?? null,
+      injectionRisk: evaluation?.injectionRisk ?? null,
+      provider: evaluation?.provider ?? null,
+      model: evaluation?.model ?? null,
+      latencyMs: evaluation?.latencyMs ?? null,
+      costUsd: evaluation?.costUsd ?? null,
+      reasonCodes: verdict.reasonCodes,
+      rules: rulesRecord,
       policyVersion: policy.version,
-    },
-  });
+      deliverableHash,
+    });
+  } catch (e) {
+    // Another evaluator recorded its verdict for this deliverable first: that one is the decision.
+    if (!(e instanceof DecisionConflict)) throw e;
+    const winner = await repo.latestDecision(job.id);
+    if (!winner || winner.deliverableHash !== deliverableHash) throw e;
+    decision = winner;
+  }
+  return apply(decision);
 }

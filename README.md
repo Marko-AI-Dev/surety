@@ -48,12 +48,12 @@ Requires Node 24 and pnpm 10.
 
 ```bash
 pnpm install
-pnpm test                 # 391 unit tests, no Docker needed, no network
+pnpm test                 # 397 unit tests, no Docker needed, no network
 pnpm typecheck
 pnpm check:boundaries     # lint: flags key-handling code outside the signer
 
 pnpm db:start             # local Supabase (Docker) on ports 577xx; then add DATABASE_URL to .env (see .env.example)
-pnpm test:db              # 43 database tests (they empty the local job tables)
+pnpm test:db              # 48 database tests (they empty the local job tables)
 
 pnpm --filter @surety/signer init-wallets   # funds 3 testnet wallets from the official faucet, writes .env files
 pnpm signer                                 # terminal 1: the isolated signer on 127.0.0.1:4100

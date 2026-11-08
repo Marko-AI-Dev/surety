@@ -4,11 +4,13 @@ import {
   AuthorizationConflict,
   type AuthorizationRow,
   type Decision,
+  DecisionConflict,
   DeliverableConflict,
   type EscrowRow,
   type Job,
   type JobEvent,
   type JobsRepo,
+  type NewDecision,
   TransitionConflict,
   type TxRecord,
   assertDrops,
@@ -250,15 +252,24 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
 
     async recordDecision(d) {
       assertHash(d.deliverableHash);
+      try {
+        return await insertDecision(d);
+      } catch (e) {
+        const err = e as { code?: string; constraint_name?: string };
+        if (err.code === UNIQUE_VIOLATION && err.constraint_name === "decisions_job_id_deliverable_hash_key") {
+          throw new DecisionConflict(d.jobId, d.deliverableHash);
+        }
+        throw e;
+      }
+    },
+
+    async noteEvaluationResume(jobId) {
       const [row] = await sql`
-        insert into decisions (job_id, request_id, mode, outcome, satisfaction, injection_risk, provider, model,
-                               latency_ms, cost_usd, reason_codes, rules, policy_version, deliverable_hash)
-        values (${d.jobId}, ${d.requestId}, ${d.mode}, ${d.outcome}, ${d.satisfaction}, ${d.injectionRisk},
-                ${d.provider}, ${d.model}, ${d.latencyMs}, ${d.costUsd}, ${d.reasonCodes}::text[], ${json(d.rules)},
-                ${d.policyVersion}, ${d.deliverableHash})
-        returning *`;
-      if (!row) throw new Error("insert into decisions returned no row");
-      return toDecision(row);
+        update jobs set evaluation_resumes = evaluation_resumes + 1, updated_at = now()
+        where id = ${jobId}
+        returning evaluation_resumes`;
+      if (!row) throw new Error(`job ${jobId} not found`);
+      return row.evaluation_resumes as number;
     },
 
     async latestDecision(jobId) {
@@ -297,4 +308,16 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
       await sql.end();
     },
   };
+
+  async function insertDecision(d: NewDecision): Promise<Decision> {
+    const [row] = await sql`
+      insert into decisions (job_id, request_id, mode, outcome, satisfaction, injection_risk, provider, model,
+                             latency_ms, cost_usd, reason_codes, rules, policy_version, deliverable_hash)
+      values (${d.jobId}, ${d.requestId}, ${d.mode}, ${d.outcome}, ${d.satisfaction}, ${d.injectionRisk},
+              ${d.provider}, ${d.model}, ${d.latencyMs}, ${d.costUsd}, ${d.reasonCodes}::text[], ${json(d.rules)},
+              ${d.policyVersion}, ${d.deliverableHash})
+      returning *`;
+    if (!row) throw new Error("insert into decisions returned no row");
+    return toDecision(row);
+  }
 }

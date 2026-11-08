@@ -1,7 +1,15 @@
 import type { Sql } from "postgres";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { deliverableHash } from "@surety/contracts";
-import { type Job, type JobsRepo, createPgRepo, deliverJob, operationId, runEngineOnce } from "@surety/workflow";
+import {
+  type Job,
+  type JobsRepo,
+  createPgRepo,
+  deliverJob,
+  evaluateJob,
+  operationId,
+  runEngineOnce,
+} from "@surety/workflow";
 import { FakeSigner } from "../../packages/workflow/test/fake-signer";
 import {
   EXACT,
@@ -77,6 +85,33 @@ describe("gate flow on Postgres", () => {
     expect((await repo.getJob(job.id))?.state).toBe("PAID");
     expect(signer.count("cancel")).toBe(0);
   });
+
+  it.each(["DELIVERED", "EVALUATING"] as const)(
+    "two evaluators on separate connections racing on a %s job leave one decision row and one settlement",
+    async (start) => {
+      const job = await deliveredJob(EXACT);
+      if (start === "EVALUATING") {
+        // A dead worker's claim: the job is EVALUATING with no decision.
+        await repo.transition(job.id, "DELIVERED", "EVALUATING", { actor: "gate", reasonCodes: ["evaluation_started"] });
+      }
+      const a = createPgRepo(databaseUrl());
+      const b = createPgRepo(databaseUrl());
+      try {
+        const judge = (r: JobsRepo) =>
+          evaluateJob({ repo: r, engine: demoEngine(), ledgerCloseTime: async () => closeTime }, job.id);
+        await Promise.all([judge(a), judge(b)]);
+      } finally {
+        await Promise.all([a.close(), b.close()]);
+      }
+
+      const [count] = await admin`select count(*)::int as n from decisions where job_id = ${job.id}`;
+      expect(count?.n).toBe(1);
+      expect((await repo.getJob(job.id))?.state).toBe("APPROVED");
+      await pass();
+      expect((await repo.getJob(job.id))?.state).toBe("PAID");
+      expect(signer.settled).toHaveLength(1);
+    },
+  );
 
   it("rejects a wrong total without the engine and an injected summary with it, then refunds both", async () => {
     const engine = demoEngine();

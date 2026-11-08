@@ -1,9 +1,28 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { deliverableHash } from "@surety/contracts";
 import { type DecisionEngine, POLICY_V1 } from "@surety/gate";
-import { type Job, type JobsRepo, TransitionError, createMemoryRepo, deliverJob, evaluateJob } from "../src/index";
+import {
+  type Job,
+  type JobsRepo,
+  TransitionError,
+  createMemoryRepo,
+  deliverJob,
+  evaluateJob,
+  settleJob,
+} from "../src/index";
 import { FakeSigner } from "./fake-signer";
-import { CRITERIA_TEXT, EXACT, INJECTION, SOURCE, WINDOW, WRONG_TOTAL, counting, demoEngine, lockedGateJob } from "./gate-helpers";
+import {
+  CRITERIA_TEXT,
+  EXACT,
+  GATE_SECRET,
+  INJECTION,
+  SOURCE,
+  WINDOW,
+  WRONG_TOTAL,
+  counting,
+  demoEngine,
+  lockedGateJob,
+} from "./gate-helpers";
 
 const CLOSE = 800_000_000;
 const CANCEL_AFTER = CLOSE + WINDOW;
@@ -182,6 +201,59 @@ describe("evaluateJob", () => {
       evaluateJob({ repo, engine: demoEngine(), ledgerCloseTime: async () => Promise.reject(new Error("ws down")) }, job.id),
     ).rejects.toThrow(/ws down/);
     expect((await repo.getJob(job.id))?.state).toBe("DELIVERED");
+  });
+
+  describe("two evaluators racing on one job", () => {
+    // Counts decision rows actually written, so a losing writer is not counted.
+    function recording(): { repo: JobsRepo; rows: () => number } {
+      let rows = 0;
+      return {
+        repo: {
+          ...repo,
+          async recordDecision(d) {
+            const row = await repo.recordDecision(d);
+            rows += 1;
+            return row;
+          },
+        },
+        rows: () => rows,
+      };
+    }
+
+    async function settleOnce(job: Job) {
+      return settleJob({ repo, signer, gateSecret: GATE_SECRET, ledgerCloseTime: async () => closeTime }, job.id);
+    }
+
+    it("on a DELIVERED job: both calls return, one decision row, one settlement", async () => {
+      const job = await delivered(EXACT);
+      const shared = recording();
+      const run = () => evaluateJob({ repo: shared.repo, engine: demoEngine(), ledgerCloseTime: async () => closeTime }, job.id);
+
+      await Promise.all([run(), run()]);
+
+      expect(shared.rows()).toBe(1);
+      expect((await repo.getJob(job.id))?.state).toBe("APPROVED");
+      expect((await settleOnce(job)).state).toBe("PAID");
+      expect(signer.settled).toHaveLength(1);
+    });
+
+    it("on an EVALUATING job left by a dead worker: the second writer re-reads the winner instead of failing", async () => {
+      const job = await delivered(EXACT);
+      await repo.transition(job.id, "DELIVERED", "EVALUATING", { actor: "gate", reasonCodes: ["evaluation_started"] });
+      const shared = recording();
+      const engine = demoEngine();
+      const run = () => evaluateJob({ repo: shared.repo, engine, ledgerCloseTime: async () => closeTime }, job.id);
+
+      const results = await Promise.all([run(), run()]);
+
+      expect(engine.inputs).toHaveLength(2); // no lease: both may ask, only one verdict is kept
+      expect(shared.rows()).toBe(1);
+      expect(results.map((r) => r.id)).toEqual([job.id, job.id]);
+      expect((await repo.getJob(job.id))?.state).toBe("APPROVED");
+      expect((await repo.listEvents(job.id)).filter((e) => e.toState === "APPROVED")).toHaveLength(1);
+      expect((await settleOnce(job)).state).toBe("PAID");
+      expect(signer.settled).toHaveLength(1);
+    });
   });
 
   it("refuses a job that is not DELIVERED", async () => {

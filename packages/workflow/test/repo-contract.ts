@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { sha256Hex } from "@surety/contracts";
 import {
   AuthorizationConflict,
+  DecisionConflict,
   DeliverableConflict,
   type EscrowRow,
   type Job,
@@ -314,7 +315,7 @@ export function describeRepo(name: string, make: () => Promise<JobsRepo>): void 
       expect(await repo.latestDecision(job.id)).toBeNull();
       const declined = await repo.recordDecision(newDecision(job.id, { outcome: "DECLINE", mode: null, provider: null }));
       expect(declined).toMatchObject(newDecision(job.id, { outcome: "DECLINE", mode: null, provider: null, requestId: declined.requestId }));
-      const approved = await repo.recordDecision(newDecision(job.id));
+      const approved = await repo.recordDecision(newDecision(job.id, { deliverableHash: HASH_B }));
       expect(approved.id).toMatch(/^[0-9a-f-]{36}$/);
       expect(Number.isNaN(Date.parse(approved.decidedAt))).toBe(false);
       expect(approved).toMatchObject({
@@ -328,9 +329,26 @@ export function describeRepo(name: string, make: () => Promise<JobsRepo>): void 
         reasonCodes: ["approved"],
         rules: RULES,
         policyVersion: "policy-v1",
-        deliverableHash: HASH_A,
+        deliverableHash: HASH_B,
       });
       expect(await repo.latestDecision(job.id)).toEqual(approved);
+    });
+
+    it("keeps one decision per job and deliverable hash: a second is a DecisionConflict and writes nothing", async () => {
+      const job = await repo.createJob(newJob());
+      const first = await repo.recordDecision(newDecision(job.id, { outcome: "APPROVE" }));
+      await expect(repo.recordDecision(newDecision(job.id, { outcome: "DECLINE" }))).rejects.toBeInstanceOf(DecisionConflict);
+      expect(await repo.latestDecision(job.id)).toEqual(first);
+      const other = await repo.createJob(newJob());
+      await expect(repo.recordDecision(newDecision(other.id))).resolves.toMatchObject({ jobId: other.id });
+    });
+
+    it("counts evaluation resumes per job", async () => {
+      const a = await repo.createJob(newJob());
+      const b = await repo.createJob(newJob());
+      expect(await repo.noteEvaluationResume(a.id)).toBe(1);
+      expect(await repo.noteEvaluationResume(a.id)).toBe(2);
+      expect(await repo.noteEvaluationResume(b.id)).toBe(1);
     });
 
     it("refuses a second decision with the same request id", async () => {
