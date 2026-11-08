@@ -121,15 +121,18 @@ describe("createEscrow", () => {
     await expectCode(makeSigner().createEscrow({ ...createReq(), extra: "field" }), "bad_request");
   });
 
-  it("records a validated non-success result as a ledger failure", async () => {
+  it("records a validated non-success result as a conclusive failure, and replays it as one", async () => {
     ledger.nextResult = "tecUNFUNDED";
     const req = createReq();
     await expect(makeSigner().createEscrow(req)).rejects.toMatchObject({
-      code: "ledger_failure",
+      code: "op_failed",
+      status: 409,
       message: expect.stringContaining("tecUNFUNDED"),
     });
     const journal = JSON.parse(readFileSync(join(dataDir, "journal.json"), "utf8"));
     expect(journal[req.opId].status).toBe("failed");
+    await expectCode(makeSigner().createEscrow(req), "op_failed");
+    expect(ledger.count("EscrowCreate")).toBe(1);
   });
 });
 
@@ -226,9 +229,10 @@ describe("finishEscrow", () => {
     await expectCode(signer.finishEscrow(req), "ledger_failure");
     await expectCode(signer.finishEscrow(req), "op_pending");
     ledger.ledgerIndex += 50;
-    await expectCode(signer.finishEscrow(req), "ledger_failure");
+    await expectCode(signer.finishEscrow(req), "op_failed");
     const journal = JSON.parse(readFileSync(join(dataDir, "journal.json"), "utf8"));
     expect(journal[req.opId].status).toBe("failed");
+    await expectCode(signer.finishEscrow(req), "op_failed");
     expect(ledger.count("EscrowFinish")).toBe(0);
     expect(ledger.escrows.size).toBe(1);
   });

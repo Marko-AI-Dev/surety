@@ -13,6 +13,9 @@ export const ERROR_STATUS = {
   cancel_not_yet_eligible: 409,
   op_conflict: 409,
   op_pending: 409,
+  // Conclusive: this opId's transaction failed on the ledger or can never be included. Retrying the
+  // same opId replays this; a new attempt needs a new opId.
+  op_failed: 409,
   internal_error: 500,
   ledger_failure: 502,
 } as const;

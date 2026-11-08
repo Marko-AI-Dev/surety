@@ -110,7 +110,7 @@ export function createSigner(deps: SignerDeps): Signer {
     if (!res.validated || res.result !== "tesSUCCESS") {
       const error = `ledger returned ${res.result}`;
       writeJournal({ ...entry, status: "failed", error });
-      throw new SignerError("ledger_failure", error);
+      throw new SignerError("op_failed", error);
     }
     let response: CreateEscrowResponse | SettleResponse;
     if (entry.type === "create" && entry.pending) {
@@ -158,7 +158,7 @@ export function createSigner(deps: SignerDeps): Signer {
       throw new SignerError("op_conflict", "opId was already used with a different request");
     }
     if (entry.status === "done") return entry.response as R;
-    if (entry.status === "failed") throw new SignerError("ledger_failure", entry.error ?? "operation failed");
+    if (entry.status === "failed") throw new SignerError("op_failed", entry.error ?? "operation failed");
     // Read the validated height BEFORE the lookup: if it is past LastLedgerSequence, every ledger the
     // transaction could be in is already validated, so the lookup that follows cannot miss a late inclusion.
     const heightBeforeLookup = await ledger.validatedLedgerIndex();
@@ -175,7 +175,7 @@ export function createSigner(deps: SignerDeps): Signer {
       if (provenAbsent) {
         const error = "transaction never validated and its LastLedgerSequence has passed, so it can never be included";
         writeJournal({ ...entry, status: "failed", error });
-        throw new SignerError("ledger_failure", error);
+        throw new SignerError("op_failed", error);
       }
       throw new SignerError("op_pending", "transaction is not validated yet; retry with the same opId");
     }
