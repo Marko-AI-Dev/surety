@@ -1,0 +1,15 @@
+{
+  "name": "@surety/signer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx --env-file=.env src/main.ts",
+    "init-wallets": "tsx scripts/init-wallets.ts"
+  },
+  "dependencies": {
+    "@surety/contracts": "workspace:*",
+    "@surety/xrpl-settlement": "workspace:*",
+    "xrpl": "5.3.0",
+    "zod": "4.6.7"
+  }
+}
