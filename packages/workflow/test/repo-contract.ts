@@ -1,10 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { sha256Hex } from "@surety/contracts";
 import {
+  AuthorizationConflict,
+  DeliverableConflict,
   type EscrowRow,
   type Job,
   type JobState,
   type JobsRepo,
+  type NewAuthorization,
+  type NewDecision,
   type NewJob,
   TransitionConflict,
   TransitionError,
@@ -46,6 +51,42 @@ export function escrowFor(job: Job, cancelAfter: number, overrides: Partial<Escr
     createTxHash: randomUUID().replaceAll("-", "").toUpperCase().padEnd(64, "0"),
     createLedgerIndex: 1000 + sequences,
     ...overrides,
+  };
+}
+
+const HASH_A = "a".repeat(64);
+const HASH_B = "b".repeat(64);
+const RULES = { passed: true, results: [{ id: "size", status: "pass" }, { id: "schema", status: "pass" }] };
+
+export function newDecision(jobId: string, overrides: Partial<NewDecision> = {}): NewDecision {
+  return {
+    jobId,
+    requestId: randomUUID(),
+    mode: "live",
+    outcome: "APPROVE",
+    satisfaction: 0.95,
+    injectionRisk: 0.02,
+    provider: "TypeSafe",
+    model: "typesafe/jev-1.14-20261014",
+    latencyMs: 543,
+    costUsd: 0.0000305,
+    reasonCodes: ["approved"],
+    rules: RULES,
+    policyVersion: "policy-v1",
+    deliverableHash: HASH_A,
+    ...overrides,
+  };
+}
+
+export function newAuthorization(jobId: string, decisionId: string, attempt: number): NewAuthorization {
+  return {
+    decisionId,
+    jobId,
+    attempt,
+    operationId: operationId(jobId, "finish", attempt),
+    bindingHash: sha256Hex(`${decisionId}:${attempt}`),
+    signed: { payload: { decisionId, attempt }, sig: "ab".repeat(32) },
+    expiresAt: new Date(Date.UTC(2026, 10, 9, 10, 1, attempt)).toISOString(),
   };
 }
 
@@ -240,6 +281,101 @@ export function describeRepo(name: string, make: () => Promise<JobsRepo>): void 
       expect(ids).not.toContain(bare.id);
       expect(ids).not.toContain(locked.id);
       expect(listed.find((j) => j.id === withPending.id)).toEqual(withPending);
+    });
+
+    it("stores criteria text when given and freezes it into the snapshot hash; old jobs have none", async () => {
+      const input = newJob({ criteriaText: "Extract every field exactly." });
+      const withText = await repo.createJob(input);
+      expect(withText.criteriaText).toBe("Extract every field exactly.");
+      expect(withText.snapshotHash).toBe(snapshotHash(input));
+      expect(withText.deliverable).toBeNull();
+      expect(withText.deliverableHash).toBeNull();
+      const plain = newJob();
+      const without = await repo.createJob(plain);
+      expect(without.criteriaText).toBeNull();
+      expect(without.snapshotHash).toBe(snapshotHash(plain));
+      expect(withText.snapshotHash).not.toBe(snapshotHash({ ...newJob(), ref: withText.ref }));
+      expect(await repo.getJob(withText.id)).toEqual(withText);
+    });
+
+    it("saves a deliverable once: the same hash again is a duplicate, a different hash is a conflict", async () => {
+      const job = await repo.createJob(newJob());
+      const raw = { invoice_id: "DEMO-001", line_items: [{ description: "USB-C cable", quantity: 2 }] };
+      expect(await repo.saveDeliverable(job.id, raw, HASH_A)).toBe("saved");
+      expect(await repo.saveDeliverable(job.id, raw, HASH_A)).toBe("duplicate");
+      await expect(repo.saveDeliverable(job.id, { changed: true }, HASH_B)).rejects.toBeInstanceOf(DeliverableConflict);
+      const stored = await repo.getJob(job.id);
+      expect(stored?.deliverableHash).toBe(HASH_A);
+      expect(stored?.deliverable).toEqual(raw);
+    });
+
+    it("round-trips a decision with its rules JSON, and returns the latest decision for a job", async () => {
+      const job = await repo.createJob(newJob());
+      expect(await repo.latestDecision(job.id)).toBeNull();
+      const declined = await repo.recordDecision(newDecision(job.id, { outcome: "DECLINE", mode: null, provider: null }));
+      expect(declined).toMatchObject(newDecision(job.id, { outcome: "DECLINE", mode: null, provider: null, requestId: declined.requestId }));
+      const approved = await repo.recordDecision(newDecision(job.id));
+      expect(approved.id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(Number.isNaN(Date.parse(approved.decidedAt))).toBe(false);
+      expect(approved).toMatchObject({
+        jobId: job.id,
+        mode: "live",
+        outcome: "APPROVE",
+        satisfaction: 0.95,
+        injectionRisk: 0.02,
+        costUsd: 0.0000305,
+        latencyMs: 543,
+        reasonCodes: ["approved"],
+        rules: RULES,
+        policyVersion: "policy-v1",
+        deliverableHash: HASH_A,
+      });
+      expect(await repo.latestDecision(job.id)).toEqual(approved);
+    });
+
+    it("refuses a second decision with the same request id", async () => {
+      const job = await repo.createJob(newJob());
+      const d = newDecision(job.id);
+      await repo.recordDecision(d);
+      await expect(repo.recordDecision(d)).rejects.toThrow();
+    });
+
+    it("refuses two authorizations for one decision and attempt, or one operation id twice", async () => {
+      const job = await repo.createJob(newJob());
+      const decision = await repo.recordDecision(newDecision(job.id));
+      const first = await repo.recordAuthorization(newAuthorization(job.id, decision.id, 0));
+      expect(first).toMatchObject({ ...newAuthorization(job.id, decision.id, 0), consumedAt: null });
+      await expect(repo.recordAuthorization({ ...newAuthorization(job.id, decision.id, 0), bindingHash: HASH_B })).rejects.toBeInstanceOf(
+        AuthorizationConflict,
+      );
+      await expect(
+        repo.recordAuthorization({ ...newAuthorization(job.id, decision.id, 1), operationId: first.operationId }),
+      ).rejects.toBeInstanceOf(AuthorizationConflict);
+      expect(await repo.openAuthorization(decision.id)).toEqual(first);
+    });
+
+    it("opens the latest unconsumed authorization and ignores consumed ones", async () => {
+      const job = await repo.createJob(newJob());
+      const decision = await repo.recordDecision(newDecision(job.id));
+      expect(await repo.openAuthorization(decision.id)).toBeNull();
+      const a0 = await repo.recordAuthorization(newAuthorization(job.id, decision.id, 0));
+      const a1 = await repo.recordAuthorization(newAuthorization(job.id, decision.id, 1));
+      expect((await repo.openAuthorization(decision.id))?.id).toBe(a1.id);
+      await repo.consumeAuthorization(a1.id);
+      expect((await repo.openAuthorization(decision.id))?.id).toBe(a0.id);
+      await repo.consumeAuthorization(a0.id);
+      expect(await repo.openAuthorization(decision.id)).toBeNull();
+    });
+
+    it("lists jobs in the given states only", async () => {
+      const draft = await repo.createJob(newJob());
+      const locked = await lockedJob(repo, 1_000);
+      const delivered = await walk(repo, await lockedJob(repo, 1_000), ["IN_PROGRESS", "DELIVERED"]);
+      const ids = (await repo.listJobsInStates(["DELIVERED", "LOCKED"])).map((j) => j.id);
+      expect(ids).toContain(locked.id);
+      expect(ids).toContain(delivered.id);
+      expect(ids).not.toContain(draft.id);
+      expect(await repo.listJobsInStates([])).toEqual([]);
     });
 
     it("records a refusal that never reached the ledger as failed with no hash", async () => {

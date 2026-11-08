@@ -9,7 +9,14 @@ export {
 } from "./states";
 export { operationId, type Operation } from "./operation-id";
 export {
+  AuthorizationConflict,
+  DeliverableConflict,
   TransitionConflict,
+  type AuthorizationRow,
+  type Decision,
+  type DecisionOutcome,
+  type NewAuthorization,
+  type NewDecision,
   type DueForCancel,
   type EscrowRow,
   type Job,

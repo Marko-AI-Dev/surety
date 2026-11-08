@@ -14,11 +14,60 @@ export interface Job {
   snapshotHash: string;
   policyVersion: string;
   cancelAfterSeconds: number;
+  // What the judge is asked to check, frozen with the job. Null for jobs created before the gate.
+  criteriaText: string | null;
+  // The seller's answer exactly as delivered, and its canonical hash. Null until delivery.
+  deliverable: unknown;
+  deliverableHash: string | null;
   state: JobState;
   version: number;
 }
 
-export type NewJob = Omit<Job, "id" | "network" | "snapshotHash" | "state" | "version">;
+export type NewJob = Omit<
+  Job,
+  "id" | "network" | "snapshotHash" | "state" | "version" | "criteriaText" | "deliverable" | "deliverableHash"
+> & { criteriaText?: string };
+
+export type DecisionOutcome = "APPROVE" | "DECLINE" | "ESCALATE" | "UNAVAILABLE";
+
+// One judgement of one deliverable. mode, provider and model are null when no engine was asked.
+export interface NewDecision {
+  jobId: string;
+  requestId: string;
+  mode: "live" | "fixture" | null;
+  outcome: DecisionOutcome;
+  satisfaction: number | null;
+  injectionRisk: number | null;
+  provider: string | null;
+  model: string | null;
+  latencyMs: number | null;
+  costUsd: number | null;
+  reasonCodes: string[];
+  rules: unknown;
+  policyVersion: string;
+  deliverableHash: string;
+}
+
+export interface Decision extends NewDecision {
+  id: string;
+  decidedAt: string;
+}
+
+export interface NewAuthorization {
+  decisionId: string;
+  jobId: string;
+  attempt: number;
+  operationId: string;
+  bindingHash: string;
+  signed: unknown;
+  // ISO timestamp.
+  expiresAt: string;
+}
+
+export interface AuthorizationRow extends NewAuthorization {
+  id: string;
+  consumedAt: string | null;
+}
 
 export interface EscrowRow {
   jobId: string;
@@ -99,7 +148,48 @@ export interface JobsRepo {
   // transaction at least minPendingAgeSeconds old by the store's clock (database time for Postgres).
   listFundingToResume(minPendingAgeSeconds: number): Promise<Job[]>;
   listEvents(jobId: string): Promise<JobEvent[]>;
+  listJobsInStates(states: JobState[]): Promise<Job[]>;
+  // Stores the first deliverable for a job. The same hash again is "duplicate" and changes nothing; a
+  // different hash throws DeliverableConflict: a delivered answer is never replaced.
+  saveDeliverable(jobId: string, raw: unknown, hash: string): Promise<"saved" | "duplicate">;
+  recordDecision(d: NewDecision): Promise<Decision>;
+  latestDecision(jobId: string): Promise<Decision | null>;
+  // Throws AuthorizationConflict when the decision already has this attempt or the opId is taken.
+  recordAuthorization(a: NewAuthorization): Promise<AuthorizationRow>;
+  // The highest-attempt authorization for the decision that has not been consumed.
+  openAuthorization(decisionId: string): Promise<AuthorizationRow | null>;
+  consumeAuthorization(id: string): Promise<void>;
   close(): Promise<void>;
+}
+
+const HASH = /^[0-9a-f]{64}$/;
+
+export function assertHash(value: string): void {
+  if (!HASH.test(value)) throw new RangeError("deliverable hash must be 64 lowercase hex characters");
+}
+
+// A different deliverable arrived for a job that already has one. Changed submissions are refused.
+export class DeliverableConflict extends Error {
+  constructor(
+    readonly jobId: string,
+    readonly storedHash: string,
+    readonly givenHash: string,
+  ) {
+    super(`job ${jobId} already has a different deliverable`);
+    this.name = "DeliverableConflict";
+  }
+}
+
+// This decision already has an authorization for the attempt, or the operation id is in use:
+// another pass minted it first.
+export class AuthorizationConflict extends Error {
+  constructor(
+    readonly decisionId: string,
+    readonly attempt: number,
+  ) {
+    super(`decision ${decisionId} already has authorization attempt ${attempt}`);
+    this.name = "AuthorizationConflict";
+  }
 }
 
 // numeric(20,0) would silently round "1.5" or parse "1e6", leaving the snapshot hash describing a

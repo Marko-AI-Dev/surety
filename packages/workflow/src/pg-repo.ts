@@ -1,6 +1,10 @@
 import postgres, { type Row } from "postgres";
 import type { Operation } from "./operation-id";
 import {
+  AuthorizationConflict,
+  type AuthorizationRow,
+  type Decision,
+  DeliverableConflict,
   type EscrowRow,
   type Job,
   type JobEvent,
@@ -8,6 +12,7 @@ import {
   TransitionConflict,
   type TxRecord,
   assertDrops,
+  assertHash,
 } from "./repo";
 import { snapshotHash } from "./snapshot";
 import { CANCELLABLE_STATES, type JobState, assertTransition } from "./states";
@@ -27,10 +32,53 @@ function toJob(r: Row): Job {
     snapshotHash: r.snapshot_hash,
     policyVersion: r.policy_version,
     cancelAfterSeconds: r.cancel_after_seconds,
+    criteriaText: r.criteria_text ?? null,
+    deliverable: r.deliverable ?? null,
+    deliverableHash: r.deliverable_hash ?? null,
     state: r.state as JobState,
     version: r.version,
   };
 }
+
+// numeric columns arrive as strings; scores and cost are plain numbers in TypeScript.
+const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
+
+function toDecision(r: Row): Decision {
+  return {
+    id: r.id,
+    jobId: r.job_id,
+    requestId: r.request_id,
+    mode: r.mode,
+    outcome: r.outcome,
+    satisfaction: num(r.satisfaction),
+    injectionRisk: num(r.injection_risk),
+    provider: r.provider,
+    model: r.model,
+    latencyMs: r.latency_ms,
+    costUsd: num(r.cost_usd),
+    reasonCodes: r.reason_codes,
+    rules: r.rules,
+    policyVersion: r.policy_version,
+    deliverableHash: r.deliverable_hash,
+    decidedAt: (r.decided_at as Date).toISOString(),
+  };
+}
+
+function toAuthorization(r: Row): AuthorizationRow {
+  return {
+    id: r.id,
+    decisionId: r.decision_id,
+    jobId: r.job_id,
+    attempt: r.attempt,
+    operationId: r.operation_id,
+    bindingHash: r.binding_hash,
+    signed: r.signed,
+    expiresAt: (r.expires_at as Date).toISOString(),
+    consumedAt: r.consumed_at ? (r.consumed_at as Date).toISOString() : null,
+  };
+}
+
+const UNIQUE_VIOLATION = "23505";
 
 function toEscrow(r: Row, amountColumn = "amount_drops"): EscrowRow {
   return {
@@ -83,10 +131,10 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
       assertDrops(input.amountDrops);
       const [row] = await sql`
         insert into jobs (ref, buyer_address, seller_address, amount_drops, source_text, criteria,
-                          snapshot_hash, policy_version, cancel_after_seconds)
+                          snapshot_hash, policy_version, cancel_after_seconds, criteria_text)
         values (${input.ref}, ${input.buyerAddress}, ${input.sellerAddress}, ${input.amountDrops},
                 ${input.sourceText}, ${json(input.criteria)}, ${snapshotHash(input)}, ${input.policyVersion},
-                ${input.cancelAfterSeconds})
+                ${input.cancelAfterSeconds}, ${input.criteriaText ?? null})
         returning *`;
       if (!row) throw new Error("insert into jobs returned no row");
       return toJob(row);
@@ -177,6 +225,72 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
     async listEvents(jobId) {
       const rows = await sql`select * from job_events where job_id = ${jobId} order by id`;
       return rows.map(toEvent);
+    },
+
+    async listJobsInStates(states) {
+      if (states.length === 0) return [];
+      const rows = await sql`
+        select * from jobs where state = any(${[...states]}::text[]) order by created_at, id`;
+      return rows.map(toJob);
+    },
+
+    // First writer wins: the update only matches a job with no deliverable yet.
+    async saveDeliverable(jobId, raw, hash) {
+      assertHash(hash);
+      const saved = await sql`
+        update jobs set deliverable = ${json(raw)}, deliverable_hash = ${hash}, delivered_at = now(), updated_at = now()
+        where id = ${jobId} and deliverable_hash is null
+        returning id`;
+      if (saved.length > 0) return "saved";
+      const [row] = await sql`select deliverable_hash from jobs where id = ${jobId}`;
+      if (!row) throw new Error(`job ${jobId} not found`);
+      if (row.deliverable_hash === hash) return "duplicate";
+      throw new DeliverableConflict(jobId, row.deliverable_hash, hash);
+    },
+
+    async recordDecision(d) {
+      assertHash(d.deliverableHash);
+      const [row] = await sql`
+        insert into decisions (job_id, request_id, mode, outcome, satisfaction, injection_risk, provider, model,
+                               latency_ms, cost_usd, reason_codes, rules, policy_version, deliverable_hash)
+        values (${d.jobId}, ${d.requestId}, ${d.mode}, ${d.outcome}, ${d.satisfaction}, ${d.injectionRisk},
+                ${d.provider}, ${d.model}, ${d.latencyMs}, ${d.costUsd}, ${d.reasonCodes}::text[], ${json(d.rules)},
+                ${d.policyVersion}, ${d.deliverableHash})
+        returning *`;
+      if (!row) throw new Error("insert into decisions returned no row");
+      return toDecision(row);
+    },
+
+    async latestDecision(jobId) {
+      const [row] = await sql`
+        select * from decisions where job_id = ${jobId} order by decided_at desc, id desc limit 1`;
+      return row ? toDecision(row) : null;
+    },
+
+    async recordAuthorization(a) {
+      try {
+        const [row] = await sql`
+          insert into authorizations (decision_id, job_id, attempt, operation_id, binding_hash, signed, expires_at)
+          values (${a.decisionId}, ${a.jobId}, ${a.attempt}, ${a.operationId}, ${a.bindingHash}, ${json(a.signed)},
+                  ${a.expiresAt})
+          returning *`;
+        if (!row) throw new Error("insert into authorizations returned no row");
+        return toAuthorization(row);
+      } catch (e) {
+        if ((e as { code?: string }).code === UNIQUE_VIOLATION) throw new AuthorizationConflict(a.decisionId, a.attempt);
+        throw e;
+      }
+    },
+
+    async openAuthorization(decisionId) {
+      const [row] = await sql`
+        select * from authorizations where decision_id = ${decisionId} and consumed_at is null
+        order by attempt desc limit 1`;
+      return row ? toAuthorization(row) : null;
+    },
+
+    async consumeAuthorization(id) {
+      await sql`update authorizations set consumed_at = now() where id = ${id} and consumed_at is null`;
     },
 
     async close() {

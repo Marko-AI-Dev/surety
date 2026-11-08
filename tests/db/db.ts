@@ -14,5 +14,5 @@ export function connect(): Sql {
 
 // TRUNCATE does not fire the row-level append-only trigger, so tests can start from empty tables.
 export async function resetTables(sql: Sql): Promise<void> {
-  await sql`truncate job_events, transactions, escrows, jobs restart identity`;
+  await sql`truncate authorizations, decisions, job_events, transactions, escrows, jobs restart identity`;
 }
