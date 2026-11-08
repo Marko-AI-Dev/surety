@@ -9,8 +9,15 @@ export interface FundDeps {
   actor: string;
 }
 
-// The signer refused before anything reached the ledger: a conclusive failure, safe to record as one.
-const REFUSALS = new Set(["destination_not_allowed", "amount_over_cap", "cancel_window_invalid", "bad_request"]);
+// Conclusive failures, safe to record as CREATE_FAILED: the signer refused before anything reached the
+// ledger, or (op_failed) the create failed on the ledger or can never be included.
+const CONCLUSIVE = new Set([
+  "destination_not_allowed",
+  "amount_over_cap",
+  "cancel_window_invalid",
+  "bad_request",
+  "op_failed",
+]);
 
 // Locks the job's escrow through the signer. Anything inconclusive (ledger_failure, op_pending, a
 // network error) leaves the job CREATE_PENDING and rethrows; calling again resumes with the same
@@ -38,7 +45,7 @@ export async function fundJob(deps: FundDeps, jobId: string): Promise<Job> {
       cancelAfterSeconds: job.cancelAfterSeconds,
     });
   } catch (e) {
-    if (e instanceof SignerClientError && REFUSALS.has(e.code)) {
+    if (e instanceof SignerClientError && CONCLUSIVE.has(e.code)) {
       await repo.completeTx(opId, { txHash: null, status: "failed", result: e.code });
       return repo.transition(job.id, "CREATE_PENDING", "CREATE_FAILED", {
         actor,

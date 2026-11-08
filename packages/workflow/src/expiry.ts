@@ -1,6 +1,8 @@
 import { type SignerClient, SignerClientError } from "@surety/signer-client";
+import { fundJob } from "./fund";
 import { operationId } from "./operation-id";
 import { type EscrowRow, type Job, type JobsRepo, TransitionConflict } from "./repo";
+import { TransitionError } from "./states";
 
 export const EXPIRY_ACTOR = "expiry-worker";
 
@@ -23,6 +25,15 @@ export interface SweepReport {
 // A person must look; the job is frozen and never reported as refunded.
 const RECONCILE = new Set(["escrow_not_found", "escrow_mismatch"]);
 
+// op_failed means this attempt's cancel is dead (failed on the ledger or can never be included); the
+// next attempt gets a new opId so the signer re-checks the escrow and signs afresh. Bounded, then a person.
+const MAX_CANCEL_ATTEMPTS = 3;
+
+// A pending create younger than this may still belong to a live caller; leave it to them.
+const RESUME_FUNDING_AFTER_SECONDS = 30;
+
+const reasonOf = (e: unknown) => (e instanceof SignerClientError ? e.code : e instanceof Error ? e.message : String(e));
+
 type Outcome = "refunded" | "reconciliation";
 
 // One pass over every job whose escrow is past CancelAfter by ledger time. All progress lives in the
@@ -31,6 +42,20 @@ export async function runExpirySweep(deps: SweepDeps): Promise<SweepReport> {
   const log = deps.log ?? (() => {});
   const closeTime = await deps.ledgerCloseTime();
   const report: SweepReport = { closeTime, refunded: [], pending: [], reconciliation: [] };
+
+  // Funding a crash interrupted after the signer may have locked money: finish it, so the escrow
+  // becomes visible to the refund pass below. fundJob replays by opId and never attaches twice.
+  for (const job of await deps.repo.listFundingToResume(RESUME_FUNDING_AFTER_SECONDS)) {
+    try {
+      const resumed = await fundJob({ repo: deps.repo, signer: deps.signer, actor: EXPIRY_ACTOR }, job.id);
+      log(`resumed funding ${job.ref} (${job.id}): ${resumed.state}`);
+    } catch (e) {
+      // Its original caller finished it first.
+      if (e instanceof TransitionConflict || e instanceof TransitionError) continue;
+      report.pending.push(job.id);
+      log(`pending ${job.ref} (${job.id}): funding not resumed: ${reasonOf(e)}`);
+    }
+  }
 
   for (const { job, escrow } of await deps.repo.listDueForCancel(closeTime)) {
     try {
@@ -41,8 +66,7 @@ export async function runExpirySweep(deps: SweepDeps): Promise<SweepReport> {
       // Another sweep moved the job first; it owns the outcome.
       if (e instanceof TransitionConflict) continue;
       report.pending.push(job.id);
-      const reason = e instanceof SignerClientError ? e.code : e instanceof Error ? e.message : String(e);
-      log(`pending ${job.ref} (${job.id}): ${reason}`);
+      log(`pending ${job.ref} (${job.id}): ${reasonOf(e)}`);
     }
   }
   return report;
@@ -50,7 +74,10 @@ export async function runExpirySweep(deps: SweepDeps): Promise<SweepReport> {
 
 async function cancelExpired(deps: SweepDeps, job: Job, escrow: EscrowRow, closeTime: number): Promise<Outcome> {
   const { repo, signer } = deps;
-  const opId = operationId(job.id, "cancel");
+  const failedAttempts = (await repo.listTransactions(job.id)).filter(
+    (t) => t.type === "cancel" && t.status === "failed",
+  ).length;
+  const opId = operationId(job.id, "cancel", failedAttempts);
   const event = (reasonCodes: string[], detail?: unknown) => ({
     actor: EXPIRY_ACTOR,
     reasonCodes,
@@ -73,6 +100,17 @@ async function cancelExpired(deps: SweepDeps, job: Job, escrow: EscrowRow, close
     await repo.transition(job.id, state, "CANCEL_PENDING", event(["cancel_requested"]));
   }
 
+  const giveUp = async (): Promise<Outcome> => {
+    await repo.transition(
+      job.id,
+      "CANCEL_PENDING",
+      "RECONCILIATION_REQUIRED",
+      event(["cancel_unresolved"], { failedAttempts: Math.max(failedAttempts, MAX_CANCEL_ATTEMPTS) }),
+    );
+    return "reconciliation";
+  };
+  if (failedAttempts >= MAX_CANCEL_ATTEMPTS) return giveUp();
+
   await repo.recordPendingTx({ operationId: opId, jobId: job.id, type: "cancel" });
   let res;
   try {
@@ -82,6 +120,10 @@ async function cancelExpired(deps: SweepDeps, job: Job, escrow: EscrowRow, close
       await repo.completeTx(opId, { txHash: null, status: "failed", result: e.code });
       await repo.transition(job.id, "CANCEL_PENDING", "RECONCILIATION_REQUIRED", event([e.code], { message: e.message }));
       return "reconciliation";
+    }
+    if (e instanceof SignerClientError && e.code === "op_failed") {
+      await repo.completeTx(opId, { txHash: null, status: "failed", result: e.code });
+      if (failedAttempts + 1 >= MAX_CANCEL_ATTEMPTS) return giveUp();
     }
     throw e;
   }

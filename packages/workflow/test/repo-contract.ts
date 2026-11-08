@@ -206,6 +206,42 @@ export function describeRepo(name: string, make: () => Promise<JobsRepo>): void 
       ]);
     });
 
+    it.each(["1.5", "1e6", "0123"])("refuses the drop string %s before writing anything", async (amountDrops) => {
+      const ref = `bad-drops-${Date.now()}-${amountDrops.replace(/W/g, "_")}`;
+      await expect(repo.createJob(newJob({ ref, amountDrops }))).rejects.toThrow(/amountDrops/);
+      // The ref is still free, so no row was written.
+      const ok = await repo.createJob(newJob({ ref }));
+      expect(ok.amountDrops).toBe("1000000");
+    });
+
+    it("refuses an escrow whose drop string is not a positive integer, writing nothing", async () => {
+      const job = await repo.createJob(newJob());
+      await expect(repo.attachEscrow(escrowFor(job, 1_000, { amountDrops: "1.5" }))).rejects.toThrow(/amountDrops/);
+      expect(await repo.getEscrow(job.id)).toBeNull();
+    });
+
+    it("lists CREATE_PENDING jobs to resume: any with an escrow, or with a pending create at least the given age", async () => {
+      const withEscrow = await walk(repo, await repo.createJob(newJob()), ["CREATE_PENDING"]);
+      await repo.attachEscrow(escrowFor(withEscrow, 1_000));
+      await repo.recordPendingTx({ operationId: operationId(withEscrow.id, "create"), jobId: withEscrow.id, type: "create" });
+      const withPending = await walk(repo, await repo.createJob(newJob()), ["CREATE_PENDING"]);
+      await repo.recordPendingTx({ operationId: operationId(withPending.id, "create"), jobId: withPending.id, type: "create" });
+      const bare = await walk(repo, await repo.createJob(newJob()), ["CREATE_PENDING"]);
+      const locked = await lockedJob(repo, 1_000);
+
+      const young = (await repo.listFundingToResume(3_600)).map((j) => j.id);
+      expect(young).toContain(withEscrow.id);
+      expect(young).not.toContain(withPending.id);
+
+      const listed = await repo.listFundingToResume(0);
+      const ids = listed.map((j) => j.id);
+      expect(ids.filter((id) => id === withEscrow.id)).toHaveLength(1);
+      expect(ids).toContain(withPending.id);
+      expect(ids).not.toContain(bare.id);
+      expect(ids).not.toContain(locked.id);
+      expect(listed.find((j) => j.id === withPending.id)).toEqual(withPending);
+    });
+
     it("records a refusal that never reached the ledger as failed with no hash", async () => {
       const job = await repo.createJob(newJob());
       const opId = operationId(job.id, "create");

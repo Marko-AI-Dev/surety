@@ -23,6 +23,7 @@ const STATUS: Record<string, number> = {
   escrow_mismatch: 409,
   cancel_not_yet_eligible: 409,
   op_pending: 409,
+  op_failed: 409,
   ledger_failure: 502,
 };
 

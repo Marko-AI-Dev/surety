@@ -1,3 +1,4 @@
+import { isDrops } from "@surety/contracts";
 import type { Operation } from "./operation-id";
 import type { JobState } from "./states";
 
@@ -94,8 +95,17 @@ export interface JobsRepo {
   completeTx(operationId: string, r: TxOutcome): Promise<void>;
   listTransactions(jobId: string): Promise<TxRecord[]>;
   listDueForCancel(ledgerCloseTime: number): Promise<DueForCancel[]>;
+  // CREATE_PENDING jobs a crash may have left behind: any with an escrow row, or with a pending create
+  // transaction at least minPendingAgeSeconds old by the store's clock (database time for Postgres).
+  listFundingToResume(minPendingAgeSeconds: number): Promise<Job[]>;
   listEvents(jobId: string): Promise<JobEvent[]>;
   close(): Promise<void>;
+}
+
+// numeric(20,0) would silently round "1.5" or parse "1e6", leaving the snapshot hash describing a
+// different amount from the one stored. Reject before writing anything.
+export function assertDrops(value: string): void {
+  if (!isDrops(value)) throw new RangeError("amountDrops must be a positive integer drop string");
 }
 
 // The row was not in the expected from-state: another actor moved it first.

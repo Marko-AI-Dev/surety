@@ -7,6 +7,7 @@ import {
   type JobsRepo,
   TransitionConflict,
   type TxRecord,
+  assertDrops,
 } from "./repo";
 import { snapshotHash } from "./snapshot";
 import { CANCELLABLE_STATES, type JobState, assertTransition } from "./states";
@@ -79,6 +80,7 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
 
   return {
     async createJob(input) {
+      assertDrops(input.amountDrops);
       const [row] = await sql`
         insert into jobs (ref, buyer_address, seller_address, amount_drops, source_text, criteria,
                           snapshot_hash, policy_version, cancel_after_seconds)
@@ -119,6 +121,7 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
     },
 
     async attachEscrow(row) {
+      assertDrops(row.amountDrops);
       await sql`
         insert into escrows (job_id, network, owner, offer_sequence, destination, amount_drops, condition,
                              cancel_after, create_tx_hash, create_ledger_index)
@@ -157,6 +160,18 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
         where j.state = any(${[...CANCELLABLE_STATES]}::text[]) and e.cancel_after < ${ledgerCloseTime}
         order by e.cancel_after, j.id`;
       return rows.map((r) => ({ job: toJob(r), escrow: toEscrow(r, "escrow_amount_drops") }));
+    },
+
+    async listFundingToResume(minPendingAgeSeconds) {
+      const rows = await sql`
+        select j.* from jobs j
+        where j.state = 'CREATE_PENDING'
+          and (exists (select 1 from escrows e where e.job_id = j.id)
+               or exists (select 1 from transactions t
+                          where t.job_id = j.id and t.type = 'create' and t.status = 'pending'
+                            and t.submitted_at <= now() - make_interval(secs => ${minPendingAgeSeconds})))
+        order by j.created_at, j.id`;
+      return rows.map(toJob);
     },
 
     async listEvents(jobId) {

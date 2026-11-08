@@ -7,6 +7,7 @@ import {
   type JobsRepo,
   TransitionConflict,
   type TxRecord,
+  assertDrops,
 } from "./repo";
 import { snapshotHash } from "./snapshot";
 import { CANCELLABLE_STATES, type JobState, assertTransition } from "./states";
@@ -19,11 +20,13 @@ export function createMemoryRepo(): JobsRepo {
   const jobs = new Map<string, Job>();
   const escrows = new Map<string, EscrowRow>();
   const txs = new Map<string, TxRecord>();
+  const txRecordedAt = new Map<string, number>();
   const events: JobEvent[] = [];
   const copy = structuredClone;
 
   return {
     async createJob(input) {
+      assertDrops(input.amountDrops);
       const job: Job = {
         ...copy(input),
         id: randomUUID(),
@@ -67,12 +70,14 @@ export function createMemoryRepo(): JobsRepo {
     },
 
     async attachEscrow(row) {
+      assertDrops(row.amountDrops);
       if (escrows.has(row.jobId)) throw new Error(`job ${row.jobId} already has an escrow`);
       escrows.set(row.jobId, copy(row));
     },
 
     async recordPendingTx(t) {
       if (txs.has(t.operationId)) return;
+      txRecordedAt.set(t.operationId, Date.now());
       txs.set(t.operationId, {
         operationId: t.operationId,
         jobId: t.jobId,
@@ -108,6 +113,21 @@ export function createMemoryRepo(): JobsRepo {
         }
       }
       return due.sort((a, b) => a.escrow.cancelAfter - b.escrow.cancelAfter);
+    },
+
+    async listFundingToResume(minPendingAgeSeconds) {
+      const now = Date.now();
+      const stalePendingCreate = (jobId: string) =>
+        [...txs.values()].some(
+          (t) =>
+            t.jobId === jobId &&
+            t.type === "create" &&
+            t.status === "pending" &&
+            now - (txRecordedAt.get(t.operationId) ?? now) >= minPendingAgeSeconds * 1000,
+        );
+      return [...jobs.values()]
+        .filter((j) => j.state === "CREATE_PENDING" && (escrows.has(j.id) || stalePendingCreate(j.id)))
+        .map((j) => copy(j));
     },
 
     async listEvents(jobId) {

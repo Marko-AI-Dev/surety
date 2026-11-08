@@ -74,6 +74,18 @@ describe("fundJob", () => {
     expect(events.at(-1)).toMatchObject({ toState: "CREATE_FAILED", reasonCodes: ["amount_over_cap"] });
   });
 
+  it("ends CREATE_FAILED when the signer reports the create failed conclusively (op_failed)", async () => {
+    const job = await repo.createJob(newJob());
+    signer.script(operationId(job.id, "create"), signerError("op_failed"));
+
+    const failed = await fundJob(deps(), job.id);
+
+    expect(failed.state).toBe("CREATE_FAILED");
+    expect(await repo.getEscrow(job.id)).toBeNull();
+    expect(await repo.listTransactions(job.id)).toMatchObject([{ type: "create", status: "failed", result: "op_failed" }]);
+    expect((await repo.listEvents(job.id)).at(-1)).toMatchObject({ toState: "CREATE_FAILED", reasonCodes: ["op_failed"] });
+  });
+
   it("stays CREATE_PENDING on ledger_failure and resumes with the same opId to reach LOCKED", async () => {
     const job = await repo.createJob(newJob());
     signer.script(operationId(job.id, "create"), signerError("ledger_failure"));

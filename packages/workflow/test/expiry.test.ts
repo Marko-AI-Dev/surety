@@ -124,6 +124,46 @@ describe("runExpirySweep: restart safety", () => {
     expect((await repo.listTransactions(job.id)).filter((t) => t.type === "cancel")).toHaveLength(1);
   });
 
+  it("retries a conclusively failed cancel (op_failed) with the next attempt's opId and refunds", async () => {
+    const job = await fundedJob();
+    const first = operationId(job.id, "cancel", 0);
+    const second = operationId(job.id, "cancel", 1);
+    signer.script(first, signerError("op_failed"));
+
+    const failed = await sweep(CANCEL_AFTER + 1);
+    expect(failed.pending).toEqual([job.id]);
+    expect((await repo.getJob(job.id))?.state).toBe("CANCEL_PENDING");
+
+    const report = await sweep(CANCEL_AFTER + 5);
+
+    expect(report.refunded).toEqual([job.id]);
+    expect(signer.opIds("cancel")).toEqual([first, second]);
+    expect(
+      (await repo.listTransactions(job.id)).filter((t) => t.type === "cancel").map((t) => [t.operationId, t.status]),
+    ).toEqual([
+      [first, "failed"],
+      [second, "validated"],
+    ]);
+  });
+
+  it("gives up after three conclusively failed cancels: RECONCILIATION_REQUIRED with cancel_unresolved", async () => {
+    const job = await fundedJob();
+    for (const attempt of [0, 1, 2]) signer.script(operationId(job.id, "cancel", attempt), signerError("op_failed"));
+
+    const reports = [];
+    for (let i = 0; i < 3; i++) reports.push(await sweep(CANCEL_AFTER + 1 + i));
+
+    expect(reports.map((r) => r.pending)).toEqual([[job.id], [job.id], []]);
+    expect(reports[2]?.reconciliation).toEqual([job.id]);
+    const events = await repo.listEvents(job.id);
+    expect(events.at(-1)).toMatchObject({ toState: "RECONCILIATION_REQUIRED", reasonCodes: ["cancel_unresolved"] });
+    expect(events.map((e) => e.toState)).not.toContain("REFUNDED");
+    expect(signer.opIds("cancel")).toHaveLength(3);
+
+    await sweep(CANCEL_AFTER + 100);
+    expect(signer.count("cancel")).toBe(3);
+  });
+
   it("treats cancel_not_yet_eligible from the signer as pending", async () => {
     const job = await fundedJob();
     signer.script(operationId(job.id, "cancel"), signerError("cancel_not_yet_eligible"));
@@ -132,6 +172,65 @@ describe("runExpirySweep: restart safety", () => {
 
     expect(report.pending).toEqual([job.id]);
     expect((await repo.getJob(job.id))?.state).toBe("CANCEL_PENDING");
+  });
+});
+
+describe("runExpirySweep: resumes funding a crash left in CREATE_PENDING", () => {
+  // A repo whose named method throws once, as if the process died at that point.
+  function crashOnce(method: "attachEscrow" | "transition"): JobsRepo {
+    let crashed = false;
+    const crash = () => {
+      if (crashed) return;
+      crashed = true;
+      throw new Error("process died");
+    };
+    return {
+      ...repo,
+      attachEscrow: async (row) => {
+        if (method === "attachEscrow") crash();
+        return repo.attachEscrow(row);
+      },
+      transition: async (id, from, to, event) => {
+        if (method === "transition" && to === "LOCKED") crash();
+        return repo.transition(id, from, to, event);
+      },
+    };
+  }
+
+  it("resumes a job that died after the signer validated the create but before storing the escrow", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-09T10:00:00Z"));
+    const job = await repo.createJob(newJob({ cancelAfterSeconds: WINDOW }));
+    await expect(fundJob({ repo: crashOnce("attachEscrow"), signer, actor: "buyer-agent" }, job.id)).rejects.toThrow(
+      "process died",
+    );
+    expect(await repo.getEscrow(job.id)).toBeNull();
+
+    // Too fresh: the original caller may still be finishing it.
+    await sweep(CLOSE + 10);
+    expect((await repo.getJob(job.id))?.state).toBe("CREATE_PENDING");
+
+    vi.setSystemTime(new Date("2026-11-09T10:00:31Z"));
+    await sweep(CLOSE + 20);
+    expect((await repo.getJob(job.id))?.state).toBe("LOCKED");
+    expect((await repo.getEscrow(job.id))?.cancelAfter).toBe(CANCEL_AFTER);
+
+    const report = await sweep(CANCEL_AFTER + 1);
+    expect(report.refunded).toEqual([job.id]);
+    expect(signer.opIds("create")).toEqual([operationId(job.id, "create")]);
+  });
+
+  it("resumes a job that died after storing the escrow, on the very next sweep", async () => {
+    const job = await repo.createJob(newJob({ cancelAfterSeconds: WINDOW }));
+    await expect(fundJob({ repo: crashOnce("transition"), signer, actor: "buyer-agent" }, job.id)).rejects.toThrow(
+      "process died",
+    );
+
+    await sweep(CLOSE + 10);
+    expect((await repo.getJob(job.id))?.state).toBe("LOCKED");
+
+    expect((await sweep(CANCEL_AFTER + 1)).refunded).toEqual([job.id]);
+    expect(signer.opIds("create")).toEqual([operationId(job.id, "create")]);
   });
 });
 
