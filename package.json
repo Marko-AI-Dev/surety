@@ -11,12 +11,16 @@
     "typecheck": "tsc -p tsconfig.json",
     "check:boundaries": "tsx scripts/check-boundaries.ts",
     "signer": "pnpm --filter @surety/signer start",
-    "spike": "tsx scripts/spike-escrow.ts"
+    "spike": "tsx --env-file=.env scripts/spike-escrow.ts"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "5.1.0"
+    "vitest": "5.1.0",
+    "@surety/contracts": "workspace:*",
+    "@surety/signer-client": "workspace:*",
+    "@surety/xrpl-settlement": "workspace:*",
+    "xrpl": "5.3.0"
   }
 }
