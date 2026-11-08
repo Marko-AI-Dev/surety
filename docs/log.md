@@ -39,3 +39,11 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 ## Coding-agent spend
 
 Claude Code; not metered per task here.
+
+## Ideas for later (not in the build yet)
+
+| Raised | Idea | Note |
+|---|---|---|
+| 2026-11-08 | Operator picks a display currency; live XRP to ZAR or USD beside drops and invoice amounts | Test XRP has no value, so any rand figure must be labelled simulated. XRPL's PriceOracle amendment is live on testnet, which could make an on-ledger rate source a nice XRPL touch |
+| 2026-11-08 | Hire new specialist agents on request through an agent workforce (Paperclip CEO agent) | After the three core outcomes. Decide what the hired agents run on (not the AWM plan) |
+| 2026-11-08 | Two UI modes: a simple user mode and an operator mode, one large 3D glass pane per section with depth or swipe transitions | Design pass in progress (docs/design/ui-direction.md) |
