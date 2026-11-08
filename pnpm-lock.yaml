@@ -48,6 +48,12 @@ importers:
         specifier: workspace:*
         version: link:../contracts
 
+  packages/workflow:
+    devDependencies:
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+
   packages/xrpl-settlement:
     dependencies:
       xrpl:
