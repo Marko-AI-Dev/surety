@@ -15,9 +15,9 @@ flowchart LR
   subgraph App[Surety app]
     API[API<br/>post, fund, deliver]:::planned
     Workflow[Workflow<br/>guarded job state machine]:::built
-    Rules[Deterministic checks<br/>schema, arithmetic, source match]:::planned
-    Jev[Jev evaluator<br/>via OpenRouter]:::planned
-    Worker[Expiry worker<br/>restart-safe refunds]:::built
+    Rules[Deterministic checks<br/>size, schema, currency, arithmetic,<br/>values bound to the source]:::built
+    Jev[Jev evaluator via OpenRouter<br/>satisfies + injection, versioned policy]:::built
+    Worker[Job engine worker<br/>evaluate, settle, restart-safe refunds]:::built
     DB[(Supabase<br/>mirror of jobs, escrows,<br/>transactions, job events)]:::built
     UI[Live pipeline view<br/>receipts, limits panel]:::planned
   end
@@ -34,7 +34,8 @@ flowchart LR
   API --> Workflow
   Workflow --> Rules --> Jev
   Jev -->|pass: signed one-use authorization| Signer
-  Worker -->|expired: cancel| Signer
+  Worker -->|runs| Rules
+  Worker -->|approved: finish, expired: cancel| Signer
   Workflow -->|fund: create escrow| Signer
   Signer -->|signed transactions| XRPL
   Workflow --- DB
@@ -56,6 +57,9 @@ Green is built and proven on testnet. Dashed is planned for the rest of the hack
 - **Validated `tesSUCCESS` is the only success.** Transaction hashes are journaled before submission, so a timeout is resolved by lookup and never by signing twice.
 - **The database mirrors; the ledger decides.** Every job state change goes through one guarded transition: it checks the allowed-transition map, updates only if the row is still in the expected state, and appends a `job_events` row in the same database transaction. `job_events` is append-only (a trigger refuses UPDATE and DELETE). `PAID`, `REFUNDED` and `CREATE_FAILED` are terminal; `RECONCILIATION_REQUIRED` freezes a job until a person looks.
 - **Refunds survive restarts.** The expiry worker holds nothing in memory. It sweeps on boot and every few seconds for funded jobs whose escrow is past `CancelAfter` by validated ledger close time, and asks the signer to cancel. Operation ids are derived from the job id, so a restarted worker sends the same id and the signer replays its journaled outcome instead of signing again. A signer that is unreachable or still waiting leaves the job `CANCEL_PENDING` for the next sweep; an escrow that is already gone or does not match sends the job to `RECONCILIATION_REQUIRED`, never to `REFUNDED`.
+
+- **The gate is layered and fails closed.** A delivered answer is stored once with its canonical hash; a changed answer is refused. The worker judges it: deterministic rules first (size at most 8192 bytes, strict schema, permitted currency, line arithmetic, total, and every value bound to its own field or line of the source invoice). A failed rule declines the work without calling Jev. Only then does Jev answer two yes/no questions about the frozen evidence, with the source and deliverable inside `state` and never in the question text. A versioned policy (`policy-v2`, chosen on a labelled set) turns the two probabilities into approve, decline or escalate. A timeout, HTTP error, refusal or malformed answer is `UNAVAILABLE`, never approve. Every decision is recorded with its mode (live or fixture), scores, reasons, policy version and cost.
+- **Approval is a one-use, 60-second authorization, not a payment.** It binds network, owner, offer sequence, amount, destination, job snapshot, deliverable hash, policy version and decision id. A retry replays the same operation id so the signer finds a finish it already submitted; an expired, unused authorization is replaced by a new attempt with a new id; nothing is minted in the last 30 seconds before `CancelAfter` by ledger time. Only a validated `tesSUCCESS` makes a job `PAID`.
 
 What the ledger does not do: it does not understand the work. A compromised gate or signer could still release wrongly. That is why the gate is layered (rules first, then Jev, both fail closed) and why every release carries a binding to the exact job, deliverable and policy version.
 

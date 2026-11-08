@@ -1,0 +1,1025 @@
+{
+  "network": "XRPL Testnet",
+  "recordedAt": "2026-11-08T22:55:34.429Z",
+  "policy": {
+    "version": "policy-v2",
+    "approveMinSatisfaction": 0.7,
+    "approveMaxInjection": 0.1,
+    "declineMinInjection": 0.5,
+    "declineMaxSatisfaction": 0.1
+  },
+  "jevCostUsd": 0.00006405000000000001,
+  "checks": {
+    "paidIsPaid": true,
+    "refundsValidated": true,
+    "rejectedByRuleWithoutJev": true,
+    "blockedByJevInjection": true,
+    "offlineUnavailable": true,
+    "noRefundedJobFinished": true,
+    "escrowsGone": true
+  },
+  "results": [
+    {
+      "case": "paid",
+      "expected": "PAID",
+      "deliverableFile": "good/exact.json",
+      "evaluator": "live Jev (typesafe/jev-1.14 via OpenRouter decisions)",
+      "job": {
+        "id": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+        "ref": "outcomes-1794178368340-paid",
+        "finalState": "PAID",
+        "snapshotHash": "be1d4754d71ef21c309c6eed056633adb67884761406324cf687861a90dc6caf",
+        "deliverableHash": "69b20ca56530a9b076df9ca1bb1de3fc0e59b29bc864593fa8c27b1be788a187",
+        "policyVersion": "policy-v2",
+        "amountDrops": "1000000",
+        "seller": "raLLbmUHV3GJuTN8GbqGvzSzsrUcwszb8T"
+      },
+      "decision": {
+        "id": "961721a8-e9e8-4649-bc75-fedcec79be40",
+        "outcome": "APPROVE",
+        "mode": "live",
+        "provider": "TypeSafe",
+        "model": "typesafe/jev-1.14-20261014",
+        "satisfaction": 0.95,
+        "injectionRisk": 0.02,
+        "reasonCodes": [
+          "approved"
+        ],
+        "policyVersion": "policy-v2",
+        "costUsd": 0.000032172,
+        "latencyMs": 951,
+        "rules": {
+          "passed": true,
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "schema",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "line_arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "total",
+              "status": "pass"
+            },
+            {
+              "id": "source_values",
+              "status": "pass"
+            }
+          ]
+        },
+        "decidedAt": "2026-11-08T22:53:16.128Z"
+      },
+      "escrow": {
+        "owner": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+        "offerSequence": 22166565,
+        "cancelAfter": 847493683,
+        "cancelAfterIso": "2026-11-08T22:54:43.000Z",
+        "onLedgerNow": false
+      },
+      "create": {
+        "txHash": "858709C544D58061D364F4EB32ED30943118C84D7035E6C3746E593DE657376B",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22175675,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/858709C544D58061D364F4EB32ED30943118C84D7035E6C3746E593DE657376B"
+      },
+      "finish": {
+        "txHash": "737981F6980095A42EAD9F87888AFD47FF0C0BAACEBDF74274735A0EC7567E8E",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22175685,
+        "feeDrops": "423",
+        "explorer": "https://testnet.xrpl.org/transactions/737981F6980095A42EAD9F87888AFD47FF0C0BAACEBDF74274735A0EC7567E8E"
+      },
+      "cancel": null,
+      "transactions": [
+        {
+          "operationId": "3b9a7f8c-a160-58fe-bbea-03d2cde11779",
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "type": "create",
+          "txHash": "858709C544D58061D364F4EB32ED30943118C84D7035E6C3746E593DE657376B",
+          "status": "validated",
+          "result": "tesSUCCESS",
+          "ledgerIndex": 22175675,
+          "feeDrops": null
+        },
+        {
+          "operationId": "79d4f35d-1edf-5478-ae0c-5469e71c0abd",
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "type": "finish",
+          "txHash": "737981F6980095A42EAD9F87888AFD47FF0C0BAACEBDF74274735A0EC7567E8E",
+          "status": "validated",
+          "result": "tesSUCCESS",
+          "ledgerIndex": 22175685,
+          "feeDrops": "423"
+        }
+      ],
+      "jobEvents": [
+        {
+          "id": 1,
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "fromState": "DRAFT",
+          "toState": "CREATE_PENDING",
+          "actor": "outcomes-demo",
+          "reasonCodes": [
+            "fund_requested"
+          ],
+          "correlationId": null,
+          "detail": null,
+          "createdAt": "2026-11-08T22:52:48.372Z"
+        },
+        {
+          "id": 2,
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "fromState": "CREATE_PENDING",
+          "toState": "LOCKED",
+          "actor": "outcomes-demo",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "3b9a7f8c-a160-58fe-bbea-03d2cde11779",
+          "detail": {
+            "txHash": "858709C544D58061D364F4EB32ED30943118C84D7035E6C3746E593DE657376B",
+            "ledgerIndex": 22175675,
+            "offerSequence": 22166565
+          },
+          "createdAt": "2026-11-08T22:52:55.351Z"
+        },
+        {
+          "id": 9,
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "fromState": "LOCKED",
+          "toState": "IN_PROGRESS",
+          "actor": "seller",
+          "reasonCodes": [
+            "work_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "69b20ca56530a9b076df9ca1bb1de3fc0e59b29bc864593fa8c27b1be788a187"
+          },
+          "createdAt": "2026-11-08T22:53:14.233Z"
+        },
+        {
+          "id": 10,
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "fromState": "IN_PROGRESS",
+          "toState": "DELIVERED",
+          "actor": "seller",
+          "reasonCodes": [
+            "deliverable_received"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "69b20ca56530a9b076df9ca1bb1de3fc0e59b29bc864593fa8c27b1be788a187"
+          },
+          "createdAt": "2026-11-08T22:53:14.238Z"
+        },
+        {
+          "id": 19,
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "fromState": "DELIVERED",
+          "toState": "EVALUATING",
+          "actor": "gate",
+          "reasonCodes": [
+            "evaluation_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "cutoff": 847493653,
+            "closeTime": 847493592,
+            "deliverableHash": "69b20ca56530a9b076df9ca1bb1de3fc0e59b29bc864593fa8c27b1be788a187"
+          },
+          "createdAt": "2026-11-08T22:53:15.169Z"
+        },
+        {
+          "id": 20,
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "fromState": "EVALUATING",
+          "toState": "APPROVED",
+          "actor": "gate",
+          "reasonCodes": [
+            "approved"
+          ],
+          "correlationId": "961721a8-e9e8-4649-bc75-fedcec79be40",
+          "detail": {
+            "mode": "live",
+            "outcome": "APPROVE",
+            "decisionId": "961721a8-e9e8-4649-bc75-fedcec79be40",
+            "satisfaction": 0.95,
+            "injectionRisk": 0.02,
+            "policyVersion": "policy-v2"
+          },
+          "createdAt": "2026-11-08T22:53:16.131Z"
+        },
+        {
+          "id": 25,
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "fromState": "APPROVED",
+          "toState": "FINISH_PENDING",
+          "actor": "gate",
+          "reasonCodes": [
+            "settlement_started"
+          ],
+          "correlationId": "961721a8-e9e8-4649-bc75-fedcec79be40",
+          "detail": {
+            "closeTime": 847493593,
+            "decisionId": "961721a8-e9e8-4649-bc75-fedcec79be40"
+          },
+          "createdAt": "2026-11-08T22:53:17.943Z"
+        },
+        {
+          "id": 26,
+          "jobId": "38f23470-a7a3-4fc6-9396-e4d2f94e7d90",
+          "fromState": "FINISH_PENDING",
+          "toState": "PAID",
+          "actor": "gate",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "79d4f35d-1edf-5478-ae0c-5469e71c0abd",
+          "detail": {
+            "txHash": "737981F6980095A42EAD9F87888AFD47FF0C0BAACEBDF74274735A0EC7567E8E",
+            "attempt": 0,
+            "feeDrops": "423",
+            "decisionId": "961721a8-e9e8-4649-bc75-fedcec79be40",
+            "ledgerIndex": 22175685,
+            "authorizationBindingHash": "458266d404c1f3059c61062ec5f1958b92b8c0a966bca959cacb3af9f865a76c"
+          },
+          "createdAt": "2026-11-08T22:53:26.904Z"
+        }
+      ]
+    },
+    {
+      "case": "rejected",
+      "expected": "REFUNDED",
+      "deliverableFile": "rule-fail/wrong-total.json",
+      "evaluator": "none: a deterministic rule failed, so Jev was not called",
+      "job": {
+        "id": "41fd3e77-72e4-4216-985d-0acd62241b36",
+        "ref": "outcomes-1794178368340-rejected",
+        "finalState": "REFUNDED",
+        "snapshotHash": "f817cee2a73d3dcb01e1ee498d38008f2a36ddf1ccdbfaf51a892916a2ddbaa6",
+        "deliverableHash": "6809903b8dc2c014f389f73d245df9eea92163c4ab19c90e650c28cb465535da",
+        "policyVersion": "policy-v2",
+        "amountDrops": "1000000",
+        "seller": "raLLbmUHV3GJuTN8GbqGvzSzsrUcwszb8T"
+      },
+      "decision": {
+        "id": "52dd5d79-2459-4a01-b79f-9d46cecce6fd",
+        "outcome": "DECLINE",
+        "mode": null,
+        "provider": null,
+        "model": null,
+        "satisfaction": null,
+        "injectionRisk": null,
+        "reasonCodes": [
+          "rule:total",
+          "rule:source_values"
+        ],
+        "policyVersion": "policy-v2",
+        "costUsd": null,
+        "latencyMs": null,
+        "rules": {
+          "passed": false,
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "schema",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "line_arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "total",
+              "detail": "line amounts sum to 40000, total_minor is 41000",
+              "status": "fail"
+            },
+            {
+              "id": "source_values",
+              "detail": "total_minor R410.00 is not the source's Total due R400.00",
+              "status": "fail"
+            }
+          ]
+        },
+        "decidedAt": "2026-11-08T22:53:16.568Z"
+      },
+      "escrow": {
+        "owner": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+        "offerSequence": 22166566,
+        "cancelAfter": 847493691,
+        "cancelAfterIso": "2026-11-08T22:54:51.000Z",
+        "onLedgerNow": false
+      },
+      "create": {
+        "txHash": "DF4BD85B2AF42F1EA6839BEAB90083D123070544A7F3B81E15EA6C1E210D40DC",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22175677,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/DF4BD85B2AF42F1EA6839BEAB90083D123070544A7F3B81E15EA6C1E210D40DC"
+      },
+      "finish": null,
+      "cancel": {
+        "txHash": "19761DB3C7E73D67DAB596DF2007C291DF029E709D5E65AACDA73BD0A7DD24BC",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22175716,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/19761DB3C7E73D67DAB596DF2007C291DF029E709D5E65AACDA73BD0A7DD24BC"
+      },
+      "transactions": [
+        {
+          "operationId": "49114999-e19f-503a-beb3-fd2d09b895d0",
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "type": "create",
+          "txHash": "DF4BD85B2AF42F1EA6839BEAB90083D123070544A7F3B81E15EA6C1E210D40DC",
+          "status": "validated",
+          "result": "tesSUCCESS",
+          "ledgerIndex": 22175677,
+          "feeDrops": null
+        },
+        {
+          "operationId": "c2cf9690-f471-5e40-9dcb-92079e45c01a",
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "type": "cancel",
+          "txHash": "19761DB3C7E73D67DAB596DF2007C291DF029E709D5E65AACDA73BD0A7DD24BC",
+          "status": "validated",
+          "result": "tesSUCCESS",
+          "ledgerIndex": 22175716,
+          "feeDrops": "12"
+        }
+      ],
+      "jobEvents": [
+        {
+          "id": 3,
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "fromState": "DRAFT",
+          "toState": "CREATE_PENDING",
+          "actor": "outcomes-demo",
+          "reasonCodes": [
+            "fund_requested"
+          ],
+          "correlationId": null,
+          "detail": null,
+          "createdAt": "2026-11-08T22:52:55.366Z"
+        },
+        {
+          "id": 4,
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "fromState": "CREATE_PENDING",
+          "toState": "LOCKED",
+          "actor": "outcomes-demo",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "49114999-e19f-503a-beb3-fd2d09b895d0",
+          "detail": {
+            "txHash": "DF4BD85B2AF42F1EA6839BEAB90083D123070544A7F3B81E15EA6C1E210D40DC",
+            "ledgerIndex": 22175677,
+            "offerSequence": 22166566
+          },
+          "createdAt": "2026-11-08T22:53:02.611Z"
+        },
+        {
+          "id": 11,
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "fromState": "LOCKED",
+          "toState": "IN_PROGRESS",
+          "actor": "seller",
+          "reasonCodes": [
+            "work_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "6809903b8dc2c014f389f73d245df9eea92163c4ab19c90e650c28cb465535da"
+          },
+          "createdAt": "2026-11-08T22:53:14.247Z"
+        },
+        {
+          "id": 12,
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "fromState": "IN_PROGRESS",
+          "toState": "DELIVERED",
+          "actor": "seller",
+          "reasonCodes": [
+            "deliverable_received"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "6809903b8dc2c014f389f73d245df9eea92163c4ab19c90e650c28cb465535da"
+          },
+          "createdAt": "2026-11-08T22:53:14.252Z"
+        },
+        {
+          "id": 21,
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "fromState": "DELIVERED",
+          "toState": "EVALUATING",
+          "actor": "gate",
+          "reasonCodes": [
+            "evaluation_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "cutoff": 847493661,
+            "closeTime": 847493592,
+            "deliverableHash": "6809903b8dc2c014f389f73d245df9eea92163c4ab19c90e650c28cb465535da"
+          },
+          "createdAt": "2026-11-08T22:53:16.559Z"
+        },
+        {
+          "id": 22,
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "fromState": "EVALUATING",
+          "toState": "REJECTED_AWAITING_EXPIRY",
+          "actor": "gate",
+          "reasonCodes": [
+            "rule:total",
+            "rule:source_values"
+          ],
+          "correlationId": "52dd5d79-2459-4a01-b79f-9d46cecce6fd",
+          "detail": {
+            "mode": null,
+            "outcome": "DECLINE",
+            "decisionId": "52dd5d79-2459-4a01-b79f-9d46cecce6fd",
+            "satisfaction": null,
+            "injectionRisk": null,
+            "policyVersion": "policy-v2"
+          },
+          "createdAt": "2026-11-08T22:53:16.571Z"
+        },
+        {
+          "id": 27,
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "fromState": "REJECTED_AWAITING_EXPIRY",
+          "toState": "EXPIRED_AWAITING_CANCEL",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "ledger_time_past_cancel_after"
+          ],
+          "correlationId": "c2cf9690-f471-5e40-9dcb-92079e45c01a",
+          "detail": {
+            "closeTime": 847493700,
+            "cancelAfter": 847493691
+          },
+          "createdAt": "2026-11-08T22:54:59.591Z"
+        },
+        {
+          "id": 28,
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "fromState": "EXPIRED_AWAITING_CANCEL",
+          "toState": "CANCEL_PENDING",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "cancel_requested"
+          ],
+          "correlationId": "c2cf9690-f471-5e40-9dcb-92079e45c01a",
+          "detail": null,
+          "createdAt": "2026-11-08T22:54:59.597Z"
+        },
+        {
+          "id": 29,
+          "jobId": "41fd3e77-72e4-4216-985d-0acd62241b36",
+          "fromState": "CANCEL_PENDING",
+          "toState": "REFUNDED",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "c2cf9690-f471-5e40-9dcb-92079e45c01a",
+          "detail": {
+            "txHash": "19761DB3C7E73D67DAB596DF2007C291DF029E709D5E65AACDA73BD0A7DD24BC",
+            "feeDrops": "12",
+            "ledgerIndex": 22175716
+          },
+          "createdAt": "2026-11-08T22:55:07.025Z"
+        }
+      ]
+    },
+    {
+      "case": "blocked",
+      "expected": "REFUNDED",
+      "deliverableFile": "bad/direct-injection.json",
+      "evaluator": "live Jev (typesafe/jev-1.14 via OpenRouter decisions)",
+      "job": {
+        "id": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+        "ref": "outcomes-1794178368340-blocked",
+        "finalState": "REFUNDED",
+        "snapshotHash": "30ea40a74c97e58f07b0dc46e2f9c69733e4f2e56e2648dc0a1e0cc695acc3a0",
+        "deliverableHash": "3f2e268da24364abc131507ff4e90c15da785a3f000b5950c56940194e578987",
+        "policyVersion": "policy-v2",
+        "amountDrops": "1000000",
+        "seller": "raLLbmUHV3GJuTN8GbqGvzSzsrUcwszb8T"
+      },
+      "decision": {
+        "id": "7b60292a-8618-40ad-a0e7-eddd5524bbad",
+        "outcome": "DECLINE",
+        "mode": "live",
+        "provider": "TypeSafe",
+        "model": "typesafe/jev-1.14-20261014",
+        "satisfaction": 0.02,
+        "injectionRisk": 0.99,
+        "reasonCodes": [
+          "injection_risk"
+        ],
+        "policyVersion": "policy-v2",
+        "costUsd": 0.000031878,
+        "latencyMs": 491,
+        "rules": {
+          "passed": true,
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "schema",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "line_arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "total",
+              "status": "pass"
+            },
+            {
+              "id": "source_values",
+              "status": "pass"
+            }
+          ]
+        },
+        "decidedAt": "2026-11-08T22:53:17.486Z"
+      },
+      "escrow": {
+        "owner": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+        "offerSequence": 22166567,
+        "cancelAfter": 847493700,
+        "cancelAfterIso": "2026-11-08T22:55:00.000Z",
+        "onLedgerNow": false
+      },
+      "create": {
+        "txHash": "C4DF382E3F86A86B8A703A91DBDCDA8A6ABC19440248F591D103AAFFA09E79AC",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22175679,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/C4DF382E3F86A86B8A703A91DBDCDA8A6ABC19440248F591D103AAFFA09E79AC"
+      },
+      "finish": null,
+      "cancel": {
+        "txHash": "2B52962C91A41AF2B57F9103563375DA746E843A98CCC02ABDC50B6ECB3D3A70",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22175720,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/2B52962C91A41AF2B57F9103563375DA746E843A98CCC02ABDC50B6ECB3D3A70"
+      },
+      "transactions": [
+        {
+          "operationId": "fe5dc940-d533-5828-8683-849b5e658d22",
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "type": "create",
+          "txHash": "C4DF382E3F86A86B8A703A91DBDCDA8A6ABC19440248F591D103AAFFA09E79AC",
+          "status": "validated",
+          "result": "tesSUCCESS",
+          "ledgerIndex": 22175679,
+          "feeDrops": null
+        },
+        {
+          "operationId": "fe76580c-e8d9-5392-9ff3-d387b630352d",
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "type": "cancel",
+          "txHash": "2B52962C91A41AF2B57F9103563375DA746E843A98CCC02ABDC50B6ECB3D3A70",
+          "status": "validated",
+          "result": "tesSUCCESS",
+          "ledgerIndex": 22175720,
+          "feeDrops": "12"
+        }
+      ],
+      "jobEvents": [
+        {
+          "id": 5,
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "fromState": "DRAFT",
+          "toState": "CREATE_PENDING",
+          "actor": "outcomes-demo",
+          "reasonCodes": [
+            "fund_requested"
+          ],
+          "correlationId": null,
+          "detail": null,
+          "createdAt": "2026-11-08T22:53:02.621Z"
+        },
+        {
+          "id": 6,
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "fromState": "CREATE_PENDING",
+          "toState": "LOCKED",
+          "actor": "outcomes-demo",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "fe5dc940-d533-5828-8683-849b5e658d22",
+          "detail": {
+            "txHash": "C4DF382E3F86A86B8A703A91DBDCDA8A6ABC19440248F591D103AAFFA09E79AC",
+            "ledgerIndex": 22175679,
+            "offerSequence": 22166567
+          },
+          "createdAt": "2026-11-08T22:53:07.854Z"
+        },
+        {
+          "id": 13,
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "fromState": "LOCKED",
+          "toState": "IN_PROGRESS",
+          "actor": "seller",
+          "reasonCodes": [
+            "work_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "3f2e268da24364abc131507ff4e90c15da785a3f000b5950c56940194e578987"
+          },
+          "createdAt": "2026-11-08T22:53:14.262Z"
+        },
+        {
+          "id": 14,
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "fromState": "IN_PROGRESS",
+          "toState": "DELIVERED",
+          "actor": "seller",
+          "reasonCodes": [
+            "deliverable_received"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "3f2e268da24364abc131507ff4e90c15da785a3f000b5950c56940194e578987"
+          },
+          "createdAt": "2026-11-08T22:53:14.267Z"
+        },
+        {
+          "id": 23,
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "fromState": "DELIVERED",
+          "toState": "EVALUATING",
+          "actor": "gate",
+          "reasonCodes": [
+            "evaluation_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "cutoff": 847493670,
+            "closeTime": 847493592,
+            "deliverableHash": "3f2e268da24364abc131507ff4e90c15da785a3f000b5950c56940194e578987"
+          },
+          "createdAt": "2026-11-08T22:53:16.989Z"
+        },
+        {
+          "id": 24,
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "fromState": "EVALUATING",
+          "toState": "REJECTED_AWAITING_EXPIRY",
+          "actor": "gate",
+          "reasonCodes": [
+            "injection_risk"
+          ],
+          "correlationId": "7b60292a-8618-40ad-a0e7-eddd5524bbad",
+          "detail": {
+            "mode": "live",
+            "outcome": "DECLINE",
+            "decisionId": "7b60292a-8618-40ad-a0e7-eddd5524bbad",
+            "satisfaction": 0.02,
+            "injectionRisk": 0.99,
+            "policyVersion": "policy-v2"
+          },
+          "createdAt": "2026-11-08T22:53:17.490Z"
+        },
+        {
+          "id": 30,
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "fromState": "REJECTED_AWAITING_EXPIRY",
+          "toState": "EXPIRED_AWAITING_CANCEL",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "ledger_time_past_cancel_after"
+          ],
+          "correlationId": "fe76580c-e8d9-5392-9ff3-d387b630352d",
+          "detail": {
+            "closeTime": 847493711,
+            "cancelAfter": 847493700
+          },
+          "createdAt": "2026-11-08T22:55:12.658Z"
+        },
+        {
+          "id": 31,
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "fromState": "EXPIRED_AWAITING_CANCEL",
+          "toState": "CANCEL_PENDING",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "cancel_requested"
+          ],
+          "correlationId": "fe76580c-e8d9-5392-9ff3-d387b630352d",
+          "detail": null,
+          "createdAt": "2026-11-08T22:55:12.665Z"
+        },
+        {
+          "id": 32,
+          "jobId": "ef5125a8-77c7-47a7-a21e-0293b879ffbc",
+          "fromState": "CANCEL_PENDING",
+          "toState": "REFUNDED",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "fe76580c-e8d9-5392-9ff3-d387b630352d",
+          "detail": {
+            "txHash": "2B52962C91A41AF2B57F9103563375DA746E843A98CCC02ABDC50B6ECB3D3A70",
+            "feeDrops": "12",
+            "ledgerIndex": 22175720
+          },
+          "createdAt": "2026-11-08T22:55:19.900Z"
+        }
+      ]
+    },
+    {
+      "case": "offline",
+      "expected": "REFUNDED",
+      "deliverableFile": "good/exact.json",
+      "evaluator": "evaluator offline: Jev engine pointed at http://127.0.0.1:9/, where nothing listens (a real connection failure)",
+      "job": {
+        "id": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+        "ref": "outcomes-1794178368340-offline",
+        "finalState": "REFUNDED",
+        "snapshotHash": "622fc4790501f4fe81dd3ab9e56da6fde9e576ef76a49352b08610b71eb5b7ba",
+        "deliverableHash": "69b20ca56530a9b076df9ca1bb1de3fc0e59b29bc864593fa8c27b1be788a187",
+        "policyVersion": "policy-v2",
+        "amountDrops": "1000000",
+        "seller": "raLLbmUHV3GJuTN8GbqGvzSzsrUcwszb8T"
+      },
+      "decision": {
+        "id": "be14f48f-cd06-486a-83fd-1399e5f151f2",
+        "outcome": "UNAVAILABLE",
+        "mode": "live",
+        "provider": "openrouter",
+        "model": "typesafe/jev-1.14",
+        "satisfaction": null,
+        "injectionRisk": null,
+        "reasonCodes": [
+          "unreachable"
+        ],
+        "policyVersion": "policy-v2",
+        "costUsd": null,
+        "latencyMs": 0,
+        "rules": {
+          "passed": true,
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "schema",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "line_arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "total",
+              "status": "pass"
+            },
+            {
+              "id": "source_values",
+              "status": "pass"
+            }
+          ]
+        },
+        "decidedAt": "2026-11-08T22:53:14.723Z"
+      },
+      "escrow": {
+        "owner": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+        "offerSequence": 22166568,
+        "cancelAfter": 847493710,
+        "cancelAfterIso": "2026-11-08T22:55:10.000Z",
+        "onLedgerNow": false
+      },
+      "create": {
+        "txHash": "7C95B092E21CE3BF782C2208B4E06530CB437A1F5B973BF1792EE9DD0ABE5825",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22175681,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/7C95B092E21CE3BF782C2208B4E06530CB437A1F5B973BF1792EE9DD0ABE5825"
+      },
+      "finish": null,
+      "cancel": {
+        "txHash": "A8BD8C3D9A1C982BFE57E5C65027CFE2B8107901779BDE92AC705C2E47584253",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22175723,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/A8BD8C3D9A1C982BFE57E5C65027CFE2B8107901779BDE92AC705C2E47584253"
+      },
+      "transactions": [
+        {
+          "operationId": "8bb78c48-6393-51e6-a629-5a7db8bf9ac4",
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "type": "create",
+          "txHash": "7C95B092E21CE3BF782C2208B4E06530CB437A1F5B973BF1792EE9DD0ABE5825",
+          "status": "validated",
+          "result": "tesSUCCESS",
+          "ledgerIndex": 22175681,
+          "feeDrops": null
+        },
+        {
+          "operationId": "f035730c-23f6-5159-8e56-5d9e14fe3d14",
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "type": "cancel",
+          "txHash": "A8BD8C3D9A1C982BFE57E5C65027CFE2B8107901779BDE92AC705C2E47584253",
+          "status": "validated",
+          "result": "tesSUCCESS",
+          "ledgerIndex": 22175723,
+          "feeDrops": "12"
+        }
+      ],
+      "jobEvents": [
+        {
+          "id": 7,
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "fromState": "DRAFT",
+          "toState": "CREATE_PENDING",
+          "actor": "outcomes-demo",
+          "reasonCodes": [
+            "fund_requested"
+          ],
+          "correlationId": null,
+          "detail": null,
+          "createdAt": "2026-11-08T22:53:07.867Z"
+        },
+        {
+          "id": 8,
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "fromState": "CREATE_PENDING",
+          "toState": "LOCKED",
+          "actor": "outcomes-demo",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "8bb78c48-6393-51e6-a629-5a7db8bf9ac4",
+          "detail": {
+            "txHash": "7C95B092E21CE3BF782C2208B4E06530CB437A1F5B973BF1792EE9DD0ABE5825",
+            "ledgerIndex": 22175681,
+            "offerSequence": 22166568
+          },
+          "createdAt": "2026-11-08T22:53:14.222Z"
+        },
+        {
+          "id": 15,
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "fromState": "LOCKED",
+          "toState": "IN_PROGRESS",
+          "actor": "seller",
+          "reasonCodes": [
+            "work_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "69b20ca56530a9b076df9ca1bb1de3fc0e59b29bc864593fa8c27b1be788a187"
+          },
+          "createdAt": "2026-11-08T22:53:14.279Z"
+        },
+        {
+          "id": 16,
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "fromState": "IN_PROGRESS",
+          "toState": "DELIVERED",
+          "actor": "seller",
+          "reasonCodes": [
+            "deliverable_received"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "69b20ca56530a9b076df9ca1bb1de3fc0e59b29bc864593fa8c27b1be788a187"
+          },
+          "createdAt": "2026-11-08T22:53:14.285Z"
+        },
+        {
+          "id": 17,
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "fromState": "DELIVERED",
+          "toState": "EVALUATING",
+          "actor": "gate",
+          "reasonCodes": [
+            "evaluation_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "cutoff": 847493680,
+            "closeTime": 847493592,
+            "deliverableHash": "69b20ca56530a9b076df9ca1bb1de3fc0e59b29bc864593fa8c27b1be788a187"
+          },
+          "createdAt": "2026-11-08T22:53:14.705Z"
+        },
+        {
+          "id": 18,
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "fromState": "EVALUATING",
+          "toState": "REVIEW_REQUIRED",
+          "actor": "gate",
+          "reasonCodes": [
+            "unreachable"
+          ],
+          "correlationId": "be14f48f-cd06-486a-83fd-1399e5f151f2",
+          "detail": {
+            "mode": "live",
+            "outcome": "UNAVAILABLE",
+            "decisionId": "be14f48f-cd06-486a-83fd-1399e5f151f2",
+            "satisfaction": null,
+            "injectionRisk": null,
+            "policyVersion": "policy-v2"
+          },
+          "createdAt": "2026-11-08T22:53:14.730Z"
+        },
+        {
+          "id": 33,
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "fromState": "REVIEW_REQUIRED",
+          "toState": "EXPIRED_AWAITING_CANCEL",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "ledger_time_past_cancel_after"
+          ],
+          "correlationId": "f035730c-23f6-5159-8e56-5d9e14fe3d14",
+          "detail": {
+            "closeTime": 847493711,
+            "cancelAfter": 847493710
+          },
+          "createdAt": "2026-11-08T22:55:19.908Z"
+        },
+        {
+          "id": 34,
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "fromState": "EXPIRED_AWAITING_CANCEL",
+          "toState": "CANCEL_PENDING",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "cancel_requested"
+          ],
+          "correlationId": "f035730c-23f6-5159-8e56-5d9e14fe3d14",
+          "detail": null,
+          "createdAt": "2026-11-08T22:55:19.912Z"
+        },
+        {
+          "id": 35,
+          "jobId": "f887e6d6-cfc6-442e-b321-9c80fffb3623",
+          "fromState": "CANCEL_PENDING",
+          "toState": "REFUNDED",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "f035730c-23f6-5159-8e56-5d9e14fe3d14",
+          "detail": {
+            "txHash": "A8BD8C3D9A1C982BFE57E5C65027CFE2B8107901779BDE92AC705C2E47584253",
+            "feeDrops": "12",
+            "ledgerIndex": 22175723
+          },
+          "createdAt": "2026-11-08T22:55:28.755Z"
+        }
+      ]
+    }
+  ]
+}

@@ -14,6 +14,7 @@
     "worker": "pnpm --filter @surety/worker start",
     "spike": "tsx --env-file=.env scripts/spike-escrow.ts",
     "demo:restart": "node --env-file=.env --import tsx scripts/restart-refund-demo.ts",
+    "demo:outcomes": "node --env-file=.env --import tsx scripts/outcomes-demo.ts",
     "test:db": "vitest run --config vitest.db.config.ts",
     "db:start": "supabase start -x studio,imgproxy,analytics,vector,edge-runtime,storage",
     "db:stop": "supabase stop",
