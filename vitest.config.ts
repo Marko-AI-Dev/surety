@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
@@ -7,6 +7,8 @@ export default defineConfig({
       "services/*/test/**/*.test.ts",
       "tests/**/*.test.ts",
     ],
+    // Database tests need the local Supabase stack; they run with pnpm test:db.
+    exclude: [...configDefaults.exclude, "tests/db/**"],
     passWithNoTests: true,
   },
 });

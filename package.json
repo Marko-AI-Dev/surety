@@ -11,16 +11,21 @@
     "typecheck": "tsc -p tsconfig.json",
     "check:boundaries": "tsx scripts/check-boundaries.ts",
     "signer": "pnpm --filter @surety/signer start",
-    "spike": "tsx --env-file=.env scripts/spike-escrow.ts"
+    "spike": "tsx --env-file=.env scripts/spike-escrow.ts",
+    "test:db": "vitest run --config vitest.db.config.ts",
+    "db:start": "supabase start -x studio,imgproxy,analytics,vector,edge-runtime,storage",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset"
   },
   "devDependencies": {
-    "@types/node": "24.19.2",
-    "tsx": "4.23.15",
-    "typescript": "7.0.2",
-    "vitest": "5.1.0",
     "@surety/contracts": "workspace:*",
     "@surety/signer-client": "workspace:*",
     "@surety/xrpl-settlement": "workspace:*",
+    "@types/node": "24.19.2",
+    "postgres": "4.1.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.1.0",
     "xrpl": "5.3.0"
   }
 }

@@ -21,6 +21,7 @@
     "services/*/scripts",
     "scripts",
     "tests",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.db.config.ts"
   ]
 }
