@@ -53,6 +53,7 @@ interface JournalEntry {
   status: "submitted" | "done" | "failed";
   txHash: string;
   lastLedgerSequence?: number;
+  submittedAtLedger?: number;
   escrowKey: string;
   pending?: PendingCreate;
   response?: CreateEscrowResponse | SettleResponse;
@@ -158,11 +159,20 @@ export function createSigner(deps: SignerDeps): Signer {
     }
     if (entry.status === "done") return entry.response as R;
     if (entry.status === "failed") throw new SignerError("ledger_failure", entry.error ?? "operation failed");
-    const r = await ledger.lookup(entry.txHash);
+    // Read the validated height BEFORE the lookup: if it is past LastLedgerSequence, every ledger the
+    // transaction could be in is already validated, so the lookup that follows cannot miss a late inclusion.
+    const heightBeforeLookup = await ledger.validatedLedgerIndex();
+    const range =
+      entry.submittedAtLedger !== undefined && entry.lastLedgerSequence !== undefined
+        ? { minLedger: entry.submittedAtLedger, maxLedger: entry.lastLedgerSequence }
+        : undefined;
+    const r = await ledger.lookup(entry.txHash, range);
     if (!r.validated) {
-      const pastLastLedger =
-        entry.lastLedgerSequence !== undefined && (await ledger.validatedLedgerIndex()) > entry.lastLedgerSequence;
-      if (pastLastLedger) {
+      // Absence is proven only when the height is past LastLedgerSequence AND the node confirms it
+      // holds every ledger in the range. Anything less stays pending.
+      const provenAbsent =
+        range !== undefined && heightBeforeLookup > range.maxLedger && r.searchedAll === true;
+      if (provenAbsent) {
         const error = "transaction never validated and its LastLedgerSequence has passed, so it can never be included";
         writeJournal({ ...entry, status: "failed", error });
         throw new SignerError("ledger_failure", error);
@@ -188,6 +198,13 @@ export function createSigner(deps: SignerDeps): Signer {
 
   // The hash is journaled before submission so a crash or timeout can be resolved by lookup.
   async function submit(entry: JournalEntry, txBlob: string) {
+    let submittedAtLedger: number;
+    try {
+      submittedAtLedger = await ledger.validatedLedgerIndex();
+    } catch {
+      throw new SignerError("ledger_failure", "could not read the ledger before submitting; retry with the same opId");
+    }
+    entry = { ...entry, submittedAtLedger };
     writeJournal(entry);
     let res: SubmitResult;
     try {

@@ -233,6 +233,36 @@ describe("finishEscrow", () => {
     expect(ledger.escrows.size).toBe(1);
   });
 
+  it("does not mark a finish failed when it validates between reading the ledger and looking up the hash", async () => {
+    const signer = makeSigner();
+    const created = await signer.createEscrow(createReq());
+    const req = { opId: randomUUID(), authorization: authFor(created.offerSequence) };
+    ledger.holdNextSubmit = true;
+    await expectCode(signer.finishEscrow(req), "ledger_failure");
+    // While the signer reads the ledger height, the held finish validates and the ledger moves past LastLedgerSequence.
+    ledger.onIndexRead = () => {
+      ledger.releaseHeld();
+      ledger.ledgerIndex += 50;
+    };
+    const res = await signer.finishEscrow(req);
+    expect(res.result).toBe("tesSUCCESS");
+    const journal = JSON.parse(readFileSync(join(dataDir, "journal.json"), "utf8"));
+    expect(journal[req.opId].status).toBe("done");
+  });
+
+  it("keeps a never-validated finish pending when the node cannot confirm it searched the whole ledger range", async () => {
+    const signer = makeSigner();
+    const created = await signer.createEscrow(createReq());
+    const req = { opId: randomUUID(), authorization: authFor(created.offerSequence) };
+    ledger.dropNextSubmit = true;
+    await expectCode(signer.finishEscrow(req), "ledger_failure");
+    ledger.ledgerIndex += 50;
+    ledger.historyGap = true;
+    await expectCode(signer.finishEscrow(req), "op_pending");
+    const range = ledger.lookupRanges.at(-1);
+    expect(range?.maxLedger).toBeGreaterThan(range?.minLedger ?? Number.POSITIVE_INFINITY);
+  });
+
   it("lets the same request retry when preparing the transaction failed before anything was signed", async () => {
     const signer = makeSigner();
     const created = await signer.createEscrow(createReq());

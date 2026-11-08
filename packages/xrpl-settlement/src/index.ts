@@ -6,6 +6,7 @@ export {
   getTxResult,
   getValidatedCloseTime,
   type EscrowEntry,
+  type LedgerRange,
   type TxResult,
 } from "./ledger-read";
 export { explorerTxUrl } from "./explorer";

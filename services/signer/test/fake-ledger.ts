@@ -14,7 +14,12 @@ export class FakeLedger implements LedgerPort {
   throwOnNextSubmit = false;
   dropNextSubmit = false;
   throwOnNextAutofill = false;
+  holdNextSubmit = false;
+  historyGap = false;
+  onIndexRead: (() => void) | undefined;
+  lookupRanges: ({ minLedger: number; maxLedger: number } | undefined)[] = [];
   nextResult: string | undefined;
+  private held: { blob: string; hash: string } | undefined;
   private results = new Map<string, TxResult>();
   private sequences = new Map<string, number>();
 
@@ -29,7 +34,20 @@ export class FakeLedger implements LedgerPort {
   }
 
   async validatedLedgerIndex(): Promise<number> {
+    const hook = this.onIndexRead;
+    this.onIndexRead = undefined;
+    hook?.();
     return this.ledgerIndex;
+  }
+
+  // A held transaction reached the network but has not validated yet; this validates it now.
+  releaseHeld(): void {
+    if (!this.held) throw new Error("nothing held");
+    const { blob, hash } = this.held;
+    this.held = undefined;
+    const tx = decode(blob) as Decoded;
+    this.submitted.push(tx);
+    this.results.set(hash, { validated: true, result: this.apply(tx), ledgerIndex: ++this.ledgerIndex, feeDrops: String(tx.Fee) });
   }
 
   async getEscrow(owner: string, offerSequence: number): Promise<EscrowEntry | null> {
@@ -52,6 +70,12 @@ export class FakeLedger implements LedgerPort {
       this.dropNextSubmit = false;
       throw new Error("ECONNRESET before send");
     }
+    if (this.holdNextSubmit) {
+      // Sent, but the client timed out before validation.
+      this.holdNextSubmit = false;
+      this.held = { blob: txBlob, hash };
+      throw new Error("timeout waiting for validation");
+    }
     const tx = decode(txBlob) as Decoded;
     this.submitted.push(tx);
     const result = this.nextResult ?? this.apply(tx);
@@ -65,9 +89,10 @@ export class FakeLedger implements LedgerPort {
     return outcome;
   }
 
-  async lookup(hash: string): Promise<TxResult> {
+  async lookup(hash: string, range?: { minLedger: number; maxLedger: number }): Promise<TxResult> {
     this.lookups.push(hash);
-    return this.results.get(hash) ?? { validated: false };
+    this.lookupRanges.push(range);
+    return this.results.get(hash) ?? { validated: false, searchedAll: range ? !this.historyGap : undefined };
   }
 
   count(type: string): number {

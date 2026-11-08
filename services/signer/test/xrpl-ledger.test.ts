@@ -34,18 +34,29 @@ describe("XrplLedger.submitSigned", () => {
     });
   });
 
-  it("reports conclusive expiry only when the hash is not on the validated ledger", async () => {
+  it("leaves the outcome unknown when the hash is not found, so the signer's ranged lookup decides", async () => {
     const ledger = new XrplLedger(
       "wss://unused",
       stubClient(() => {
         throw Object.assign(new Error("txnNotFound"), { data: { error: "txnNotFound" } });
       }),
     );
-    expect(await ledger.submitSigned("BLOB", "HASH")).toEqual({
+    await expect(ledger.submitSigned("BLOB", "HASH")).rejects.toThrow(/LastLedgerSequence/);
+  });
+
+  it("passes the ledger range to rippled and reports whether it searched all of it", async () => {
+    const seen: Record<string, unknown>[] = [];
+    const client = {
+      request: async (req: Record<string, unknown>) => {
+        seen.push(req);
+        throw Object.assign(new Error("txnNotFound"), { data: { error: "txnNotFound", searched_all: true } });
+      },
+    } as unknown as Client;
+    const ledger = new XrplLedger("wss://unused", client);
+    expect(await ledger.lookup("HASH", { minLedger: 100, maxLedger: 120 })).toEqual({
       validated: false,
-      result: "expired_past_last_ledger_sequence",
-      ledgerIndex: 0,
-      feeDrops: "0",
+      searchedAll: true,
     });
+    expect(seen[0]).toMatchObject({ command: "tx", transaction: "HASH", min_ledger: 100, max_ledger: 120 });
   });
 });

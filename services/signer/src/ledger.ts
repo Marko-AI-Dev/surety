@@ -1,5 +1,5 @@
 import type { SubmittableTransaction } from "xrpl";
-import type { EscrowEntry, TxResult } from "@surety/xrpl-settlement";
+import type { EscrowEntry, LedgerRange, TxResult } from "@surety/xrpl-settlement";
 
 export interface SubmitResult {
   validated: boolean;
@@ -16,5 +16,5 @@ export interface LedgerPort {
   getEscrow(owner: string, offerSequence: number): Promise<EscrowEntry | null>;
   autofill<T extends SubmittableTransaction>(tx: T): Promise<T>;
   submitSigned(txBlob: string, hash: string): Promise<SubmitResult>;
-  lookup(hash: string): Promise<TxResult>;
+  lookup(hash: string, range?: LedgerRange): Promise<TxResult>;
 }

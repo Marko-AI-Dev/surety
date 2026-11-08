@@ -31,7 +31,7 @@ Requires Node 24 and pnpm 10.
 
 ```bash
 pnpm install
-pnpm test                 # 96 tests
+pnpm test                 # 99 tests
 pnpm typecheck
 pnpm check:boundaries     # lint: flags key-handling code outside the signer
 

@@ -1,5 +1,12 @@
 import { Client, type SubmittableTransaction } from "xrpl";
-import { type EscrowEntry, type TxResult, getEscrow, getTxResult, getValidatedCloseTime } from "@surety/xrpl-settlement";
+import {
+  type EscrowEntry,
+  type LedgerRange,
+  type TxResult,
+  getEscrow,
+  getTxResult,
+  getValidatedCloseTime,
+} from "@surety/xrpl-settlement";
 import type { LedgerPort, SubmitResult } from "./ledger";
 
 // LedgerPort backed by a real XRPL node. Fees are bounded at 0.01 XRP per transaction.
@@ -51,8 +58,8 @@ export class XrplLedger implements LedgerPort {
         feeDrops: r.result.tx_json.Fee ?? "0",
       };
     } catch (e) {
-      // xrpl.js can report expiry before it checks the hash, so look the hash up first.
-      // Only a hash absent from the validated ledger after LastLedgerSequence is a conclusive failure.
+      // xrpl.js can report expiry before it checks the hash, so look the hash up. If it is not
+      // found, the outcome stays unknown: only the signer's ranged lookup can prove absence.
       if (e instanceof Error && e.message.includes("LastLedgerSequence")) {
         const found = await getTxResult(this.client, hash);
         if (found.validated) {
@@ -63,13 +70,12 @@ export class XrplLedger implements LedgerPort {
             feeDrops: found.feeDrops ?? "0",
           };
         }
-        return { validated: false, result: "expired_past_last_ledger_sequence", ledgerIndex: 0, feeDrops: "0" };
       }
       throw e;
     }
   }
 
-  lookup(hash: string): Promise<TxResult> {
-    return getTxResult(this.client, hash);
+  lookup(hash: string, range?: LedgerRange): Promise<TxResult> {
+    return getTxResult(this.client, hash, range);
   }
 }
