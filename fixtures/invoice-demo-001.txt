@@ -1,0 +1,7 @@
+TAX INVOICE
+Invoice number: DEMO-001
+Supplier: Demo Supplies
+Currency: ZAR
+2 x USB-C cable @ R150.00 = R300.00
+1 x HDMI adapter @ R100.00 = R100.00
+Total due: R400.00

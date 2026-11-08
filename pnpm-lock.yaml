@@ -45,6 +45,12 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
 
+  packages/gate:
+    dependencies:
+      '@surety/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/signer-client:
     dependencies:
       '@surety/contracts':

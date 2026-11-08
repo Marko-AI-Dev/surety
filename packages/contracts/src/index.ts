@@ -12,6 +12,12 @@ export {
   type SignedAuthorization,
   type VerifyResult,
 } from "./authorization";
+export {
+  DELIVERABLE_MAX_BYTES,
+  InvoiceDeliverableSchema,
+  deliverableHash,
+  type InvoiceDeliverable,
+} from "./deliverable";
 export { MAX_CLOCK_SKEW_MS, SIG_HEADER, TS_HEADER, signRequest, verifyRequest } from "./transport";
 export {
   CancelEscrowRequestSchema,
