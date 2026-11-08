@@ -1,0 +1,159 @@
+{
+  "network": "XRPL Testnet",
+  "recordedAt": "2026-11-08T21:07:21.539Z",
+  "job": {
+    "id": "9eb8167a-29d6-4c01-9e30-8415c31c49a6",
+    "ref": "restart-demo-1794171961022",
+    "snapshotHash": "19d5b79150cae4afd63e30d1b13df61cc28eeb8146759970aa3255201e930ee2",
+    "amountDrops": "1000000",
+    "finalState": "REFUNDED"
+  },
+  "escrow": {
+    "owner": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+    "offerSequence": 22166564,
+    "cancelAfter": 847487221,
+    "cancelAfterIso": "2026-11-08T21:07:01.000Z",
+    "onLedgerAfterRefund": false
+  },
+  "create": {
+    "txHash": "94322CA325BEAFC9D0D0E8BCF847A2FCF3817C0735D22DD042B073C5A58B82FB",
+    "validated": true,
+    "result": "tesSUCCESS",
+    "ledgerIndex": 22173701,
+    "feeDrops": "12",
+    "explorer": "https://testnet.xrpl.org/transactions/94322CA325BEAFC9D0D0E8BCF847A2FCF3817C0735D22DD042B073C5A58B82FB"
+  },
+  "cancel": {
+    "txHash": "4D9C51F2A2AE8FFBED2820B310728ED45C424EAEC42CB2466A924B856D6EA576",
+    "validated": true,
+    "result": "tesSUCCESS",
+    "ledgerIndex": 22173723,
+    "feeDrops": "12",
+    "explorer": "https://testnet.xrpl.org/transactions/4D9C51F2A2AE8FFBED2820B310728ED45C424EAEC42CB2466A924B856D6EA576"
+  },
+  "worker1": {
+    "startedAt": "2026-11-08T21:06:08.460Z",
+    "killedAt": "2026-11-08T21:06:23.842Z",
+    "killSignal": "SIGKILL",
+    "ledgerCloseTimeAtKill": 847487181,
+    "ledgerCloseTimeAtKillIso": "2026-11-08T21:06:21.000Z",
+    "secondsBeforeCancelAfterAtKill": 40,
+    "killedBeforeExpiry": true,
+    "jobStateAtKill": "LOCKED",
+    "output": [
+      "2026-11-08T21:06:09.345Z  Surety expiry worker | sweep every 5000 ms"
+    ]
+  },
+  "worker2": {
+    "startedAt": "2026-11-08T21:07:08.050Z",
+    "ledgerCloseTimeAtStart": 847487222,
+    "ledgerCloseTimeAtStartIso": "2026-11-08T21:07:02.000Z",
+    "refundObservedAt": "2026-11-08T21:07:20.104Z",
+    "stoppedAt": "2026-11-08T21:07:21.119Z",
+    "refundedByWorker2": true,
+    "output": [
+      "2026-11-08T21:07:08.956Z  Surety expiry worker | sweep every 5000 ms",
+      "2026-11-08T21:07:19.174Z  refunded restart-demo-1794171961022 (9eb8167a-29d6-4c01-9e30-8415c31c49a6)"
+    ]
+  },
+  "jobEvents": [
+    {
+      "id": 1,
+      "jobId": "9eb8167a-29d6-4c01-9e30-8415c31c49a6",
+      "fromState": "DRAFT",
+      "toState": "CREATE_PENDING",
+      "actor": "restart-demo",
+      "reasonCodes": [
+        "fund_requested"
+      ],
+      "correlationId": null,
+      "detail": null,
+      "createdAt": "2026-11-08T21:06:01.051Z"
+    },
+    {
+      "id": 2,
+      "jobId": "9eb8167a-29d6-4c01-9e30-8415c31c49a6",
+      "fromState": "CREATE_PENDING",
+      "toState": "LOCKED",
+      "actor": "restart-demo",
+      "reasonCodes": [
+        "validated_tesSUCCESS"
+      ],
+      "correlationId": "d6972790-dc1f-553c-90f1-c7977505508b",
+      "detail": {
+        "txHash": "94322CA325BEAFC9D0D0E8BCF847A2FCF3817C0735D22DD042B073C5A58B82FB",
+        "ledgerIndex": 22173701,
+        "offerSequence": 22166564
+      },
+      "createdAt": "2026-11-08T21:06:08.445Z"
+    },
+    {
+      "id": 3,
+      "jobId": "9eb8167a-29d6-4c01-9e30-8415c31c49a6",
+      "fromState": "LOCKED",
+      "toState": "EXPIRED_AWAITING_CANCEL",
+      "actor": "expiry-worker",
+      "reasonCodes": [
+        "ledger_time_past_cancel_after"
+      ],
+      "correlationId": "5fbf20f4-6a2f-563c-893c-e702062786e2",
+      "detail": {
+        "closeTime": 847487231,
+        "cancelAfter": 847487221
+      },
+      "createdAt": "2026-11-08T21:07:11.609Z"
+    },
+    {
+      "id": 4,
+      "jobId": "9eb8167a-29d6-4c01-9e30-8415c31c49a6",
+      "fromState": "EXPIRED_AWAITING_CANCEL",
+      "toState": "CANCEL_PENDING",
+      "actor": "expiry-worker",
+      "reasonCodes": [
+        "cancel_requested"
+      ],
+      "correlationId": "5fbf20f4-6a2f-563c-893c-e702062786e2",
+      "detail": null,
+      "createdAt": "2026-11-08T21:07:11.618Z"
+    },
+    {
+      "id": 5,
+      "jobId": "9eb8167a-29d6-4c01-9e30-8415c31c49a6",
+      "fromState": "CANCEL_PENDING",
+      "toState": "REFUNDED",
+      "actor": "expiry-worker",
+      "reasonCodes": [
+        "validated_tesSUCCESS"
+      ],
+      "correlationId": "5fbf20f4-6a2f-563c-893c-e702062786e2",
+      "detail": {
+        "txHash": "4D9C51F2A2AE8FFBED2820B310728ED45C424EAEC42CB2466A924B856D6EA576",
+        "feeDrops": "12",
+        "ledgerIndex": 22173723
+      },
+      "createdAt": "2026-11-08T21:07:19.167Z"
+    }
+  ],
+  "transactions": [
+    {
+      "operationId": "d6972790-dc1f-553c-90f1-c7977505508b",
+      "jobId": "9eb8167a-29d6-4c01-9e30-8415c31c49a6",
+      "type": "create",
+      "txHash": "94322CA325BEAFC9D0D0E8BCF847A2FCF3817C0735D22DD042B073C5A58B82FB",
+      "status": "validated",
+      "result": "tesSUCCESS",
+      "ledgerIndex": 22173701,
+      "feeDrops": null
+    },
+    {
+      "operationId": "5fbf20f4-6a2f-563c-893c-e702062786e2",
+      "jobId": "9eb8167a-29d6-4c01-9e30-8415c31c49a6",
+      "type": "cancel",
+      "txHash": "4D9C51F2A2AE8FFBED2820B310728ED45C424EAEC42CB2466A924B856D6EA576",
+      "status": "validated",
+      "result": "tesSUCCESS",
+      "ledgerIndex": 22173723,
+      "feeDrops": "12"
+    }
+  ]
+}

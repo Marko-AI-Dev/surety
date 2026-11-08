@@ -13,11 +13,12 @@ flowchart LR
   Seller[Seller agent<br/>Claude Haiku 5.5]:::planned
 
   subgraph App[Surety app]
-    API[API and workflow<br/>job state machine]:::planned
+    API[API<br/>post, fund, deliver]:::planned
+    Workflow[Workflow<br/>guarded job state machine]:::built
     Rules[Deterministic checks<br/>schema, arithmetic, source match]:::planned
     Jev[Jev evaluator<br/>via OpenRouter]:::planned
-    Worker[Expiry worker<br/>restart-safe refunds]:::planned
-    DB[(Supabase<br/>mirror of jobs and receipts)]:::planned
+    Worker[Expiry worker<br/>restart-safe refunds]:::built
+    DB[(Supabase<br/>mirror of jobs, escrows,<br/>transactions, job events)]:::built
     UI[Live pipeline view<br/>receipts, limits panel]:::planned
   end
 
@@ -30,14 +31,17 @@ flowchart LR
   Operator -->|sets caps and allowlist| UI
   Buyer -->|post job, fund| API
   Seller -->|deliver JSON| API
-  API --> Rules --> Jev
+  API --> Workflow
+  Workflow --> Rules --> Jev
   Jev -->|pass: signed one-use authorization| Signer
   Worker -->|expired: cancel| Signer
-  API -->|fund: create escrow| Signer
+  Workflow -->|fund: create escrow| Signer
   Signer -->|signed transactions| XRPL
-  API --- DB
+  Workflow --- DB
+  Worker --- DB
   UI --- DB
-  XRPL -.->|validated results| API
+  XRPL -.->|validated results| Workflow
+  XRPL -.->|validated close time| Worker
 ```
 
 Green is built and proven on testnet. Dashed is planned for the rest of the hackathon.
@@ -50,6 +54,8 @@ Green is built and proven on testnet. Dashed is planned for the rest of the hack
 - **Payment needs a secret only the signer holds.** Each escrow is locked with a PREIMAGE-SHA-256 condition. The matching fulfillment is encrypted at rest and only released on chain inside an authorized EscrowFinish.
 - **Ledger time decides, not laptop time.** Finish is refused close to expiry and cancel is refused before expiry, both by validated ledger close time.
 - **Validated `tesSUCCESS` is the only success.** Transaction hashes are journaled before submission, so a timeout is resolved by lookup and never by signing twice.
+- **The database mirrors; the ledger decides.** Every job state change goes through one guarded transition: it checks the allowed-transition map, updates only if the row is still in the expected state, and appends a `job_events` row in the same database transaction. `job_events` is append-only (a trigger refuses UPDATE and DELETE). `PAID`, `REFUNDED` and `CREATE_FAILED` are terminal; `RECONCILIATION_REQUIRED` freezes a job until a person looks.
+- **Refunds survive restarts.** The expiry worker holds nothing in memory. It sweeps on boot and every few seconds for funded jobs whose escrow is past `CancelAfter` by validated ledger close time, and asks the signer to cancel. Operation ids are derived from the job id, so a restarted worker sends the same id and the signer replays its journaled outcome instead of signing again. A signer that is unreachable or still waiting leaves the job `CANCEL_PENDING` for the next sweep; an escrow that is already gone or does not match sends the job to `RECONCILIATION_REQUIRED`, never to `REFUNDED`.
 
 What the ledger does not do: it does not understand the work. A compromised gate or signer could still release wrongly. That is why the gate is layered (rules first, then Jev, both fail closed) and why every release carries a binding to the exact job, deliverable and policy version.
 
