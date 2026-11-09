@@ -118,7 +118,7 @@ describe("evaluateJob for a deal: Surety Verify", () => {
     expect(engine.inputs[0]?.state.accepted_quote).toEqual(terms);
     expect(engine.inputs[0]).toMatchObject({
       questionSet: "trade",
-      policyVersion: "policy-v3-trade",
+      policyVersion: "policy-v4-trade",
       state: {
         purchase_order: job.sourceText,
         commercial_invoice: (job.deliverable as TradeDocuments).commercialInvoice,
@@ -126,7 +126,7 @@ describe("evaluateJob for a deal: Surety Verify", () => {
       },
     });
     const decision = await decisionOf(job);
-    expect(decision).toMatchObject({ outcome: "APPROVE", policyVersion: "policy-v3-trade", samples: null });
+    expect(decision).toMatchObject({ outcome: "APPROVE", policyVersion: "policy-v4-trade", samples: null });
     expect(decision?.rules).toMatchObject({ passed: true, reader: { kind: "parser", model: null } });
   });
 
@@ -197,7 +197,7 @@ describe("evaluateJob for a deal: Surety Verify", () => {
   it("deps.policy does not override a deal's frozen policy", async () => {
     const after = await evaluate(await deliveredDeal(doc("docs-honest")), scripted([0.85, 0.02]), { policy: POLICY_V1 });
     expect(after.state).toBe("APPROVED");
-    expect((await decisionOf(after))?.policyVersion).toBe("policy-v3-trade");
+    expect((await decisionOf(after))?.policyVersion).toBe("policy-v4-trade");
   });
 
   it("the honest deal is PAID end to end through runEngineOnce with the fake signer", async () => {

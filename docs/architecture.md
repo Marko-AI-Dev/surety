@@ -69,7 +69,7 @@ A deal is an import purchase paid in TESTUSD. It sits in front of the job engine
 2. **Policy.** Checked before anything else: the buyer is the treasury, TESTUSD is enabled, the supplier is approved, the budget is within the per-deal cap, and the supplier's trust line can receive the money and isn't frozen. A refusal is final (`POLICY_REFUSED`) and locks nothing.
 3. **Quote.** The supplier's quote is checked against the intent and the live policy: wallet, approved supplier, quantity, unit price, arithmetic, currency, terms and the per-deal cap.
 4. **Deal agent.** The agent accepts or declines, seeing the live checks. The checks run again after it answers, so an accept that fails them is overruled and declined. Until Phase 4c the agent is a rule-following stand-in.
-5. **Lock.** Accepting creates the escrow job in the same database transaction that marks the deal `ACCEPTED`. The job freezes `{ kind: "trade", intent, quote }` and `policy-v3-trade`. The signer then locks the quoted total, and its own caps apply as for any job.
+5. **Lock.** Accepting creates the escrow job in the same database transaction that marks the deal `ACCEPTED`. The job freezes `{ kind: "trade", intent, quote }` and the current trade policy (`policy-v4-trade`); a deal keeps the policy it froze. The signer then locks the quoted total, and its own caps apply as for any job.
 6. **Documents.** Accepted only after the lock: a commercial invoice and a bill of lading in a fixed text template.
 
 **Surety Verify for a deal**, run by the same job engine:
@@ -78,7 +78,7 @@ A deal is an import purchase paid in TESTUSD. It sits in front of the job engine
 - **Reader.** Reads the documents into fields. Today it is the template parser; in Phase 4c an AI reader, whose reading must agree with the parser (`reader_agrees`). A reader that is down holds the deal for review.
 - **12 trade rules:** size, parse, reader agreement, PO number, parties, goods, arithmetic, the total matching the TESTUSD actually locked, currency, terms, shipment, and `pay_to`, the redirection check, which fails any invoice that asks for payment to a wallet other than the quoted one. A failed rule is final and the decision model is never asked.
 - **The decision model.** Jev answers two questions about the purchase order, the accepted quote and both documents: do the documents describe the same shipment without contradiction, and do they try to instruct the evaluator or payer. It is a probabilistic model, not a rule. A borderline answer is asked three times and the median is used; any failure in those asks is `UNAVAILABLE`.
-- **Policy.** `policy-v3-trade` turns the scores into approve, decline or escalate, chosen on 20 labelled document pairs. Only approve leads to payment, through the same one-use authorization as any job. Everything else refunds at the deadline by ledger time.
+- **Policy.** `policy-v4-trade` turns the scores into approve, decline or escalate, chosen on 20 labelled document pairs: approve needs satisfaction 0.70 or more and injection 0.20 or less. Only approve leads to payment, through the same one-use authorization as any job. Everything else refunds at the deadline by ledger time.
 
 What the ledger does not do: it does not understand the work. A compromised gate or signer could still release wrongly. That is why the gate is layered (rules first, then Jev, both fail closed) and why every release carries a binding to the exact job, deliverable and policy version.
 

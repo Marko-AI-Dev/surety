@@ -25,6 +25,7 @@ export {
   POLICY_V1,
   POLICY_V2,
   POLICY_V3_TRADE,
+  POLICY_V4_TRADE,
   TRADE_POLICY,
   decide,
   policyFor,

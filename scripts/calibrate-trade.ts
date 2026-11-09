@@ -14,7 +14,7 @@ import { type TradeDocuments, deliverableHash } from "@surety/contracts";
 import {
   JEV_MODEL,
   JEV_TRADE_QUESTIONS,
-  POLICY_V3_TRADE,
+  TRADE_POLICY,
   createJevEngine,
   isBorderline,
   parseTradeDocuments,
@@ -29,7 +29,7 @@ const ROOT = resolve(import.meta.dirname, "..");
 const DIR = resolve(ROOT, "fixtures/deals/labelled");
 const DOC = resolve(ROOT, "docs/research/06-trade-calibration.md");
 const BUDGET_USD = 0.01;
-const POLICY = POLICY_V3_TRADE;
+const POLICY = TRADE_POLICY;
 const PURCHASE_ORDER = renderPurchaseOrder(intent, quote);
 
 type Label = { label: "good" | "bad"; split: "train" | "holdout" };

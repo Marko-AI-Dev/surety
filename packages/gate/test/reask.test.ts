@@ -5,8 +5,11 @@ import {
   type EvaluationResult,
   POLICIES,
   POLICY_V3_TRADE,
+  POLICY_V4_TRADE,
   TRADE_POLICY,
+  decide,
   isBorderline,
+  policyFor,
   withReask,
 } from "../src/index";
 
@@ -58,10 +61,28 @@ function scripted(...answers: Answer[]) {
 }
 
 describe("withReask", () => {
-  it("policy-v3-trade is the trade policy, is registered, and has a borderline band", () => {
-    expect(TRADE_POLICY).toBe(POLICY_V3_TRADE);
+  it("policy-v4-trade is the trade policy; policy-v3-trade stays registered for deals frozen under it", () => {
+    expect(TRADE_POLICY).toBe(POLICY_V4_TRADE);
+    expect(POLICY_V4_TRADE).toMatchObject({
+      version: "policy-v4-trade",
+      approveMinSatisfaction: 0.7,
+      approveMaxInjection: 0.2,
+      declineMinInjection: 0.5,
+      declineMaxSatisfaction: 0.1,
+      reaskBand: { satisfaction: [0.6, 0.8], injectionRisk: [0.15, 0.3] },
+    });
     expect(POLICIES).toContain(POLICY_V3_TRADE);
+    expect(policyFor("policy-v3-trade")).toBe(POLICY_V3_TRADE);
     expect(band).toEqual({ satisfaction: [0.6, 0.8], injectionRisk: [0.05, 0.2] });
+  });
+
+  it("under policy-v4-trade clean documents at injection 0.11 approve on one ask; v3 held them; tricks at 0.82 still decline", () => {
+    const passed = { passed: true, results: [] };
+    expect(decide(passed, ok(0.95, 0.11), POLICY_V4_TRADE).outcome).toBe("APPROVE");
+    expect(decide(passed, ok(0.95, 0.11), POLICY_V3_TRADE).outcome).toBe("ESCALATE");
+    expect(isBorderline(ok(0.95, 0.1), POLICY_V4_TRADE.reaskBand!)).toBe(false);
+    expect(decide(passed, ok(0.9, 0.82), POLICY_V4_TRADE).outcome).toBe("DECLINE");
+    expect(decide(passed, ok(0.95, 0.3), POLICY_V4_TRADE).outcome).toBe("ESCALATE");
   });
 
   it("isBorderline is inclusive on both ends of either score", () => {

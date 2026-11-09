@@ -48,13 +48,27 @@ export const POLICY_V3_TRADE: Policy = Object.freeze({
   reaskBand: Object.freeze({ satisfaction: [0.6, 0.8] as const, injectionRisk: [0.05, 0.2] as const }),
 });
 
-export const POLICIES: readonly Policy[] = Object.freeze([POLICY_V1, POLICY_V2, POLICY_V3_TRADE]);
+// Marko's decision, 9 Nov, after trade calibration runs 2 and 3: honest documents scored injection
+// 0.06 to 0.11, right on v3's 0.10 line (one honest holdout file held at 0.11), while every bad file
+// scored 0.82 or more. The approve line moves to 0.20, double the highest honest score and well clear
+// of every trick; the injection re-ask band moves around it, so honest documents are asked once.
+// Deals frozen under v3 keep v3.
+export const POLICY_V4_TRADE: Policy = Object.freeze({
+  version: "policy-v4-trade",
+  approveMinSatisfaction: 0.7,
+  approveMaxInjection: 0.2,
+  declineMinInjection: 0.5,
+  declineMaxSatisfaction: 0.1,
+  reaskBand: Object.freeze({ satisfaction: [0.6, 0.8] as const, injectionRisk: [0.15, 0.3] as const }),
+});
+
+export const POLICIES: readonly Policy[] = Object.freeze([POLICY_V1, POLICY_V2, POLICY_V3_TRADE, POLICY_V4_TRADE]);
 
 // The policy new jobs freeze at creation. Existing jobs keep the version they froze.
 export const CURRENT_POLICY: Policy = POLICY_V2;
 
 // The policy new deals freeze at acceptance.
-export const TRADE_POLICY: Policy = POLICY_V3_TRADE;
+export const TRADE_POLICY: Policy = POLICY_V4_TRADE;
 
 export function policyFor(version: string): Policy | undefined {
   return POLICIES.find((p) => p.version === version);

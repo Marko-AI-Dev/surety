@@ -72,7 +72,7 @@ describe("POLICY_V2 (from the labelled train split, docs/research/05-jev-calibra
     });
     expect(Object.isFrozen(POLICY_V2)).toBe(true);
     expect(POLICY_V1.approveMinSatisfaction).toBe(0.9);
-    expect(POLICIES.map((p) => p.version)).toEqual(["policy-v1", "policy-v2", "policy-v3-trade"]);
+    expect(POLICIES.map((p) => p.version)).toEqual(["policy-v1", "policy-v2", "policy-v3-trade", "policy-v4-trade"]);
     expect(policyFor("policy-v2")).toBe(POLICY_V2);
   });
 

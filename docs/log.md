@@ -44,6 +44,7 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | Limits change instantly through an operator-only signer operation with its own secret, which the worker and agents never hold, and every change is kept in a history file | Marko chose live changes over restart-to-apply. The demo shows the operator lowering a cap and the agent's next deal being refused. The signer becomes three money operations plus one policy update |
 | 2026-11-09 | In Phase 4b, Surety Verify re-asks the decision model when a score lands next to a threshold and uses the middle of three answers | Jev's scores move a few hundredths between identical calls (OpenRouter and TypeSafe document this). Only borderline cases cost the two extra calls |
 | 2026-11-09 | Demo limits now: $100,000 per deal, $500,000 per 24h, 10 open (live policy v5, set with `pnpm limits:set`, and the new config defaults). Replaces the small build limits | Marko wants realistic $40k to $50k deals; no testnet limit exists. All caps are our own operator policy |
+| 2026-11-09 | New deals use `policy-v4-trade`: pay only if the trick (injection) score is 0.20 or lower, up from 0.10, and re-ask between 0.15 and 0.30. Deals already locked keep `policy-v3-trade` | Marko's call after calibration: honest documents scored 0.06 to 0.11, right on the old line, while every trick scored 0.82 or more. Holding a clean deal costs time; paying a trick costs money, so the line stays on the cautious side of the gap |
 
 ## Open questions
 

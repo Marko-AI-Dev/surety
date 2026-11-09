@@ -97,7 +97,7 @@ describe("submitQuote and decideQuote: the Quote step", () => {
     expect(deal.state).toBe("QUOTE_RECEIVED");
     const { deal: accepted, job } = await decideQuote(deps(), deal.id);
     expect(accepted).toMatchObject({ state: "ACCEPTED", decision: { final: "accept", agent: { outcome: "accept", kind: "stand-in" } } });
-    expect(job).toMatchObject({ state: "LOCKED", ref: deal.ref, amount: { asset: "TESTUSD", cents: "4800000" }, sellerAddress: SUPPLIER, policyVersion: "policy-v3-trade" });
+    expect(job).toMatchObject({ state: "LOCKED", ref: deal.ref, amount: { asset: "TESTUSD", cents: "4800000" }, sellerAddress: SUPPLIER, policyVersion: "policy-v4-trade" });
     const create = signer.calls.find((c) => c.method === "create")?.req as CreateEscrowRequest;
     expect(create).toMatchObject({ destination: SUPPLIER, amountTestUsdCents: "4800000", cancelAfterSeconds: 300 });
     expect(create.amountDrops).toBeUndefined();
