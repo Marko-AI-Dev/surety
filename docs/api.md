@@ -65,6 +65,23 @@ Opens a sourcing from the buyer's brief.
 - **For lead and view:** the full view, `{ brief (with maxUnitCents), invites: [{ address, name, status, cards: { yellow, red }, quote, dealId }], reports: [{ supplier, offer, summary } or { supplier, offer, withheld: true }], suggestions, secondsLeft, state, dealId }`.
 - **For sourcing and negotiator:** `{ goods: { description, quantity, targetUnitCents }, incoterm, port, secondsLeft, invites: [{ address, name, status, committed }] }`, with no maximum and no committed prices.
 
+### `GET /sourcing` (lead, view)
+
+The 20 newest sourcings: `[{ id, ref, state, goods, quantity, incoterm, port, negotiationEndsAt, dealId, createdAt }]`. No prices.
+
+### `GET /sourcing/:id/record` (view)
+
+The operator's record of one sourcing, for the web app. It has the same shape as `evidence/sourcing-*.json`, so a live run and a recorded run render with the same code:
+
+- `sourcing` (with the full brief), `invites` (status, cards, committed quote), `suggestions`
+- `messages`: every message with its bouncer result, **held messages in full**
+- `deals` with their decision and events, `job` with its events, `verify` (outcome, scores, rules)
+- `create`, `finish`, `cancel`: the validated ledger transactions with explorer links, or `null`
+- `policy`: the signer's live limits, policy version and approved suppliers with their hold status
+- `treasuryCents` and `checks` are `null`: only the evidence script reads the ledger for them
+
+Read-only: it reads the database and the signer's health, never the ledger or the decision model. Because it carries held messages and the maximum price, every role except `view` gets `403`.
+
 ### `GET /suppliers` (lead, sourcing)
 
 The approved suppliers: `[{ address, name, onHold }]`. A supplier is on hold after any card until the operator clears it (`pnpm supplier:clear`).

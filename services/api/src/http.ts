@@ -35,6 +35,7 @@ import {
   supplierThread,
 } from "@surety/workflow";
 import type { ApiTokens } from "./config";
+import { sourcingList, sourcingRecord } from "./record";
 
 // The Surety API: the only door for the buyer's agents, the supplier agents and the UI. One bearer
 // token per role and one per supplier, so a token names exactly one caller, and each route lists the
@@ -124,6 +125,9 @@ export function createApiServer(
 
   const routes: Route[] = [
     { method: "POST", pattern: /^\/sourcing$/, roles: ["lead"], handle: ({ body }) => openSourcing(deps, body) },
+    { method: "GET", pattern: /^\/sourcing$/, roles: ["lead", "view"], handle: () => sourcingList(deps, 20) },
+    // The operator's full record of a sourcing, held messages and the maximum included: view only.
+    { method: "GET", pattern: /^\/sourcing\/([^/]+)\/record$/, roles: ["view"], handle: ({ id }) => sourcingRecord(deps, id) },
     {
       method: "GET",
       pattern: /^\/sourcing\/([^/]+)$/,
