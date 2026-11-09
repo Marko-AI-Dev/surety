@@ -143,3 +143,35 @@ describe("row level security", () => {
     ]);
   });
 });
+
+describe("asset columns", () => {
+  it.each([
+    ["XRP with no amount", { asset: "XRP", amount_drops: null, amount_testusd_cents: null }],
+    ["XRP with both amounts", { asset: "XRP", amount_drops: "1000000", amount_testusd_cents: "100" }],
+    ["TESTUSD with no amount", { asset: "TESTUSD", amount_drops: null, amount_testusd_cents: null }],
+    ["TESTUSD with drops", { asset: "TESTUSD", amount_drops: "1000000", amount_testusd_cents: null }],
+  ])("refuses a job whose asset and amount columns disagree: %s", async (_name, columns) => {
+    await expect(insertJob(columns)).rejects.toMatchObject({ code: "23514" });
+  });
+
+  it("accepts a TESTUSD job holding cents only, and existing jobs default to XRP", async () => {
+    const usd = await insertJob({ asset: "TESTUSD", amount_drops: null, amount_testusd_cents: "4800000" });
+    expect(usd).toMatchObject({ asset: "TESTUSD", amount_drops: null, amount_testusd_cents: "4800000" });
+    expect((await insertJob()).asset).toBe("XRP");
+  });
+
+  it("refuses an unknown asset", async () => {
+    await expect(insertJob({ asset: "USDT" })).rejects.toMatchObject({ code: "23514" });
+  });
+
+  it("refuses a TESTUSD escrow without an issuer, and an XRP escrow with one", async () => {
+    const usdJob = await insertJob({ asset: "TESTUSD", amount_drops: null, amount_testusd_cents: "4800000" });
+    const usdEscrow = escrow(usdJob.id, { asset: "TESTUSD", amount_drops: null, amount_testusd_cents: "4800000" });
+    await expect(sql`insert into escrows ${sql(usdEscrow)}`).rejects.toMatchObject({ code: "23514" });
+    await sql`insert into escrows ${sql({ ...usdEscrow, issuer: "rIssuerAddressForSchemaTests00001" })}`;
+    const xrpJob = await insertJob();
+    await expect(
+      sql`insert into escrows ${sql(escrow(xrpJob.id, { issuer: "rIssuerAddressForSchemaTests00001" }))}`,
+    ).rejects.toMatchObject({ code: "23514" });
+  });
+});

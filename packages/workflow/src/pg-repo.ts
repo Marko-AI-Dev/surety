@@ -1,4 +1,5 @@
 import postgres, { type Row } from "postgres";
+import type { AssetAmount } from "@surety/contracts";
 import type { Operation } from "./operation-id";
 import {
   AuthorizationConflict,
@@ -28,7 +29,7 @@ function toJob(r: Row): Job {
     network: r.network,
     buyerAddress: r.buyer_address,
     sellerAddress: r.seller_address,
-    amount: { asset: "XRP", drops: r.amount_drops },
+    amount: amountOf(r),
     sourceText: r.source_text,
     criteria: r.criteria,
     snapshotHash: r.snapshot_hash,
@@ -82,14 +83,22 @@ function toAuthorization(r: Row): AuthorizationRow {
 
 const UNIQUE_VIOLATION = "23505";
 
-function toEscrow(r: Row, amountColumn = "amount_drops"): EscrowRow {
+// numeric columns arrive as strings. The schema guarantees exactly one amount column is set.
+function amountOf(r: Row, prefix = ""): AssetAmount {
+  return r[`${prefix}asset`] === "TESTUSD"
+    ? { asset: "TESTUSD", cents: String(r[`${prefix}amount_testusd_cents`]) }
+    : { asset: "XRP", drops: String(r[`${prefix}amount_drops`]) };
+}
+
+// prefix is set when escrow columns are aliased in a join with jobs (which has the same names).
+function toEscrow(r: Row, prefix = ""): EscrowRow {
   return {
     jobId: r.job_id,
     owner: r.owner,
     offerSequence: r.offer_sequence,
     destination: r.destination,
-    amount: { asset: "XRP", drops: r[amountColumn] },
-    issuer: null,
+    amount: amountOf(r, prefix),
+    issuer: r[`${prefix}issuer`] ?? null,
     condition: r.condition,
     cancelAfter: r.cancel_after,
     createTxHash: r.create_tx_hash,
@@ -132,11 +141,11 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
   return {
     async createJob(input) {
       assertAmount(input.amount);
-      if (input.amount.asset !== "XRP") throw new Error("TESTUSD jobs need the asset columns (Phase 4a Task 9)");
+      const { asset, drops, cents } = amountColumns(input.amount);
       const [row] = await sql`
-        insert into jobs (ref, buyer_address, seller_address, amount_drops, source_text, criteria,
-                          snapshot_hash, policy_version, cancel_after_seconds, criteria_text)
-        values (${input.ref}, ${input.buyerAddress}, ${input.sellerAddress}, ${input.amount.drops},
+        insert into jobs (ref, buyer_address, seller_address, asset, amount_drops, amount_testusd_cents, source_text,
+                          criteria, snapshot_hash, policy_version, cancel_after_seconds, criteria_text)
+        values (${input.ref}, ${input.buyerAddress}, ${input.sellerAddress}, ${asset}, ${drops}, ${cents},
                 ${input.sourceText}, ${json(input.criteria)}, ${snapshotHash(input)}, ${input.policyVersion},
                 ${input.cancelAfterSeconds}, ${input.criteriaText ?? null})
         returning *`;
@@ -174,11 +183,12 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
 
     async attachEscrow(row) {
       assertAmount(row.amount);
-      if (row.amount.asset !== "XRP") throw new Error("TESTUSD escrows need the asset columns (Phase 4a Task 9)");
+      const { asset, drops, cents } = amountColumns(row.amount);
       await sql`
-        insert into escrows (job_id, network, owner, offer_sequence, destination, amount_drops, condition,
-                             cancel_after, create_tx_hash, create_ledger_index)
-        values (${row.jobId}, 'testnet', ${row.owner}, ${row.offerSequence}, ${row.destination}, ${row.amount.drops},
+        insert into escrows (job_id, network, owner, offer_sequence, destination, asset, amount_drops,
+                             amount_testusd_cents, issuer, condition, cancel_after, create_tx_hash, create_ledger_index)
+        values (${row.jobId}, 'testnet', ${row.owner}, ${row.offerSequence}, ${row.destination}, ${asset}, ${drops},
+                ${cents}, ${row.issuer},
                 ${row.condition}, ${row.cancelAfter}, ${row.createTxHash}, ${row.createLedgerIndex})`;
     },
 
@@ -207,12 +217,13 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
 
     async listDueForCancel(ledgerCloseTime) {
       const rows = await sql`
-        select j.*, e.job_id, e.owner, e.offer_sequence, e.destination, e.amount_drops as escrow_amount_drops,
-               e.condition, e.cancel_after, e.create_tx_hash, e.create_ledger_index
+        select j.*, e.job_id, e.owner, e.offer_sequence, e.destination, e.asset as escrow_asset,
+               e.amount_drops as escrow_amount_drops, e.amount_testusd_cents as escrow_amount_testusd_cents,
+               e.issuer as escrow_issuer, e.condition, e.cancel_after, e.create_tx_hash, e.create_ledger_index
         from jobs j join escrows e on e.job_id = j.id
         where j.state = any(${[...CANCELLABLE_STATES]}::text[]) and e.cancel_after < ${ledgerCloseTime}
         order by e.cancel_after, j.id`;
-      return rows.map((r) => ({ job: toJob(r), escrow: toEscrow(r, "escrow_amount_drops") }));
+      return rows.map((r) => ({ job: toJob(r), escrow: toEscrow(r, "escrow_") }));
     },
 
     async listFundingToResume(minPendingAgeSeconds) {
@@ -323,4 +334,10 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
     if (!row) throw new Error("insert into decisions returned no row");
     return toDecision(row);
   }
+}
+
+function amountColumns(a: AssetAmount): { asset: string; drops: string | null; cents: string | null } {
+  return a.asset === "XRP"
+    ? { asset: "XRP", drops: a.drops, cents: null }
+    : { asset: "TESTUSD", drops: null, cents: a.cents };
 }
