@@ -29,7 +29,8 @@
     "api:tokens": "tsx services/api/scripts/make-tokens.ts",
     "suppliers": "pnpm --filter @surety/supplier-agents start",
     "suppliers:directory": "node --env-file=.env --import tsx scripts/supplier-directory.ts",
-    "supplier:clear": "node --env-file=.env --import tsx scripts/clear-supplier.ts"
+    "supplier:clear": "node --env-file=.env --import tsx scripts/clear-supplier.ts",
+    "paperclip:team": "tsx scripts/paperclip-team.ts"
   },
   "devDependencies": {
     "@surety/contracts": "workspace:*",
