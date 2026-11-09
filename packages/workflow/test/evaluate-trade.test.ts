@@ -114,12 +114,13 @@ describe("evaluateJob for a deal: Surety Verify", () => {
     const after = await evaluate(job, engine);
     expect(after.state).toBe("APPROVED");
     expect(engine.inputs).toHaveLength(1);
+    const { notes: _notes, ...terms } = quote;
+    expect(engine.inputs[0]?.state.accepted_quote).toEqual(terms);
     expect(engine.inputs[0]).toMatchObject({
       questionSet: "trade",
       policyVersion: "policy-v3-trade",
       state: {
         purchase_order: job.sourceText,
-        accepted_quote: quote,
         commercial_invoice: (job.deliverable as TradeDocuments).commercialInvoice,
         bill_of_lading: doc("docs-honest").billOfLading,
       },

@@ -19,10 +19,13 @@ export function invoiceState(criteria: string, sourceText: string, deliverable: 
 }
 
 // A deal's evidence. Calibration and production both build it here, so they judge identical input.
+// The quote goes in as agreed terms only: its free-text notes are supplier-written and stay out, so
+// the model's reference for what was agreed carries no supplier instructions.
 export function tradeState(purchaseOrder: string, quote: SupplierQuote, docs: TradeDocuments): Record<string, unknown> {
+  const { notes: _notes, ...terms } = quote;
   return {
     purchase_order: purchaseOrder,
-    accepted_quote: quote,
+    accepted_quote: terms,
     commercial_invoice: docs.commercialInvoice,
     bill_of_lading: docs.billOfLading,
   };

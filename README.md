@@ -62,7 +62,7 @@ An import purchase: 400 solar panels at up to $120 each, CIF Durban, paid in TES
 | Over max | quote at $135.00 a panel | the deal agent declines (`unit_price`) | `DECLINED` | nothing locked |
 | Unapproved | supplier wallet not on the approved list | the Policy step refuses | `POLICY_REFUSED` | nothing locked |
 
-The treasury ended exactly $48,000.00 lower once the three refunds landed. Jev cost for the run: $0.000189. The trade thresholds (`policy-v3-trade`) come from 20 labelled document pairs: every honest pair scored 0.93 to 0.96, every manipulated pair was caught at injection 0.85 or more, and none would be paid, see [`docs/research/06-trade-calibration.md`](docs/research/06-trade-calibration.md).
+The treasury ended exactly $48,000.00 lower once the three refunds landed. Jev cost for the run: $0.000189. The trade thresholds (`policy-v3-trade`) come from 20 labelled document pairs: every honest pair scored 0.94 to 0.96, every manipulated pair was caught at injection 0.82 or more, and none would be paid, see [`docs/research/06-trade-calibration.md`](docs/research/06-trade-calibration.md).
 
 ## How it works
 
