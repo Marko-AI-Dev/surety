@@ -123,11 +123,13 @@ function hasIban(text: string): boolean {
       if (/[A-Z0-9]/.test(ch)) {
         compact += ch;
         i++;
-      } else if (/[ .-]/.test(ch) && /[A-Z0-9]/.test(up[i + 1] ?? "")) {
-        if (compact.length >= 15 && ibanChecksumOk(compact)) return true;
-        i++;
       } else {
-        break;
+        // A separator is any run of up to three non-alphanumeric characters between groups.
+        let j = i;
+        while (j < up.length && j - i < 3 && !/[A-Z0-9]/.test(up[j] ?? "")) j++;
+        if (!/[A-Z0-9]/.test(up[j] ?? "")) break;
+        if (compact.length >= 15 && ibanChecksumOk(compact)) return true;
+        i = j;
       }
     }
     if (compact.length >= 15 && ibanChecksumOk(compact)) return true;
@@ -142,23 +144,39 @@ function hasBankDetails(text: string): boolean {
   return BANK_KEYWORDS.some((p) => p.test(n) || p.test(joined)) || hasIban(n);
 }
 
+// A long address-like word that mixes in Cyrillic, Greek, Armenian or other look-alike letters is a
+// hidden wallet whatever the map above misses. CJK and other scripts are not look-alikes and pass.
+const LOOKALIKE_SCRIPTS = /[Ͱ-ϿЀ-ԯ԰-֏ᴀ-ᶿ℀-⅏]/u;
+const BASE58_CHAR = /[1-9A-HJ-NP-Za-km-z]/g;
+const mixedScriptAddressLike = (text: string) =>
+  unicodeClean(text)
+    .split(/\s+/)
+    .some((token) => LOOKALIKE_SCRIPTS.test(token) && (token.match(BASE58_CHAR) ?? []).length >= 15);
+
+// The rules judge every form of the message: as sent, as the agent would read it (normalised and
+// de-disguised), and that again with its links removed, so nothing removed or rewritten on delivery
+// can join the halves of a wallet or an IBAN after the check.
 export function runChatRules(text: string, ctx: { approvedWallet: string | null }): ChatRulesReport {
+  const delivered = deliveredForm(text);
+  const forms = [text, delivered, delivered.replace(LINK, "")];
+  const length = Math.max(text.length, delivered.length);
   const results: ChatRuleResult[] = [];
   results.push(
-    text.length > MESSAGE_MAX_CHARS
-      ? { id: "size", status: "fail", detail: `the message is ${text.length} characters, above ${MESSAGE_MAX_CHARS}` }
+    length > MESSAGE_MAX_CHARS
+      ? { id: "size", status: "fail", detail: `the message is ${length} characters, above ${MESSAGE_MAX_CHARS}` }
       : { id: "size", status: "pass" },
   );
   const approved = ctx.approvedWallet ? classicAccount(ctx.approvedWallet) : null;
-  const { accounts, xAddress } = walletsIn(text);
-  const foreign = xAddress || [...accounts].some((a) => a !== approved);
+  const found = forms.map(walletsIn);
+  const foreign =
+    found.some((f) => f.xAddress || [...f.accounts].some((a) => a !== approved)) || forms.some(mixedScriptAddressLike);
   results.push(
     foreign
       ? { id: "wallet", status: "fail", detail: "the message names a wallet other than the supplier's approved one" }
       : { id: "wallet", status: "pass" },
   );
   results.push(
-    hasBankDetails(text)
+    forms.some(hasBankDetails)
       ? { id: "bank_details", status: "fail", detail: "the message carries bank payment details" }
       : { id: "bank_details", status: "pass" },
   );
@@ -172,10 +190,16 @@ const deobfuscate = (text: string) =>
 const LINK =
   /\b(?:[a-z][a-z0-9+.-]*:\/\/\S+|(?:mailto|javascript|data|file|tel):\S+|www\.\S+|(?:[a-z0-9-]+\.)+[a-z]{2,24}(?:\/\S*)?)/gi;
 
+// The text an agent receives before links are replaced: Unicode-normalised and de-disguised. The
+// rules check this form too, so the check and the delivery can never read different text.
+export function deliveredForm(text: string): string {
+  return deobfuscate(unicodeClean(text));
+}
+
 // Links never reach the agents: every URL, bare domain or disguised link is replaced, and returned
-// for the record. The delivered text is Unicode-normalised.
+// for the record.
 export function stripLinks(text: string): { text: string; links: string[] } {
-  const clean = deobfuscate(unicodeClean(text));
+  const clean = deliveredForm(text);
   const links = clean.match(LINK) ?? [];
   return { text: clean.replace(LINK, "[link removed]"), links };
 }

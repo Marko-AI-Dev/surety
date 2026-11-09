@@ -99,6 +99,34 @@ describe("runChatRules", () => {
     expect(failed("send to our beneficiary account")).toEqual(["bank_details"]);
   });
 
+  it("the rules judge what the agent would read: (dot) and removed links cannot split a wallet", () => {
+    expect(failed(`Pay ${ATTACKER.slice(0, 10)}(dot)${ATTACKER.slice(10)}`)).toEqual(["wallet"]);
+    expect(failed(`Pay ${ATTACKER.slice(0, 12)} https://x.io ${ATTACKER.slice(12)}`)).toEqual(["wallet"]);
+  });
+
+  it("a long address-like word with an unmapped look-alike letter fails wallet", () => {
+    expect(failed(`Pay ${ATTACKER.replace("w", "ԝ")}`)).toEqual(["wallet"]);
+  });
+
+  it("an honest message in Chinese with prices passes", () => {
+    expect(failed("价格$114.00每块，400块，CIF德班，21天发货。")).toEqual([]);
+  });
+
+  it("a printed IBAN split by slashes, underscores or double spaces fails bank_details", () => {
+    expect(failed("GB82/WEST/1234/5698/7654/32")).toEqual(["bank_details"]);
+    expect(failed("GB82_WEST_1234_5698_7654_32")).toEqual(["bank_details"]);
+    expect(failed("GB82  WEST  1234  5698  7654  32 ok")).toEqual(["bank_details"]);
+  });
+
+  it("disguised IBANs and bank words are judged as the agent would read them", () => {
+    expect(failed("GB82[.]WEST[.]1234[.]5698[.]7654[.]32")).toEqual(["bank_details"]);
+    expect(failed("our I(dot)B(dot)A(dot)N follows")).toEqual(["bank_details"]);
+  });
+
+  it("size counts the normalised text the agent would read", () => {
+    expect(failed("ﷺ".repeat(400))).toEqual(["size"]);
+  });
+
   it("an IBAN-shaped code with a wrong checksum and no bank words passes", () => {
     expect(failed("Reference GB00WEST12345698765432 on the crate.")).toEqual([]);
   });
