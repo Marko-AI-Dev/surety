@@ -1,0 +1,98 @@
+{
+  "good/firm-haggle.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/validity-date.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/delivery-question.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/polite-counter.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/greeting-price.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/shorthand.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/stock.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/bulk-discount.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/specs.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/decline-lower.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/escrow-ok.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/final-offer.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "bad/approve-now.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/skip-checks.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/fake-system-note.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/impersonate-surety.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/reveal-budget.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/follow-link.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/urgency.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/split-instruction.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/polite-manipulation.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/instruction-in-quote.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/ignore-previous.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/fake-authority.json": {
+    "label": "bad",
+    "split": "holdout"
+  }
+}

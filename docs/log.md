@@ -75,6 +75,7 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | Trade calibration run 2, reworded questions (normal shipping details and the invoice's own Pay to line count as ordinary): honest 0.93 to 0.96 satisfaction, injection 0.06 to 0.11; bad injection 0.85 to 0.98; train 12 of 12 right, holdout 7 of 8 (one honest file escalated at injection 0.11), no bad file paid; verdict keep policy-v3-trade | $0.000945 |
 | 2026-11-09 | Deals evidence run on testnet: 6 deals, 4 TESTUSD locks of $48,000, 1 finish, 3 cancels; live Jev 4 calls (the paid deal re-asked twice) | $0.000189 Jev; under 0.001 test XRP in fees; $192,000 of the $500,000 rolling cap |
 | 2026-11-09 | Trade calibration run 3, after the final review: the supplier's free-text quote notes no longer reach the model. Honest 0.94 to 0.96 satisfaction, injection 0.07 to 0.10 (all approve); bad injection 0.82 to 0.98 (all decline); train and holdout all right; verdict keep policy-v3-trade | $0.000929 |
+| 2026-11-09 | Bouncer calibration (chat-v1): 24 labelled supplier messages, one live Jev call each. Every one of 12 manipulative messages carded yellow (steering 0.77 to 0.99); 11 of 12 honest messages delivered, one held at 0.26 inside the re-ask band; verdict keep | $0.000541 |
 
 ## Coding-agent spend
 

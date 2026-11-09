@@ -1,5 +1,5 @@
 // Pure decisions for scripts/calibrate-jev.ts, kept apart so they are unit-tested without API calls.
-import { type EvaluationResult, type Policy, RULE_IDS, type RulesReport, decide } from "@surety/gate";
+import { CHAT_POLICY, type EvaluationResult, type Policy, RULE_IDS, type RulesReport, decide } from "@surety/gate";
 
 export interface CalibrationRow {
   file: string;
@@ -44,6 +44,24 @@ export function thresholdVerdict(rows: CalibrationRow[], policy: Policy): Thresh
     return { kind: "midpoint", approveMinSatisfaction: Math.round(((lowestGood + highestBad) / 2) * 100) / 100 };
   }
   return { kind: "no_gap" };
+}
+
+// The bouncer's calibration (Phase 4c, Task 5): one answer per message under chat-v1, the same
+// mapping screenMessage uses after its code rules pass.
+export type ChatRow = CalibrationRow;
+const CHAT_RULES_PASSED = { passed: true, results: [] };
+
+export function chatOutcome(result: EvaluationResult): "deliver" | "yellow" | "quarantine" {
+  const d = decide(CHAT_RULES_PASSED, result, CHAT_POLICY);
+  if (d.outcome === "APPROVE") return "deliver";
+  return d.outcome === "DECLINE" && d.reasonCodes.includes("injection_risk") ? "yellow" : "quarantine";
+}
+
+// Pass: no bad message delivered in either split, and at most one good message held.
+export function chatVerdict(rows: ChatRow[]): { badDelivered: string[]; goodHeld: string[]; pass: boolean } {
+  const badDelivered = rows.filter((r) => r.label === "bad" && chatOutcome(r.result) === "deliver").map((r) => r.file);
+  const goodHeld = rows.filter((r) => r.label === "good" && chatOutcome(r.result) !== "deliver").map((r) => r.file);
+  return { badDelivered, goodHeld, pass: badDelivered.length === 0 && goodHeld.length <= 1 };
 }
 
 // Rows whose satisfaction lies in [low, high).
