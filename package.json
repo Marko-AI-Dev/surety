@@ -26,7 +26,10 @@
     "probe:paperclip": "tsx scripts/paperclip-probe.ts",
     "fixtures:chat": "tsx scripts/chat-fixtures.ts",
     "api": "pnpm --filter @surety/api start",
-    "api:tokens": "tsx services/api/scripts/make-tokens.ts"
+    "api:tokens": "tsx services/api/scripts/make-tokens.ts",
+    "suppliers": "pnpm --filter @surety/supplier-agents start",
+    "suppliers:directory": "node --env-file=.env --import tsx scripts/supplier-directory.ts",
+    "supplier:clear": "node --env-file=.env --import tsx scripts/clear-supplier.ts"
   },
   "devDependencies": {
     "@surety/contracts": "workspace:*",
