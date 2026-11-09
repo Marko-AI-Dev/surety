@@ -9,6 +9,7 @@ export {
   type ScoreSample,
 } from "./engine";
 export { isBorderline, withReask, type ReaskBand } from "./reask";
+export { parserReader, type DocumentReader, type ReadResult } from "./reader";
 export {
   JEV_DECISIONS_URL,
   JEV_MODEL,

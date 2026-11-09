@@ -1,18 +1,35 @@
 import { randomUUID } from "node:crypto";
 import {
+  type DealIntent,
+  DealIntentSchema,
+  type SupplierQuote,
+  SupplierQuoteSchema,
+  type TradeDocuments,
+  TradeDocumentsSchema,
+} from "@surety/contracts";
+import {
   type DecisionEngine,
+  type DocumentReader,
+  type EvaluationInput,
   type EvaluationResult,
+  type Decision as GateDecision,
   type Policy,
+  type ReadResult,
   type RulesReport,
   decide,
   invoiceState,
+  parserReader,
   policyFor,
   runRules,
+  runTradeRules,
+  tradeState,
+  withReask,
 } from "@surety/gate";
 import {
   type Decision,
   DecisionConflict,
   type DecisionOutcome,
+  type EscrowRow,
   type Job,
   type JobsRepo,
   TransitionConflict,
@@ -35,8 +52,10 @@ export interface EvaluateDeps {
   engine: DecisionEngine;
   // Validated ledger close time in Ripple seconds. Never the laptop clock.
   ledgerCloseTime: () => Promise<number>;
-  // Defaults to the policy the job froze at creation.
+  // Defaults to the policy the job froze at creation. Overrides invoice jobs only; deals keep theirs.
   policy?: Policy;
+  // Reads a deal's documents into fields. Defaults to the template parser.
+  reader?: DocumentReader;
 }
 
 const NEXT_STATE: Record<DecisionOutcome, JobState> = {
@@ -50,6 +69,84 @@ const NEXT_STATE: Record<DecisionOutcome, JobState> = {
 function allowedCurrencies(criteria: unknown): string[] {
   const list = (criteria as { allowedCurrencies?: unknown } | null)?.allowedCurrencies;
   return Array.isArray(list) ? list.filter((c): c is string => typeof c === "string") : [];
+}
+
+type TradeTerms = { intent: DealIntent; quote: SupplierQuote };
+
+// A deal's escrow job freezes { kind: "trade", intent, quote }. Anything else is an invoice job. A
+// trade job whose frozen terms do not parse is held, never judged against guesses.
+function tradeTermsOf(criteria: unknown): TradeTerms | "invalid" | null {
+  const c = criteria as { kind?: unknown; intent?: unknown; quote?: unknown } | null;
+  if (c?.kind !== "trade") return null;
+  const intent = DealIntentSchema.safeParse(c.intent);
+  const quote = SupplierQuoteSchema.safeParse(c.quote);
+  return intent.success && quote.success ? { intent: intent.data, quote: quote.data } : "invalid";
+}
+
+type Ask = Omit<EvaluationInput, "questionSet" | "state">;
+interface Judgement {
+  rulesRecord: unknown;
+  evaluation: EvaluationResult | null;
+  verdict: GateDecision;
+}
+
+// The invoice job: invoice rules, then the invoice questions.
+async function judgeInvoice(engine: DecisionEngine, job: Job, policy: Policy, ask: Ask): Promise<Judgement> {
+  const rules = runRules({ sourceText: job.sourceText, allowedCurrencies: allowedCurrencies(job.criteria), deliverable: job.deliverable });
+  let evaluation: EvaluationResult | null = null;
+  if (rules.passed && rules.parsed) {
+    evaluation = await askEngine(engine, {
+      ...ask,
+      questionSet: "invoice",
+      state: invoiceState(job.criteriaText ?? JSON.stringify(job.criteria), job.sourceText, rules.parsed),
+    });
+  }
+  const rulesRecord: Omit<RulesReport, "parsed"> = { passed: rules.passed, results: rules.results };
+  return { rulesRecord, evaluation, verdict: decide(rules, evaluation, policy) };
+}
+
+// A reader is built never to throw; if one does, that is an outage, not a reading.
+async function askReader(reader: DocumentReader, docs: TradeDocuments): Promise<ReadResult> {
+  try {
+    return await reader.read(docs);
+  } catch {
+    return { status: "unavailable", reason: "reader_error" };
+  }
+}
+
+// A deal: the documents must parse; then the reader; then the 12 trade rules; then the trade questions.
+async function judgeTrade(
+  reader: DocumentReader,
+  engine: DecisionEngine,
+  job: Job,
+  terms: TradeTerms,
+  escrow: EscrowRow,
+  policy: Policy,
+  ask: Ask,
+): Promise<Judgement> {
+  const input = { intent: terms.intent, quote: terms.quote, documents: job.deliverable, lock: { destination: escrow.destination, amount: escrow.amount } };
+  const readerInfo = { kind: reader.kind, model: reader.model };
+  const first = runTradeRules({ ...input, readerFields: null });
+  const readable = first.results.every((r) => (r.id === "size" || r.id === "parse" ? r.status === "pass" : true));
+  const docs = TradeDocumentsSchema.safeParse(job.deliverable);
+  if (!readable || !docs.success) {
+    return { rulesRecord: { passed: first.passed, results: first.results, reader: readerInfo }, evaluation: null, verdict: decide(first, null, policy) };
+  }
+
+  const read = await askReader(reader, docs.data);
+  if (read.status === "unavailable") {
+    return {
+      rulesRecord: { passed: false, results: [], reader: { ...readerInfo, status: "unavailable", reason: read.reason } },
+      evaluation: null,
+      verdict: { outcome: "UNAVAILABLE", reasonCodes: [`reader_${read.reason}`] },
+    };
+  }
+  const rules = runTradeRules({ ...input, readerFields: read.fields });
+  let evaluation: EvaluationResult | null = null;
+  if (rules.passed) {
+    evaluation = await askEngine(engine, { ...ask, questionSet: "trade", state: tradeState(job.sourceText, terms.quote, docs.data) });
+  }
+  return { rulesRecord: { passed: rules.passed, results: rules.results, reader: readerInfo }, evaluation, verdict: decide(rules, evaluation, policy) };
 }
 
 // An engine is built never to throw; if one does, that is an outage, not a verdict.
@@ -110,6 +207,7 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
         satisfaction: d.satisfaction,
         injectionRisk: d.injectionRisk,
         policyVersion: d.policyVersion,
+        ...(d.samples ? { samples: d.samples } : {}),
         ...(resumes > 0 ? { resumes } : {}),
       },
     });
@@ -155,29 +253,18 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
     });
 
   if (closeTime >= cutoff) return hold("decision_window_closed");
-  const policy = deps.policy ?? policyFor(job.policyVersion);
+  const trade = tradeTermsOf(job.criteria);
+  // A deal always judges under the policy it froze at acceptance; deps.policy overrides invoice jobs only.
+  const policy = trade ? policyFor(job.policyVersion) : (deps.policy ?? policyFor(job.policyVersion));
   if (!policy) return hold("unknown_policy");
+  if (trade === "invalid") return hold("trade_terms_invalid");
 
-  const rules = runRules({
-    sourceText: job.sourceText,
-    allowedCurrencies: allowedCurrencies(job.criteria),
-    deliverable: job.deliverable,
-  });
   const requestId = randomUUID();
-  let evaluation: EvaluationResult | null = null;
-  if (rules.passed && rules.parsed) {
-    evaluation = await askEngine(deps.engine, {
-      requestId,
-      questionSet: "invoice",
-      state: invoiceState(job.criteriaText ?? JSON.stringify(job.criteria), job.sourceText, rules.parsed),
-      deliverableHash,
-      jobSnapshotHash: job.snapshotHash,
-      policyVersion: policy.version,
-      secondsRemaining: cutoff - closeTime,
-    });
-  }
-  const verdict = decide(rules, evaluation, policy);
-  const rulesRecord: Omit<RulesReport, "parsed"> = { passed: rules.passed, results: rules.results };
+  const ask = { requestId, deliverableHash, jobSnapshotHash: job.snapshotHash, policyVersion: policy.version, secondsRemaining: cutoff - closeTime };
+  const engine = policy.reaskBand ? withReask(deps.engine, policy.reaskBand) : deps.engine;
+  const { rulesRecord, evaluation, verdict } = trade
+    ? await judgeTrade(deps.reader ?? parserReader, engine, job, trade, escrow, policy, ask)
+    : await judgeInvoice(engine, job, policy, ask);
 
   let decision: Decision;
   try {

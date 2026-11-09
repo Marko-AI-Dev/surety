@@ -1,4 +1,4 @@
-import type { DecisionEngine, Policy } from "@surety/gate";
+import type { DecisionEngine, DocumentReader, Policy } from "@surety/gate";
 import { type SignerClient, SignerClientError } from "@surety/signer-client";
 import { evaluateJob } from "./evaluate";
 import { type SweepReport, runExpirySweep } from "./expiry";
@@ -13,6 +13,7 @@ export interface EngineDeps {
   gateSecret: string;
   ledgerCloseTime: () => Promise<number>;
   policy?: Policy;
+  reader?: DocumentReader;
   now?: () => Date;
   log?: (line: string) => void;
 }
