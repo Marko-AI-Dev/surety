@@ -114,6 +114,13 @@ describe("runChatRules", () => {
     expect(failed(`Pay ${ATTACKER.replace("y", "ɣ")}`)).toEqual(["wallet"]);
   });
 
+  it("a look-alike first letter, adjacent look-alikes, or a dotless i still fail wallet", () => {
+    expect(failed(`Pay г${ATTACKER.slice(1)}`)).toEqual(["wallet"]);
+    const adjacent = `${ATTACKER.slice(0, 10)} ${ATTACKER.slice(10, 20)} ${ATTACKER.slice(20, 25)}ѕԁ${ATTACKER.slice(27)}`;
+    expect(failed(`Pay ${adjacent}`)).toEqual(["wallet"]);
+    expect(failed(`Pay ${ATTACKER.replace("j", "ı")}`)).toEqual(["wallet"]);
+  });
+
   it("accented Latin names and Russian text with English words pass", () => {
     expect(failed("Café São Paulo and Düsseldorf offices confirm: $114.00, CIF Durban, ready in 21 days.")).toEqual([]);
     expect(failed("Наша цена $114.00 за панель, CIF Durban, ready to ship from Shenzhen.")).toEqual([]);

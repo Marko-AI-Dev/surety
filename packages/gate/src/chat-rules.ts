@@ -151,18 +151,55 @@ function hasBankDetails(text: string): boolean {
 // wallet scan; a planted letter must sit between two address characters, which words of another
 // script (in runs) do not.
 const LOOKALIKE =
-  /[ƀ-˿Ͱ-ϿЀ-ԯ԰-֏Ꭰ-᏿ᲀ-᲏ᴀ-ᶿ℀-⅏Ⲁ-⳿ⷠ-ⷿꙀ-ꚟꓐ-꓿꜠-ꟿꭰ-ꮿ]/u;
+  /[ıĸƀ-˿Ͱ-ϿЀ-ԯ԰-֏Ꭰ-᏿ᲀ-᲏ᴀ-ᶿ℀-⅏Ⲁ-⳿ⷠ-ⷿꙀ-ꚟꓐ-꓿꜠-ꟿꭰ-ꮿ]/u;
 const ASCII_BASE58 = /^[1-9A-HJ-NP-Za-km-z]$/;
+// Scripts with no Latin look-alikes: a supplier writing in them is never mistaken for a hidden wallet.
+const SAFE_SCRIPT =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Thai}\p{Script=Devanagari}]/u;
+const NON_ASCII_LETTER = /[^\x00-\x7F]/;
+const isLetterOrDigit = (c: string) => /[\p{L}\p{N}]/u.test(c);
+const addressChar = (c: string) => ASCII_BASE58.test(c) || LOOKALIKE.test(c);
+
 function mixedScriptAddressLike(text: string): boolean {
-  const chars = [...unicodeClean(text)].filter((c) => /[\p{L}\p{N}]/u.test(c));
-  for (let i = 0; i < chars.length; i++) {
-    if (chars[i] !== "r") continue;
-    const win = chars.slice(i, i + 35);
-    if (win.filter((c) => ASCII_BASE58.test(c)).length < 24) continue;
-    for (let k = 1; k < win.length - 1; k++) {
-      const c = win[k] ?? "";
-      if (LOOKALIKE.test(c) && ASCII_BASE58.test(win[k - 1] ?? "") && ASCII_BASE58.test(win[k + 1] ?? "")) return true;
+  const clean = unicodeClean(text);
+  // Word by word: a non-ASCII letter (outside the safe scripts) in a word with 15 or more address
+  // characters, wherever it sits. Accented names are short; a disguised address is not.
+  for (const word of clean.split(/\s+/)) {
+    const ascii = [...word].filter((c) => ASCII_BASE58.test(c)).length;
+    if (ascii >= 15 && [...word].some((c) => NON_ASCII_LETTER.test(c) && isLetterOrDigit(c) && !SAFE_SCRIPT.test(c))) return true;
+  }
+  // Across spaces and punctuation: from any "r" or planted look-alike, 35 letters and digits holding
+  // at least 25 address characters, of which 1 to 5 are look-alikes. A planted letter stands alone or
+  // in a pair; words of another script come in runs of three or more, so a window touching one is
+  // ordinary bilingual text, not a disguised address.
+  const chars = [...clean].filter(isLetterOrDigit);
+  const runLength = new Array<number>(chars.length).fill(0);
+  for (let i = 0; i < chars.length; ) {
+    if (!LOOKALIKE.test(chars[i] ?? "")) {
+      i++;
+      continue;
     }
+    let j = i;
+    while (j < chars.length && LOOKALIKE.test(chars[j] ?? "")) j++;
+    for (let k = i; k < j; k++) runLength[k] = j - i;
+    i = j;
+  }
+  const planted = (k: number) => (runLength[k] ?? 0) >= 1 && (runLength[k] ?? 0) <= 2;
+  for (let i = 0; i < chars.length; i++) {
+    if (chars[i] !== "r" && !planted(i)) continue;
+    const end = Math.min(chars.length, i + 35);
+    let look = 0;
+    let address = 0;
+    let foreignWord = false;
+    for (let k = i; k < end; k++) {
+      const c = chars[k] ?? "";
+      if (LOOKALIKE.test(c)) {
+        if (!planted(k)) foreignWord = true;
+        look++;
+      }
+      if (addressChar(c)) address++;
+    }
+    if (!foreignWord && look >= 1 && look <= 5 && address >= 25) return true;
   }
   return false;
 }
