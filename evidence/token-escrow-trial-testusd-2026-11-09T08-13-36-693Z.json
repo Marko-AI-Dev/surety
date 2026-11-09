@@ -1,0 +1,183 @@
+{
+  "network": "XRPL Testnet",
+  "recordedAt": "2026-11-09T08:13:36.693Z",
+  "token": {
+    "code": "TESTUSD",
+    "currencyHex": "5445535455534400000000000000000000000000",
+    "issuer": "rfBHQT1V7D3k1zduBijJhx3xwJRqpro3TL",
+    "note": "self-issued test dollar, no value"
+  },
+  "accounts": {
+    "issuer": "rfBHQT1V7D3k1zduBijJhx3xwJRqpro3TL",
+    "buyer": "rEqzcCgiodRUds1Q2MQZxeu45y8146xd2h",
+    "seller": "rMFBFP4TLuL6Lic6aY3QMuoUTqWySK6X43",
+    "service": "r35mQSLs8HLc18jgtiKDpT35HWnfLar21n"
+  },
+  "setup": [
+    {
+      "label": "issuer enables rippling",
+      "submittedBy": "rfBHQT1V7D3k1zduBijJhx3xwJRqpro3TL",
+      "result": "tesSUCCESS",
+      "txHash": "1B998043E25A5D7EC48D7E357DC3508A769AE0ED8E4CD579557F9786CEC89620",
+      "ledgerIndex": 22186026,
+      "explorer": "https://testnet.xrpl.org/transactions/1B998043E25A5D7EC48D7E357DC3508A769AE0ED8E4CD579557F9786CEC89620",
+      "sequence": 22186018
+    },
+    {
+      "label": "issuer allows its token to be escrowed",
+      "submittedBy": "rfBHQT1V7D3k1zduBijJhx3xwJRqpro3TL",
+      "result": "tesSUCCESS",
+      "txHash": "4E6F3E41A3D9AADB17478E2D91FA5BE3193CDCFC548D16E5601928CFB0712B6A",
+      "ledgerIndex": 22186028,
+      "explorer": "https://testnet.xrpl.org/transactions/4E6F3E41A3D9AADB17478E2D91FA5BE3193CDCFC548D16E5601928CFB0712B6A",
+      "sequence": 22186019
+    },
+    {
+      "label": "buyer trusts TESTUSD",
+      "submittedBy": "rEqzcCgiodRUds1Q2MQZxeu45y8146xd2h",
+      "result": "tesSUCCESS",
+      "txHash": "A7D5673E83A459D5C826942C3A3B6B9712809C939F4965DC327F3781A595B72B",
+      "ledgerIndex": 22186030,
+      "explorer": "https://testnet.xrpl.org/transactions/A7D5673E83A459D5C826942C3A3B6B9712809C939F4965DC327F3781A595B72B",
+      "sequence": 22186020
+    },
+    {
+      "label": "seller trusts TESTUSD",
+      "submittedBy": "rMFBFP4TLuL6Lic6aY3QMuoUTqWySK6X43",
+      "result": "tesSUCCESS",
+      "txHash": "A53496565174EFF5886D91AC2843CEB10D9B2D8627B59BD1977FC1AE2C9A8DA5",
+      "ledgerIndex": 22186032,
+      "explorer": "https://testnet.xrpl.org/transactions/A53496565174EFF5886D91AC2843CEB10D9B2D8627B59BD1977FC1AE2C9A8DA5",
+      "sequence": 22186022
+    },
+    {
+      "label": "issuer issues 100,000 TESTUSD to the buyer",
+      "submittedBy": "rfBHQT1V7D3k1zduBijJhx3xwJRqpro3TL",
+      "result": "tesSUCCESS",
+      "txHash": "694F38C5CFA29CBD647436110A84E0A9D8CF5BF8D98033FBDB1C1BBC24C8093B",
+      "ledgerIndex": 22186034,
+      "explorer": "https://testnet.xrpl.org/transactions/694F38C5CFA29CBD647436110A84E0A9D8CF5BF8D98033FBDB1C1BBC24C8093B",
+      "sequence": 22186020
+    }
+  ],
+  "balancesTestUsd": {
+    "start": {
+      "buyer": "100000",
+      "seller": "0"
+    },
+    "afterLock1": {
+      "buyer": "52000",
+      "seller": "0"
+    },
+    "afterPay1": {
+      "buyer": "52000",
+      "seller": "48000"
+    },
+    "afterLock2": {
+      "buyer": "39500",
+      "seller": "48000"
+    },
+    "end": {
+      "buyer": "52000",
+      "seller": "48000"
+    }
+  },
+  "deal1_documentsMatch": {
+    "create": {
+      "label": "deal 1: lock 48,000 TESTUSD for the supplier",
+      "submittedBy": "rEqzcCgiodRUds1Q2MQZxeu45y8146xd2h",
+      "result": "tesSUCCESS",
+      "txHash": "15FCE1CF9E2702A3F709E1EA769EEFA68B378D80FD714E5D9AD4801EA614E162",
+      "ledgerIndex": 22186036,
+      "explorer": "https://testnet.xrpl.org/transactions/15FCE1CF9E2702A3F709E1EA769EEFA68B378D80FD714E5D9AD4801EA614E162",
+      "sequence": 22186021,
+      "offerSequence": 22186021,
+      "condition": "A025802099C6FE0D33EE2DECC7C366074D6C3276CAB9BC40A2DB640947D752176B8544BB810120",
+      "deadline": "2026-11-09T08:16:52.000Z"
+    },
+    "escrowOnLedgerAfterLock": {
+      "Account": "rEqzcCgiodRUds1Q2MQZxeu45y8146xd2h",
+      "Amount": {
+        "currency": "5445535455534400000000000000000000000000",
+        "issuer": "rfBHQT1V7D3k1zduBijJhx3xwJRqpro3TL",
+        "value": "48000"
+      },
+      "CancelAfter": 847527412,
+      "Condition": "A025802099C6FE0D33EE2DECC7C366074D6C3276CAB9BC40A2DB640947D752176B8544BB810120",
+      "Destination": "rMFBFP4TLuL6Lic6aY3QMuoUTqWySK6X43",
+      "DestinationNode": "0",
+      "Flags": 0,
+      "IssuerNode": "0",
+      "LedgerEntryType": "Escrow",
+      "OwnerNode": "0",
+      "PreviousTxnID": "15FCE1CF9E2702A3F709E1EA769EEFA68B378D80FD714E5D9AD4801EA614E162",
+      "PreviousTxnLgrSeq": 22186036,
+      "Sequence": 22186021,
+      "index": "897A35A8BA910817261F16EC347DD91A44AFB1ABD7F48B6BD8F9A234F37FA02F"
+    },
+    "refusedByLedger": {
+      "wrongKeyAttempt": {
+        "label": "deal 1: release with a wrong key",
+        "submittedBy": "r35mQSLs8HLc18jgtiKDpT35HWnfLar21n",
+        "result": "tecCRYPTOCONDITION_ERROR",
+        "txHash": "BC2E4BF2FE1CDE3B855F8A76494C0D610DBA43F1343F01DED84B51FEF25B50B9",
+        "ledgerIndex": 22186038,
+        "explorer": "https://testnet.xrpl.org/transactions/BC2E4BF2FE1CDE3B855F8A76494C0D610DBA43F1343F01DED84B51FEF25B50B9",
+        "sequence": 22186024
+      },
+      "earlyRefundAttempt": {
+        "label": "deal 1: refund before the deadline",
+        "submittedBy": "r35mQSLs8HLc18jgtiKDpT35HWnfLar21n",
+        "result": "tecNO_PERMISSION",
+        "txHash": "818AEA4D5379C2284BA999E80F12B010A5B3FB66E82BF5E012182624B3D14716",
+        "ledgerIndex": 22186040,
+        "explorer": "https://testnet.xrpl.org/transactions/818AEA4D5379C2284BA999E80F12B010A5B3FB66E82BF5E012182624B3D14716",
+        "sequence": 22186025
+      }
+    },
+    "release": {
+      "label": "deal 1: release with the right key",
+      "submittedBy": "r35mQSLs8HLc18jgtiKDpT35HWnfLar21n",
+      "result": "tesSUCCESS",
+      "txHash": "450466E137E9229317BB06175B477250C795BAA91B92557736310F53073A1872",
+      "ledgerIndex": 22186042,
+      "explorer": "https://testnet.xrpl.org/transactions/450466E137E9229317BB06175B477250C795BAA91B92557736310F53073A1872",
+      "sequence": 22186026
+    },
+    "escrowRemovedAfterRelease": true
+  },
+  "deal2_documentsTampered": {
+    "create": {
+      "label": "deal 2: lock 12,500 TESTUSD for the supplier",
+      "submittedBy": "rEqzcCgiodRUds1Q2MQZxeu45y8146xd2h",
+      "result": "tesSUCCESS",
+      "txHash": "9553C083BBA0AB95CB012D07A2B6D44DC436E7B1E25C5F3A0262541B26ECBFC2",
+      "ledgerIndex": 22186044,
+      "explorer": "https://testnet.xrpl.org/transactions/9553C083BBA0AB95CB012D07A2B6D44DC436E7B1E25C5F3A0262541B26ECBFC2",
+      "sequence": 22186022,
+      "offerSequence": 22186022,
+      "deadline": "2026-11-09T08:13:20.000Z"
+    },
+    "refusedByLedger": {
+      "lateReleaseAttempt": {
+        "label": "deal 2: release with the right key after the deadline",
+        "submittedBy": "r35mQSLs8HLc18jgtiKDpT35HWnfLar21n",
+        "result": "tecNO_PERMISSION",
+        "txHash": "D634FEDA9EF2800D20B32CD42DF2298B9642CE133BAB30EE8E478760F956474E",
+        "ledgerIndex": 22186064,
+        "explorer": "https://testnet.xrpl.org/transactions/D634FEDA9EF2800D20B32CD42DF2298B9642CE133BAB30EE8E478760F956474E",
+        "sequence": 22186027
+      }
+    },
+    "refund": {
+      "label": "deal 2: refund after the deadline",
+      "submittedBy": "r35mQSLs8HLc18jgtiKDpT35HWnfLar21n",
+      "result": "tesSUCCESS",
+      "txHash": "6269AE12767E26070E33EFB7DAF0EADD1C8AA88C890E3A3AEA43E96EE7C01EA7",
+      "ledgerIndex": 22186066,
+      "explorer": "https://testnet.xrpl.org/transactions/6269AE12767E26070E33EFB7DAF0EADD1C8AA88C890E3A3AEA43E96EE7C01EA7",
+      "sequence": 22186028
+    },
+    "escrowRemovedAfterRefund": true
+  }
+}

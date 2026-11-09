@@ -127,7 +127,7 @@ Agents never set their own limits. The same chat component powers the "Talk" att
 - A rand value can appear beside amounts only when labelled simulated.
 - Testnet only. No real money.
 - **Both sides need an XRPL account.** The supplier's account must also opt in to hold TESTUSD (a trust line). The Policy step checks this before locking.
-- **Proven on testnet on 9 Nov.** Both trials used throwaway wallets: `evidence/token-escrow-trial-2026-11-09T00-16-50-404Z.json` (as tUSD) and `evidence/token-escrow-trial-testusd-*.json`.
+- **Proven on testnet on 9 Nov.** Both trials used throwaway wallets: `evidence/token-escrow-trial-2026-11-09T00-16-50-404Z.json` (as tUSD) and `evidence/token-escrow-trial-testusd-2026-11-09T08-13-36-693Z.json`.
   - 48,000 was locked. The ledger refused a wrong release key and an early refund. The right key paid the supplier the exact amount.
   - 12,500 was locked with no key issued. After the deadline even the right key was refused, and the buyer got the full amount back.
 
