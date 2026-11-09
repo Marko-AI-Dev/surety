@@ -11,3 +11,10 @@ export {
 export { createFixtureEngine, type FixtureScores } from "./fixture-engine";
 export { CURRENT_POLICY, POLICIES, POLICY_V1, POLICY_V2, decide, policyFor, type Decision, type Outcome, type Policy } from "./policy";
 export { AUTHORIZATION_TTL_MS, mintAuthorization, type MintInput } from "./authorize";
+export {
+  formatDocUsd,
+  parseDocUsd,
+  parseTradeDocuments,
+  renderPurchaseOrder,
+  renderTradeDocuments,
+} from "./trade-docs";

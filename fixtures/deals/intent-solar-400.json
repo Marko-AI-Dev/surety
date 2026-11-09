@@ -1,0 +1,19 @@
+{
+  "poNumber": "PO-2026-0412",
+  "buyer": {
+    "name": "Karoo Solar Imports (Pty) Ltd",
+    "address": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5"
+  },
+  "supplier": {
+    "name": "Shenzhen Brightway Solar Co., Ltd",
+    "address": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U"
+  },
+  "goods": {
+    "description": "Monocrystalline solar panel 550 W",
+    "quantity": 400,
+    "maxUnitCents": 12000
+  },
+  "incoterm": "CIF",
+  "port": "Durban",
+  "deadlineSeconds": 300
+}
