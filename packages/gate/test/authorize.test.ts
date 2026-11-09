@@ -8,7 +8,7 @@ const NOW = new Date("2026-11-09T10:00:00.000Z");
 const BINDING = {
   owner: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
   offerSequence: 4242,
-  amountDrops: "1000000",
+  amount: { asset: "XRP", drops: "1000000" } as const,
   destination: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
   jobSnapshotHash: "a".repeat(64),
   deliverableHash: "b".repeat(64),
@@ -21,7 +21,8 @@ const mint = (now = NOW) => mintAuthorization({ ...BINDING, gateSecret: SECRET, 
 describe("mintAuthorization", () => {
   it("binds the testnet escrow, job, deliverable, policy and decision, and verifies with the contracts verifier", () => {
     const auth = mint();
-    expect(auth.payload).toMatchObject({ ...BINDING, network: "testnet" });
+    const { amount: _amount, ...bound } = BINDING;
+    expect(auth.payload).toMatchObject({ ...bound, amountDrops: "1000000", network: "testnet" });
     const verdict = verifyAuthorization(auth, SECRET, NOW);
     expect(verdict.ok).toBe(true);
   });
@@ -50,7 +51,28 @@ describe("mintAuthorization", () => {
   });
 
   it("refuses to mint for an amount or hash the signer would reject", () => {
-    expect(() => mintAuthorization({ ...BINDING, amountDrops: "1.5", gateSecret: SECRET, now: NOW })).toThrow();
+    expect(() => mintAuthorization({ ...BINDING, amount: { asset: "XRP", drops: "1.5" }, gateSecret: SECRET, now: NOW })).toThrow();
     expect(() => mintAuthorization({ ...BINDING, deliverableHash: "XYZ", gateSecret: SECRET, now: NOW })).toThrow();
+  });
+});
+
+describe("mintAuthorization amounts", () => {
+  it("binds an XRP job with amountDrops only", () => {
+    const auth = mint();
+    expect(auth.payload.amountDrops).toBe("1000000");
+    expect(Object.keys(auth.payload)).not.toContain("amountTestUsdCents");
+  });
+
+  it("mints a TESTUSD authorization with amountTestUsdCents and no amountDrops key", () => {
+    const auth = mintAuthorization({ ...BINDING, amount: { asset: "TESTUSD", cents: "4800000" }, gateSecret: SECRET, now: NOW });
+    expect(auth.payload.amountTestUsdCents).toBe("4800000");
+    expect(Object.keys(auth.payload)).not.toContain("amountDrops");
+    expect(verifyAuthorization(auth, SECRET, NOW).ok).toBe(true);
+  });
+
+  it("refuses a TESTUSD amount the signer would reject", () => {
+    expect(() =>
+      mintAuthorization({ ...BINDING, amount: { asset: "TESTUSD", cents: "48000.00" }, gateSecret: SECRET, now: NOW }),
+    ).toThrow();
   });
 });

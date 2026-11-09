@@ -65,7 +65,7 @@ try {
       ref: `outcomes-${stamp}-${c.name}`,
       buyerAddress: health.buyer,
       sellerAddress: seller,
-      amountDrops: "1000000",
+      amount: { asset: "XRP", drops: "1000000" },
       sourceText: SOURCE,
       criteria: { allowedCurrencies: ["ZAR"], schema: "invoice-deliverable-v1" },
       criteriaText: CRITERIA,
@@ -132,7 +132,7 @@ try {
         snapshotHash: job.snapshotHash,
         deliverableHash: job.deliverableHash,
         policyVersion: job.policyVersion,
-        amountDrops: job.amountDrops,
+        amount: job.amount,
         seller: job.sellerAddress,
       },
       decision: decision && {

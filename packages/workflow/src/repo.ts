@@ -1,4 +1,4 @@
-import { isDrops } from "@surety/contracts";
+import { type AssetAmount, isCents, isDrops } from "@surety/contracts";
 import type { Operation } from "./operation-id";
 import type { JobState } from "./states";
 
@@ -8,7 +8,8 @@ export interface Job {
   network: "testnet";
   buyerAddress: string;
   sellerAddress: string;
-  amountDrops: string;
+  // XRP drops or TESTUSD cents. Never floats.
+  amount: AssetAmount;
   sourceText: string;
   criteria: unknown;
   snapshotHash: string;
@@ -74,7 +75,9 @@ export interface EscrowRow {
   owner: string;
   offerSequence: number;
   destination: string;
-  amountDrops: string;
+  amount: AssetAmount;
+  // The TESTUSD issuer the signer locked against; null for XRP.
+  issuer: string | null;
   condition: string;
   // Ripple epoch seconds.
   cancelAfter: number;
@@ -208,8 +211,16 @@ export class AuthorizationConflict extends Error {
 
 // numeric(20,0) would silently round "1.5" or parse "1e6", leaving the snapshot hash describing a
 // different amount from the one stored. Reject before writing anything.
-export function assertDrops(value: string): void {
-  if (!isDrops(value)) throw new RangeError("amountDrops must be a positive integer drop string");
+export function assertAmount(a: AssetAmount): void {
+  if (a.asset === "XRP") {
+    if (!isDrops(a.drops)) throw new RangeError("amountDrops must be a positive integer drop string");
+    return;
+  }
+  if (a.asset === "TESTUSD") {
+    if (!isCents(a.cents)) throw new RangeError("amountTestUsdCents must be a positive integer cent string");
+    return;
+  }
+  throw new RangeError("amount must be XRP amountDrops or TESTUSD amountTestUsdCents");
 }
 
 // The row was not in the expected from-state: another actor moved it first.

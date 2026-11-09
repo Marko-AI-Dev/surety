@@ -80,7 +80,7 @@ async function mintAndRecord(
   const signed = mintAuthorization({
     owner: escrow.owner,
     offerSequence: escrow.offerSequence,
-    amountDrops: escrow.amountDrops,
+    amount: escrow.amount,
     destination: escrow.destination,
     jobSnapshotHash: job.snapshotHash,
     deliverableHash: decision.deliverableHash,

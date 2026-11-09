@@ -12,7 +12,7 @@ import {
   type JobsRepo,
   TransitionConflict,
   type TxRecord,
-  assertDrops,
+  assertAmount,
   assertHash,
 } from "./repo";
 import { snapshotHash } from "./snapshot";
@@ -35,7 +35,7 @@ export function createMemoryRepo(): JobsRepo {
 
   return {
     async createJob(input) {
-      assertDrops(input.amountDrops);
+      assertAmount(input.amount);
       const job: Job = {
         ...copy(input),
         criteriaText: input.criteriaText ?? null,
@@ -82,7 +82,7 @@ export function createMemoryRepo(): JobsRepo {
     },
 
     async attachEscrow(row) {
-      assertDrops(row.amountDrops);
+      assertAmount(row.amount);
       if (escrows.has(row.jobId)) throw new Error(`job ${row.jobId} already has an escrow`);
       escrows.set(row.jobId, copy(row));
     },

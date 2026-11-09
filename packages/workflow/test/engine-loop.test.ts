@@ -84,7 +84,7 @@ describe("runEngineOnce", () => {
     await pass(demoEngine());
     const refunded = await repo.getJob(job.id);
     expect(refunded?.state).toBe("REFUNDED");
-    expect(refunded).toMatchObject({ sellerAddress: job.sellerAddress, amountDrops: job.amountDrops, snapshotHash: job.snapshotHash });
+    expect(refunded).toMatchObject({ sellerAddress: job.sellerAddress, amount: job.amount, snapshotHash: job.snapshotHash });
     expect(signer.count("finish")).toBe(0);
   });
 

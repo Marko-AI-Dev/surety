@@ -13,7 +13,7 @@ import {
   type NewDecision,
   TransitionConflict,
   type TxRecord,
-  assertDrops,
+  assertAmount,
   assertHash,
 } from "./repo";
 import { snapshotHash } from "./snapshot";
@@ -28,7 +28,7 @@ function toJob(r: Row): Job {
     network: r.network,
     buyerAddress: r.buyer_address,
     sellerAddress: r.seller_address,
-    amountDrops: r.amount_drops,
+    amount: { asset: "XRP", drops: r.amount_drops },
     sourceText: r.source_text,
     criteria: r.criteria,
     snapshotHash: r.snapshot_hash,
@@ -88,7 +88,8 @@ function toEscrow(r: Row, amountColumn = "amount_drops"): EscrowRow {
     owner: r.owner,
     offerSequence: r.offer_sequence,
     destination: r.destination,
-    amountDrops: r[amountColumn],
+    amount: { asset: "XRP", drops: r[amountColumn] },
+    issuer: null,
     condition: r.condition,
     cancelAfter: r.cancel_after,
     createTxHash: r.create_tx_hash,
@@ -130,11 +131,12 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
 
   return {
     async createJob(input) {
-      assertDrops(input.amountDrops);
+      assertAmount(input.amount);
+      if (input.amount.asset !== "XRP") throw new Error("TESTUSD jobs need the asset columns (Phase 4a Task 9)");
       const [row] = await sql`
         insert into jobs (ref, buyer_address, seller_address, amount_drops, source_text, criteria,
                           snapshot_hash, policy_version, cancel_after_seconds, criteria_text)
-        values (${input.ref}, ${input.buyerAddress}, ${input.sellerAddress}, ${input.amountDrops},
+        values (${input.ref}, ${input.buyerAddress}, ${input.sellerAddress}, ${input.amount.drops},
                 ${input.sourceText}, ${json(input.criteria)}, ${snapshotHash(input)}, ${input.policyVersion},
                 ${input.cancelAfterSeconds}, ${input.criteriaText ?? null})
         returning *`;
@@ -171,11 +173,12 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
     },
 
     async attachEscrow(row) {
-      assertDrops(row.amountDrops);
+      assertAmount(row.amount);
+      if (row.amount.asset !== "XRP") throw new Error("TESTUSD escrows need the asset columns (Phase 4a Task 9)");
       await sql`
         insert into escrows (job_id, network, owner, offer_sequence, destination, amount_drops, condition,
                              cancel_after, create_tx_hash, create_ledger_index)
-        values (${row.jobId}, 'testnet', ${row.owner}, ${row.offerSequence}, ${row.destination}, ${row.amountDrops},
+        values (${row.jobId}, 'testnet', ${row.owner}, ${row.offerSequence}, ${row.destination}, ${row.amount.drops},
                 ${row.condition}, ${row.cancelAfter}, ${row.createTxHash}, ${row.createLedgerIndex})`;
     },
 

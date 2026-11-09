@@ -75,7 +75,7 @@ try {
     ref: `restart-demo-${Date.now()}`,
     buyerAddress: health.buyer,
     sellerAddress: SELLER,
-    amountDrops: "1000000",
+    amount: { asset: "XRP", drops: "1000000" },
     sourceText:
       "INVOICE INV-2026-1109\nFrom: Example Supplies Ltd\nTo: Surety Demo Buyer\n3 x Widget @ 10.00 EUR\nTotal: 30.00 EUR\nDue: 2026-12-01",
     criteria: {
@@ -141,7 +141,7 @@ try {
   const evidence = {
     network: "XRPL Testnet",
     recordedAt: new Date().toISOString(),
-    job: { id: locked.id, ref: locked.ref, snapshotHash: locked.snapshotHash, amountDrops: locked.amountDrops, finalState },
+    job: { id: locked.id, ref: locked.ref, snapshotHash: locked.snapshotHash, amount: locked.amount, finalState },
     escrow: {
       owner: escrow.owner,
       offerSequence: escrow.offerSequence,

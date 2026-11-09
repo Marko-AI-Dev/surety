@@ -186,3 +186,17 @@ describe("settleJob", () => {
     expect(signer.opIds("finish")).toEqual([opId]);
   });
 });
+
+describe("settleJob in TESTUSD", () => {
+  it("a TESTUSD job's authorization binds amountTestUsdCents", async () => {
+    const locked = await lockedGateJob(repo, signer, { amount: { asset: "TESTUSD", cents: "4800000" } });
+    await deliverJob({ repo }, locked.id, EXACT);
+    const judged = await evaluateJob({ repo, engine: demoEngine(), ledgerCloseTime: async () => closeTime }, locked.id);
+    expect(judged.state).toBe("APPROVED");
+    const paid = await settle(judged);
+    expect(paid.state).toBe("PAID");
+    const [auth] = finishAuths();
+    expect(auth?.payload.amountTestUsdCents).toBe("4800000");
+    expect(Object.keys(auth?.payload ?? {})).not.toContain("amountDrops");
+  });
+});

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { sha256Hex } from "@surety/contracts";
+import { canonicalJson, sha256Hex } from "@surety/contracts";
 import {
   AuthorizationConflict,
   DecisionConflict,
@@ -28,7 +28,7 @@ export function newJob(overrides: Partial<NewJob> = {}): NewJob {
     ref: `contract-${Date.now()}-${refs}`,
     buyerAddress: "rBuyerAddressForContractTests0001",
     sellerAddress: "rSellerAddressForContractTests001",
-    amountDrops: "1000000",
+    amount: { asset: "XRP", drops: "1000000" },
     sourceText: "Invoice 42: 3 widgets at 10 EUR",
     criteria: { fields: ["total"], total: "30.00" },
     policyVersion: "test-0",
@@ -46,7 +46,8 @@ export function escrowFor(job: Job, cancelAfter: number, overrides: Partial<Escr
     owner: job.buyerAddress,
     offerSequence: sequences,
     destination: job.sellerAddress,
-    amountDrops: job.amountDrops,
+    amount: job.amount,
+    issuer: null,
     condition: `A0258020${"0".repeat(64)}810120`,
     cancelAfter,
     createTxHash: randomUUID().replaceAll("-", "").toUpperCase().padEnd(64, "0"),
@@ -248,18 +249,54 @@ export function describeRepo(name: string, make: () => Promise<JobsRepo>): void 
       ]);
     });
 
-    it.each(["1.5", "1e6", "0123"])("refuses the drop string %s before writing anything", async (amountDrops) => {
-      const ref = `bad-drops-${Date.now()}-${amountDrops.replace(/W/g, "_")}`;
-      await expect(repo.createJob(newJob({ ref, amountDrops }))).rejects.toThrow(/amountDrops/);
+    it.each(["1.5", "1e6", "0123"])("refuses the drop string %s before writing anything", async (drops) => {
+      const ref = `bad-drops-${Date.now()}-${drops.replace(/W/g, "_")}`;
+      await expect(repo.createJob(newJob({ ref, amount: { asset: "XRP", drops } }))).rejects.toThrow(/amountDrops/);
       // The ref is still free, so no row was written.
       const ok = await repo.createJob(newJob({ ref }));
-      expect(ok.amountDrops).toBe("1000000");
+      expect(ok.amount).toEqual({ asset: "XRP", drops: "1000000" });
+    });
+
+    it.each(["1.5", "1e6", "0123"])("refuses the cent string %s before writing anything", async (cents) => {
+      const ref = `bad-cents-${Date.now()}-${cents.replace(/W/g, "_")}`;
+      await expect(repo.createJob(newJob({ ref, amount: { asset: "TESTUSD", cents } }))).rejects.toThrow(/amountTestUsdCents/);
+      const ok = await repo.createJob(newJob({ ref }));
+      expect(ok.ref).toBe(ref);
     });
 
     it("refuses an escrow whose drop string is not a positive integer, writing nothing", async () => {
       const job = await repo.createJob(newJob());
-      await expect(repo.attachEscrow(escrowFor(job, 1_000, { amountDrops: "1.5" }))).rejects.toThrow(/amountDrops/);
+      await expect(repo.attachEscrow(escrowFor(job, 1_000, { amount: { asset: "XRP", drops: "1.5" } }))).rejects.toThrow(
+        /amountDrops/,
+      );
       expect(await repo.getEscrow(job.id)).toBeNull();
+    });
+
+    it("an XRP job's snapshot hash is unchanged by the asset refactor", async () => {
+      const input = newJob({ criteriaText: "check the total" });
+      const job = await repo.createJob(input);
+      const legacy = sha256Hex(
+        canonicalJson({
+          ref: input.ref,
+          buyerAddress: input.buyerAddress,
+          sellerAddress: input.sellerAddress,
+          amountDrops: "1000000",
+          sourceText: input.sourceText,
+          criteria: input.criteria,
+          policyVersion: input.policyVersion,
+          cancelAfterSeconds: input.cancelAfterSeconds,
+          criteriaText: "check the total",
+        }),
+      );
+      expect(job.snapshotHash).toBe(legacy);
+    });
+
+    it("creates and reads back a TESTUSD job and escrow with its issuer", async () => {
+      const job = await repo.createJob(newJob({ amount: { asset: "TESTUSD", cents: "4800000" } }));
+      expect((await repo.getJob(job.id))?.amount).toEqual({ asset: "TESTUSD", cents: "4800000" });
+      const issuer = "rIssuerAddressForContractTests001";
+      await repo.attachEscrow(escrowFor(job, 1_000, { issuer }));
+      expect(await repo.getEscrow(job.id)).toMatchObject({ amount: { asset: "TESTUSD", cents: "4800000" }, issuer });
     });
 
     it("lists CREATE_PENDING jobs to resume: any with an escrow, or with a pending create at least the given age", async () => {

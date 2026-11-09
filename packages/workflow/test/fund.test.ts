@@ -31,7 +31,7 @@ describe("fundJob", () => {
           opId,
           jobRef: job.ref,
           destination: job.sellerAddress,
-          amountDrops: job.amountDrops,
+          amountDrops: "1000000",
           cancelAfterSeconds: 120,
         },
       },
@@ -41,7 +41,8 @@ describe("fundJob", () => {
       jobId: job.id,
       owner: signer.buyer,
       destination: job.sellerAddress,
-      amountDrops: job.amountDrops,
+      amount: job.amount,
+      issuer: null,
       cancelAfter: CLOSE + 120,
     });
     const [tx] = await repo.listTransactions(job.id);
@@ -131,4 +132,30 @@ describe("fundJob", () => {
     await expect(fundJob(deps(), inProgress.id)).rejects.toBeInstanceOf(TransitionError);
     expect(signer.count("create")).toBe(1);
   });
+});
+
+describe("fundJob in TESTUSD", () => {
+  it("locks a TESTUSD job and records the issuer", async () => {
+    const job = await repo.createJob(newJob({ amount: { asset: "TESTUSD", cents: "4800000" } }));
+    const locked = await fundJob(deps(), job.id);
+    expect(locked.state).toBe("LOCKED");
+    const [call] = signer.calls;
+    expect(call?.req).toMatchObject({ amountTestUsdCents: "4800000" });
+    expect(Object.keys(call?.req as object)).not.toContain("amountDrops");
+    expect(await repo.getEscrow(job.id)).toMatchObject({
+      amount: { asset: "TESTUSD", cents: "4800000" },
+      issuer: signer.issuer,
+    });
+  });
+
+  it.each(["daily_cap_reached", "open_deal_limit_reached", "destination_not_ready", "insufficient_funds", "asset_not_enabled"])(
+    "records %s as CREATE_FAILED",
+    async (code) => {
+      const job = await repo.createJob(newJob({ amount: { asset: "TESTUSD", cents: "4800000" } }));
+      signer.script(operationId(job.id, "create"), signerError(code));
+      const failed = await fundJob(deps(), job.id);
+      expect(failed.state).toBe("CREATE_FAILED");
+      expect((await repo.listEvents(job.id)).at(-1)).toMatchObject({ toState: "CREATE_FAILED", reasonCodes: [code] });
+    },
+  );
 });

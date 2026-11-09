@@ -1,3 +1,4 @@
+import { wireAmount } from "@surety/contracts";
 import { type SignerClient, SignerClientError } from "@surety/signer-client";
 import { operationId } from "./operation-id";
 import type { Job, JobsRepo } from "./repo";
@@ -17,6 +18,11 @@ const CONCLUSIVE = new Set([
   "cancel_window_invalid",
   "bad_request",
   "op_failed",
+  "daily_cap_reached",
+  "open_deal_limit_reached",
+  "destination_not_ready",
+  "insufficient_funds",
+  "asset_not_enabled",
 ]);
 
 // Locks the job's escrow through the signer. Anything inconclusive (ledger_failure, op_pending, a
@@ -41,7 +47,7 @@ export async function fundJob(deps: FundDeps, jobId: string): Promise<Job> {
       opId,
       jobRef: job.ref,
       destination: job.sellerAddress,
-      amountDrops: job.amountDrops,
+      ...wireAmount(job.amount),
       cancelAfterSeconds: job.cancelAfterSeconds,
     });
   } catch (e) {
@@ -64,7 +70,8 @@ export async function fundJob(deps: FundDeps, jobId: string): Promise<Job> {
       owner: res.owner,
       offerSequence: res.offerSequence,
       destination: job.sellerAddress,
-      amountDrops: job.amountDrops,
+      amount: job.amount,
+      issuer: res.issuer ?? null,
       condition: res.condition,
       cancelAfter: res.cancelAfter,
       createTxHash: res.txHash,

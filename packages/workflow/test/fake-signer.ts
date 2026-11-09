@@ -29,6 +29,11 @@ const STATUS: Record<string, number> = {
   op_pending: 409,
   op_failed: 409,
   ledger_failure: 502,
+  daily_cap_reached: 403,
+  open_deal_limit_reached: 403,
+  destination_not_ready: 409,
+  insufficient_funds: 409,
+  asset_not_enabled: 400,
 };
 
 export function signerError(code: string): SignerClientError {
@@ -43,6 +48,8 @@ export class FakeSigner implements SignerClient {
   // Well-formed classic addresses (the authorization schema checks the format); no keys exist for them.
   readonly buyer = "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe";
   readonly service = "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1";
+  // The TESTUSD issuer a real signer would report for a TESTUSD lock.
+  readonly issuer = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh";
   calls: { method: Method; opId: string; req: unknown }[] = [];
   ledgerIndex = 5000;
   private nextSequence = 100;
@@ -89,6 +96,7 @@ export class FakeSigner implements SignerClient {
       cancelAfter: this.closeTime + req.cancelAfterSeconds,
       ledgerIndex: ++this.ledgerIndex,
       result: "tesSUCCESS",
+      ...(req.amountTestUsdCents ? { issuer: this.issuer } : {}),
     };
     this.done.set(req.opId, res);
     return res;

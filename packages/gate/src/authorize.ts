@@ -1,5 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { AuthorizationPayloadSchema, type SignedAuthorization, signAuthorization } from "@surety/contracts";
+import {
+  type AssetAmount,
+  AuthorizationPayloadSchema,
+  type SignedAuthorization,
+  signAuthorization,
+  wireAmount,
+} from "@surety/contracts";
 
 // The gate's one-use permission for the signer to finish one exact escrow. Short-lived; the signer
 // re-checks every bound field against its own records and the validated ledger before signing.
@@ -8,7 +14,7 @@ export const AUTHORIZATION_TTL_MS = 60_000;
 export interface MintInput {
   owner: string;
   offerSequence: number;
-  amountDrops: string;
+  amount: AssetAmount;
   destination: string;
   jobSnapshotHash: string;
   deliverableHash: string;
@@ -24,7 +30,7 @@ export function mintAuthorization(p: MintInput): SignedAuthorization {
     network: "testnet",
     owner: p.owner,
     offerSequence: p.offerSequence,
-    amountDrops: p.amountDrops,
+    ...wireAmount(p.amount),
     destination: p.destination,
     jobSnapshotHash: p.jobSnapshotHash,
     deliverableHash: p.deliverableHash,
