@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node --env-file=.env --env-file-if-exists=.env.testusd --import tsx src/main.ts",
-    "init-wallets": "tsx scripts/init-wallets.ts"
+    "init-wallets": "tsx scripts/init-wallets.ts",
+    "setup-testusd": "node --env-file=.env --import tsx scripts/setup-testusd.ts"
   },
   "dependencies": {
     "@surety/contracts": "workspace:*",
