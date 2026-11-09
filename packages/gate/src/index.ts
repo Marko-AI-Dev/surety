@@ -18,3 +18,14 @@ export {
   renderPurchaseOrder,
   renderTradeDocuments,
 } from "./trade-docs";
+export {
+  checkIntent,
+  checkQuote,
+  type CheckReport,
+  type CheckResult,
+  type IntentCheckId,
+  type IntentContext,
+  type QuoteCheckId,
+  type SupplierLine,
+  type TestUsdPolicyView,
+} from "./deal-checks";
