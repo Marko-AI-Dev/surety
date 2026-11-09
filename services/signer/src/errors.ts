@@ -3,15 +3,21 @@ export const ERROR_STATUS = {
   unauthenticated: 401,
   destination_not_allowed: 403,
   amount_over_cap: 403,
+  daily_cap_reached: 403,
+  open_deal_limit_reached: 403,
   authorization_invalid: 403,
   not_found: 404,
   escrow_not_found: 404,
   cancel_window_invalid: 400,
+  asset_not_enabled: 400,
   authorization_consumed: 409,
   escrow_mismatch: 409,
   finish_window_closed: 409,
   cancel_not_yet_eligible: 409,
   op_conflict: 409,
+  // The destination cannot receive TESTUSD (no trust line, frozen, or no room under its limit).
+  destination_not_ready: 409,
+  insufficient_funds: 409,
   op_pending: 409,
   // Conclusive: this opId's transaction failed on the ledger or can never be included. Retrying the
   // same opId replays this; a new attempt needs a new opId.

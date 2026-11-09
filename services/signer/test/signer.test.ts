@@ -77,6 +77,7 @@ beforeEach(() => {
     finishMarginSeconds: 5,
     port: 4100,
     dataDir,
+    testUsd: null,
   };
 });
 

@@ -2,12 +2,17 @@ import { Client, type SubmittableTransaction } from "xrpl";
 import {
   type EscrowEntry,
   type LedgerRange,
+  type TrustLine,
   type TxResult,
   getEscrow,
+  getTrustLine,
   getTxResult,
   getValidatedCloseTime,
 } from "@surety/xrpl-settlement";
 import type { LedgerPort, SubmitResult } from "./ledger";
+
+// lsfAllowTrustLineLocking: the issuer lets holders escrow its token (XLS-85).
+const LSF_ALLOW_TRUST_LINE_LOCKING = 0x40000000;
 
 // LedgerPort backed by a real XRPL node. Fees are bounded at 0.01 XRP per transaction.
 export class XrplLedger implements LedgerPort {
@@ -77,5 +82,14 @@ export class XrplLedger implements LedgerPort {
 
   lookup(hash: string, range?: LedgerRange): Promise<TxResult> {
     return getTxResult(this.client, hash, range);
+  }
+
+  trustLine(account: string, issuer: string, currencyHex: string): Promise<TrustLine | null> {
+    return getTrustLine(this.client, account, issuer, currencyHex);
+  }
+
+  async issuerAllowsLocking(issuer: string): Promise<boolean> {
+    const r = await this.client.request({ command: "account_info", account: issuer, ledger_index: "validated" });
+    return ((r.result.account_data.Flags ?? 0) & LSF_ALLOW_TRUST_LINE_LOCKING) !== 0;
   }
 }

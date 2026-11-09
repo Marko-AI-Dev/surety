@@ -244,7 +244,7 @@ export function createSigner(deps: SignerDeps): Signer {
         buildEscrowCreate({
           account: buyer.classicAddress,
           destination: req.destination,
-          amountDrops: req.amountDrops,
+          amount: req.amountDrops as string,
           condition,
           cancelAfter,
         }),

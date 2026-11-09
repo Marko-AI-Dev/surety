@@ -1,5 +1,5 @@
 import { type SubmittableTransaction, decode } from "xrpl";
-import { type EscrowEntry, type TxResult, preimageCondition } from "@surety/xrpl-settlement";
+import { type EscrowEntry, type IssuedAmount, type TrustLine, type TxResult, preimageCondition } from "@surety/xrpl-settlement";
 import type { LedgerPort, SubmitResult } from "../src/ledger";
 
 type Decoded = Record<string, unknown> & { TransactionType: string; Account: string; Sequence: number };
@@ -19,6 +19,10 @@ export class FakeLedger implements LedgerPort {
   onIndexRead: (() => void) | undefined;
   lookupRanges: ({ minLedger: number; maxLedger: number } | undefined)[] = [];
   nextResult: string | undefined;
+  // Keyed `${account}:${issuer}`. Tests seed these; the fake does not move token balances.
+  trustLines = new Map<string, TrustLine>();
+  throwOnNextTrustLine = false;
+  lockingAllowed = true;
   private held: { blob: string; hash: string } | undefined;
   private results = new Map<string, TxResult>();
   private sequences = new Map<string, number>();
@@ -95,6 +99,18 @@ export class FakeLedger implements LedgerPort {
     return this.results.get(hash) ?? { validated: false, searchedAll: range ? !this.historyGap : undefined };
   }
 
+  async trustLine(account: string, issuer: string, _currencyHex: string): Promise<TrustLine | null> {
+    if (this.throwOnNextTrustLine) {
+      this.throwOnNextTrustLine = false;
+      throw new Error("websocket closed while fetching account_lines");
+    }
+    return this.trustLines.get(`${account}:${issuer}`) ?? null;
+  }
+
+  async issuerAllowsLocking(_issuer: string): Promise<boolean> {
+    return this.lockingAllowed;
+  }
+
   count(type: string): number {
     return this.submitted.filter((t) => t.TransactionType === type).length;
   }
@@ -104,7 +120,7 @@ export class FakeLedger implements LedgerPort {
       this.escrows.set(`${tx.Account}:${tx.Sequence}`, {
         Account: tx.Account,
         Destination: String(tx.Destination),
-        Amount: String(tx.Amount),
+        Amount: typeof tx.Amount === "string" ? tx.Amount : (tx.Amount as IssuedAmount),
         Condition: String(tx.Condition),
         CancelAfter: Number(tx.CancelAfter),
       });

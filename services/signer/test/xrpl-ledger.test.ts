@@ -60,3 +60,33 @@ describe("XrplLedger.submitSigned", () => {
     expect(seen[0]).toMatchObject({ command: "tx", transaction: "HASH", min_ledger: 100, max_ledger: 120 });
   });
 });
+
+describe("XrplLedger TESTUSD reads", () => {
+  function accountInfoClient(flags: number): Client {
+    return {
+      request: async (req: { command: string; ledger_index?: string }) => {
+        if (req.command === "account_info" && req.ledger_index === "validated") {
+          return { result: { account_data: { Flags: flags } } };
+        }
+        throw new Error(`unexpected command ${req.command}`);
+      },
+    } as unknown as Client;
+  }
+
+  it("issuerAllowsLocking reads lsfAllowTrustLineLocking from account_info", async () => {
+    expect(await new XrplLedger("wss://unused", accountInfoClient(1073741824)).issuerAllowsLocking("rI")).toBe(true);
+    expect(await new XrplLedger("wss://unused", accountInfoClient(1073741824 | 8388608)).issuerAllowsLocking("rI")).toBe(true);
+    expect(await new XrplLedger("wss://unused", accountInfoClient(0)).issuerAllowsLocking("rI")).toBe(false);
+  });
+
+  it("trustLine delegates to the validated account_lines read", async () => {
+    const client = {
+      request: async () => ({ result: { lines: [{ currency: "5445535455534400000000000000000000000000", balance: "7", limit: "9" }] } }),
+    } as unknown as Client;
+    expect(await new XrplLedger("wss://unused", client).trustLine("rA", "rI", "5445535455534400000000000000000000000000")).toEqual({
+      balance: "7",
+      limit: "9",
+      frozenByIssuer: false,
+    });
+  });
+});
