@@ -4,7 +4,7 @@ import type { InvoiceDeliverable, SupplierQuote, TradeDocuments } from "@surety/
 export interface EvaluationInput {
   requestId: string;
   // Which fixed question set the judge answers. The evidence goes in state, never in question text.
-  questionSet: "invoice" | "trade";
+  questionSet: "invoice" | "trade" | "chat";
   state: Record<string, unknown>;
   deliverableHash: string;
   jobSnapshotHash: string;

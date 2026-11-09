@@ -64,6 +64,19 @@ export const POLICY_V4_TRADE: Policy = Object.freeze({
 
 export const POLICIES: readonly Policy[] = Object.freeze([POLICY_V1, POLICY_V2, POLICY_V3_TRADE, POLICY_V4_TRADE]);
 
+// The bouncer's policy for one supplier chat message. Deliver needs an ordinary business message
+// (satisfaction 0.3 or more) with injection 0.2 or less; injection 0.5 or more is a decline, which is
+// a yellow card. declineMaxSatisfaction 0 means an off-topic message is held, never carded. It isn't
+// in POLICIES: no job or deal ever freezes it. Provisional until the chat calibration.
+export const CHAT_POLICY: Policy = Object.freeze({
+  version: "chat-v1",
+  approveMinSatisfaction: 0.3,
+  approveMaxInjection: 0.2,
+  declineMinInjection: 0.5,
+  declineMaxSatisfaction: 0,
+  reaskBand: Object.freeze({ satisfaction: [0.2, 0.4] as const, injectionRisk: [0.15, 0.3] as const }),
+});
+
 // The policy new jobs freeze at creation. Existing jobs keep the version they froze.
 export const CURRENT_POLICY: Policy = POLICY_V2;
 

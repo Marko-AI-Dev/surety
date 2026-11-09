@@ -10,7 +10,9 @@ export {
 } from "./engine";
 export { isBorderline, withReask, type ReaskBand } from "./reask";
 export { parserReader, type DocumentReader, type ReadResult } from "./reader";
+export { chatState, screenMessage, type ScreenInput, type ScreenResult } from "./screen";
 export {
+  JEV_CHAT_QUESTIONS,
   JEV_DECISIONS_URL,
   JEV_MODEL,
   JEV_QUESTIONS,
@@ -20,6 +22,7 @@ export {
 } from "./jev-engine";
 export { createFixtureEngine, type FixtureScores } from "./fixture-engine";
 export {
+  CHAT_POLICY,
   CURRENT_POLICY,
   POLICIES,
   POLICY_V1,

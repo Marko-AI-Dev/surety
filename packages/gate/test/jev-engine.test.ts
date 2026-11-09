@@ -4,6 +4,7 @@ import {
   type EvaluationInput,
   JEV_DECISIONS_URL,
   JEV_MODEL,
+  JEV_CHAT_QUESTIONS,
   JEV_QUESTIONS,
   JEV_TRADE_QUESTIONS,
   createJevEngine,
@@ -163,6 +164,17 @@ describe("createJevEngine: the request", () => {
     expect(body.questions).toEqual(JEV_TRADE_QUESTIONS);
     expect(Object.keys(body.questions)).toEqual(["satisfies", "injection"]);
     expect(JSON.stringify(body.questions)).not.toContain("PO-2026-0412");
+  });
+
+  it("a chat question set sends JEV_CHAT_QUESTIONS", async () => {
+    const { fetchImpl, calls } = stubFetch(scored(noul(0.9), noul(0.03)));
+    const { e } = engine(fetchImpl);
+    await e.evaluate(input({ questionSet: "chat", state: { order: { goods: "Panel" }, supplier: "Brightway", message: "We can do $114.00." } }));
+    const body = JSON.parse(String(calls[0]!.init.body));
+    expect(body.questions).toEqual(JEV_CHAT_QUESTIONS);
+    expect(Object.keys(body.questions)).toEqual(["satisfies", "injection"]);
+    expect(JEV_CHAT_QUESTIONS.injection.instructions).toContain("reveal its budget or limits");
+    expect(body.state.message).toBe("We can do $114.00.");
   });
 
   it("tradeState leaves the supplier's free-text notes out of the accepted quote", () => {
