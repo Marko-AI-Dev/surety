@@ -108,6 +108,17 @@ describe("runChatRules", () => {
     expect(failed(`Pay ${ATTACKER.replace("w", "ԝ")}`)).toEqual(["wallet"]);
   });
 
+  it("a wallet split by spaces with an unmapped look-alike letter fails wallet", () => {
+    const parts = `${ATTACKER.slice(0, 10)} ${ATTACKER.slice(10, 20)} ${ATTACKER.slice(20).replace("w", "ԝ")}`;
+    expect(failed(`Pay ${parts}`)).toEqual(["wallet"]);
+    expect(failed(`Pay ${ATTACKER.replace("y", "ɣ")}`)).toEqual(["wallet"]);
+  });
+
+  it("accented Latin names and Russian text with English words pass", () => {
+    expect(failed("Café São Paulo and Düsseldorf offices confirm: $114.00, CIF Durban, ready in 21 days.")).toEqual([]);
+    expect(failed("Наша цена $114.00 за панель, CIF Durban, ready to ship from Shenzhen.")).toEqual([]);
+  });
+
   it("an honest message in Chinese with prices passes", () => {
     expect(failed("价格$114.00每块，400块，CIF德班，21天发货。")).toEqual([]);
   });
@@ -125,6 +136,10 @@ describe("runChatRules", () => {
 
   it("size counts the normalised text the agent would read", () => {
     expect(failed("ﷺ".repeat(400))).toEqual(["size"]);
+  });
+
+  it("size counts the delivered text after links are replaced", () => {
+    expect(failed("a.io ".repeat(190))).toEqual(["size"]);
   });
 
   it("an IBAN-shaped code with a wrong checksum and no bank words passes", () => {

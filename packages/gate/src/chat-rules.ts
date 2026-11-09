@@ -144,22 +144,37 @@ function hasBankDetails(text: string): boolean {
   return BANK_KEYWORDS.some((p) => p.test(n) || p.test(joined)) || hasIban(n);
 }
 
-// A long address-like word that mixes in Cyrillic, Greek, Armenian or other look-alike letters is a
-// hidden wallet whatever the map above misses. CJK and other scripts are not look-alikes and pass.
-const LOOKALIKE_SCRIPTS = /[Ͱ-ϿЀ-ԯ԰-֏ᴀ-ᶿ℀-⅏]/u;
-const BASE58_CHAR = /[1-9A-HJ-NP-Za-km-z]/g;
-const mixedScriptAddressLike = (text: string) =>
-  unicodeClean(text)
-    .split(/\s+/)
-    .some((token) => LOOKALIKE_SCRIPTS.test(token) && (token.match(BASE58_CHAR) ?? []).length >= 15);
+// A look-alike letter planted inside an address-like run is a hidden wallet whatever the map above
+// misses. Scripts with Latin look-alikes: Greek, Coptic, Cyrillic (all blocks), Armenian, Latin
+// Extended-B and D, IPA and phonetic letters, spacing modifiers, Cherokee, letterlike symbols and Lisu.
+// CJK, accented Latin-1 and Extended-A names pass. The scan crosses spaces and punctuation, like the
+// wallet scan; a planted letter must sit between two address characters, which words of another
+// script (in runs) do not.
+const LOOKALIKE =
+  /[ƀ-˿Ͱ-ϿЀ-ԯ԰-֏Ꭰ-᏿ᲀ-᲏ᴀ-ᶿ℀-⅏Ⲁ-⳿ⷠ-ⷿꙀ-ꚟꓐ-꓿꜠-ꟿꭰ-ꮿ]/u;
+const ASCII_BASE58 = /^[1-9A-HJ-NP-Za-km-z]$/;
+function mixedScriptAddressLike(text: string): boolean {
+  const chars = [...unicodeClean(text)].filter((c) => /[\p{L}\p{N}]/u.test(c));
+  for (let i = 0; i < chars.length; i++) {
+    if (chars[i] !== "r") continue;
+    const win = chars.slice(i, i + 35);
+    if (win.filter((c) => ASCII_BASE58.test(c)).length < 24) continue;
+    for (let k = 1; k < win.length - 1; k++) {
+      const c = win[k] ?? "";
+      if (LOOKALIKE.test(c) && ASCII_BASE58.test(win[k - 1] ?? "") && ASCII_BASE58.test(win[k + 1] ?? "")) return true;
+    }
+  }
+  return false;
+}
 
 // The rules judge every form of the message: as sent, as the agent would read it (normalised and
 // de-disguised), and that again with its links removed, so nothing removed or rewritten on delivery
 // can join the halves of a wallet or an IBAN after the check.
 export function runChatRules(text: string, ctx: { approvedWallet: string | null }): ChatRulesReport {
   const delivered = deliveredForm(text);
-  const forms = [text, delivered, delivered.replace(LINK, "")];
-  const length = Math.max(text.length, delivered.length);
+  const sent = stripLinks(text).text;
+  const forms = [text, delivered, sent, delivered.replace(LINK, "")];
+  const length = Math.max(text.length, delivered.length, sent.length);
   const results: ChatRuleResult[] = [];
   results.push(
     length > MESSAGE_MAX_CHARS
