@@ -31,7 +31,8 @@
     "suppliers:directory": "node --env-file=.env --import tsx scripts/supplier-directory.ts",
     "supplier:clear": "node --env-file=.env --import tsx scripts/clear-supplier.ts",
     "paperclip:team": "tsx scripts/paperclip-team.ts",
-    "sourcing:status": "node --env-file=.env --import tsx scripts/sourcing-status.ts"
+    "sourcing:status": "node --env-file=.env --import tsx scripts/sourcing-status.ts",
+    "evidence:sourcing": "node --env-file=.env --env-file=.env.api --import tsx scripts/sourcing-evidence.ts"
   },
   "devDependencies": {
     "@surety/contracts": "workspace:*",
