@@ -843,3 +843,66 @@ describe("operator policy", () => {
     expect((locked as PromiseRejectedResult).reason).toMatchObject({ code: "amount_over_cap" });
   });
 });
+
+describe("review fixes", () => {
+  let issuer: string;
+  let supplier: string;
+
+  beforeEach(() => {
+    issuer = Wallet.generate().classicAddress;
+    supplier = Wallet.generate().classicAddress;
+    config = {
+      ...config,
+      testUsd: {
+        issuer,
+        approvedSuppliers: [supplier],
+        maxDealCents: 250_000n,
+        dailyCents: 2_500_000n,
+        maxOpenDeals: 1,
+        operatorSecret: "o".repeat(40),
+      },
+    };
+    ledger.trustLines.set(`${buyer.classicAddress}:${issuer}`, { balance: "1000000", limit: "1000000000", frozenByIssuer: false });
+    ledger.trustLines.set(`${supplier}:${issuer}`, { balance: "0", limit: "1000000000", frozenByIssuer: false });
+  });
+
+  const lock = (cents = "100") => {
+    const { amountDrops: _drops, ...rest } = createReq({ destination: supplier });
+    return makeSigner().createEscrow({ ...rest, amountTestUsdCents: cents });
+  };
+
+  it("a stuck create that can never validate stops holding its open slot once its LastLedgerSequence has passed", async () => {
+    ledger.holdNextSubmit = true;
+    await expectCode(lock(), "ledger_failure");
+    await expectCode(lock(), "open_deal_limit_reached");
+    ledger.ledgerIndex += 30;
+    expect((await lock()).result).toBe("tesSUCCESS");
+  });
+
+  it("a stuck create that did validate is recorded and keeps its open slot", async () => {
+    ledger.holdNextSubmit = true;
+    await expectCode(lock(), "ledger_failure");
+    ledger.releaseHeld();
+    ledger.ledgerIndex += 30;
+    await expectCode(lock(), "open_deal_limit_reached");
+    const records = JSON.parse(readFileSync(join(dataDir, "escrows.json"), "utf8"));
+    expect(Object.values(records).filter((r) => (r as { status: string }).status === "locked")).toHaveLength(1);
+  });
+
+  it("refuses a policy update naming a supplier address with a bad checksum", async () => {
+    const good = supplier;
+    const typo = `${good.slice(0, -1)}${good.endsWith("a") ? "b" : "a"}`;
+    await expectCode(
+      makeSigner().updatePolicy({
+        opId: randomUUID(),
+        expectedVersion: 1,
+        perDealCents: "250000",
+        dailyCents: "2500000",
+        maxOpenDeals: 5,
+        approvedSuppliers: [good, typo],
+      }),
+      "bad_request",
+    );
+    expect((await makeSigner().health()).testUsd?.policyVersion).toBe(1);
+  });
+});

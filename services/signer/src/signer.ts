@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import type { Wallet } from "xrpl";
+import { type Wallet, isValidClassicAddress } from "xrpl";
 import type { ZodType } from "zod";
 import {
   CancelEscrowRequestSchema,
@@ -330,6 +330,34 @@ export function createSigner(deps: SignerDeps): Signer {
     });
   }
 
+  // A TESTUSD create whose outcome was never learned stays "submitted" until its opId is replayed, and
+  // until then it holds an open slot and daily capacity. Once the ledger is past its LastLedgerSequence
+  // the outcome is final, so resolve it here exactly as a retry of that opId would: a validated create
+  // becomes a record, one proven absent becomes failed. Anything still unprovable keeps counting.
+  // Runs under the buyer lock.
+  async function resolveStaleCreates(): Promise<void> {
+    const stale = Object.values(journal.get()).filter(
+      (e) => e.type === "create" && e.status === "submitted" && e.pending?.asset === "TESTUSD" && e.lastLedgerSequence !== undefined,
+    );
+    if (stale.length === 0) return;
+    let height: number;
+    try {
+      height = await ledger.validatedLedgerIndex();
+    } catch {
+      throw new SignerError("ledger_failure", "could not read the ledger to resolve earlier locks; retry with the same opId");
+    }
+    for (const entry of stale) {
+      if (height <= (entry.lastLedgerSequence as number)) continue;
+      try {
+        await replay<CreateEscrowResponse>("create", entry.opId, entry.requestHash);
+      } catch (e) {
+        if (e instanceof SignerError && (e.code === "op_failed" || e.code === "op_pending")) continue;
+        if (e instanceof SignerError) throw e;
+        throw new SignerError("ledger_failure", "could not resolve an earlier lock; retry with the same opId");
+      }
+    }
+  }
+
   // TESTUSD: cheap local checks first, then ledger reads, then sign. Nothing is sealed or signed
   // until every check has passed, so a refusal or a failed read leaves no trace and the same opId can retry.
   async function createTestUsdEscrow(req: CreateEscrowRequest, hash: string, cents: string): Promise<CreateEscrowResponse> {
@@ -356,6 +384,7 @@ export function createSigner(deps: SignerDeps): Signer {
       // One close time decides the cap window and CancelAfter. Under the buyer lock, so two
       // concurrent creates cannot both see room that only one of them fits in.
       const closeTime = await ledger.validatedCloseTime();
+      await resolveStaleCreates();
       const pending = Object.values(journal.get())
         .filter((e) => e.type === "create" && e.status === "submitted" && e.pending)
         .map((e) => e.pending as PendingCreate);
@@ -577,6 +606,11 @@ export function createSigner(deps: SignerDeps): Signer {
     const req = parse(UpdatePolicyRequestSchema, raw);
     const usd = config.testUsd;
     if (!usd || !policy) throw new SignerError("asset_not_enabled", "this signer is not configured for TESTUSD");
+    // The schema checks the address shape; a typo with a bad checksum would otherwise reach the ledger
+    // as an unreadable account and leave every lock to it retrying.
+    if (req.approvedSuppliers.some((a) => !isValidClassicAddress(a))) {
+      throw new SignerError("bad_request", "approved suppliers must be valid XRPL classic addresses");
+    }
     return locks.run(buyer.classicAddress, async () =>
       policy.update(req, { forbidden: [buyer.classicAddress, service.classicAddress, usd.issuer] }),
     );
