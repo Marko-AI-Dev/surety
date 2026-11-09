@@ -3,7 +3,9 @@ import { MESSAGE_MAX_CHARS } from "@surety/contracts";
 
 // The bouncer's code rules for a supplier chat message. Payment details never travel in chat: the
 // supplier's wallet is fixed at approval, so any other wallet or any bank detail is a red card.
-// These checks need no AI and run before the decision model is asked anything.
+// These checks need no AI and run before the decision model is asked anything. They normalise the
+// text first (Unicode NFKC, every format character removed, common look-alike letters mapped), and
+// only checksum-valid addresses and IBANs count, so joining fragments aggressively stays safe.
 
 export const CHAT_RULE_IDS = ["size", "wallet", "bank_details"] as const;
 export type ChatRuleId = (typeof CHAT_RULE_IDS)[number];
@@ -20,58 +22,125 @@ export interface ChatRulesReport {
   results: ChatRuleResult[];
 }
 
-const ZERO_WIDTH = /[​-‍﻿]/g;
-const RIPPLE_ALPHABET = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz";
-const BASE58_TOKEN = /^[1-9A-HJ-NP-Za-km-z]+$/;
-const CANDIDATE = /(?<![A-Za-z0-9])r[1-9A-HJ-NP-Za-km-z]{24,34}(?![A-Za-z0-9])/g;
+// Cyrillic and Greek letters that look like the Latin ones an address or a bank word uses.
+const CONFUSABLES: Record<string, string> = {
+  "А": "A", "В": "B", "С": "C", "Е": "E", "Н": "H", "К": "K", "М": "M",
+  "О": "O", "Р": "P", "Т": "T", "Х": "X", "а": "a", "е": "e", "к": "k",
+  "о": "o", "р": "p", "с": "c", "у": "y", "х": "x", "і": "i", "ј": "j",
+  "ѕ": "s", "ԁ": "d", "ɡ": "g", "Α": "A", "Β": "B", "Ε": "E", "Ζ": "Z",
+  "Η": "H", "Ι": "I", "Κ": "K", "Μ": "M", "Ν": "N", "Ο": "O", "Ρ": "P",
+  "Τ": "T", "Υ": "Y", "Χ": "X", "ο": "o", "ν": "v",
+};
 
-// A real XRPL classic address: Ripple base58, version byte 0, 20-byte account, 4-byte checksum.
-// Random words almost never pass the checksum, so joining text fragments cannot red-card a sentence.
-function isClassicAddress(candidate: string): boolean {
+const FORMAT_CHARS = /\p{Cf}/gu;
+const unicodeClean = (text: string) => text.normalize("NFKC").replace(FORMAT_CHARS, "");
+const normalize = (text: string) => [...unicodeClean(text)].map((c) => CONFUSABLES[c] ?? c).join("");
+
+const RIPPLE_ALPHABET = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz";
+const NOT_BASE58 = /[^1-9A-HJ-NP-Za-km-z]/g;
+const sha256 = (b: Buffer) => createHash("sha256").update(b).digest();
+
+function decodeBase58(s: string, nBytes: number): Buffer | null {
   let value = 0n;
-  for (const ch of candidate) {
+  for (const ch of s) {
     const digit = RIPPLE_ALPHABET.indexOf(ch);
-    if (digit < 0) return false;
+    if (digit < 0) return null;
     value = value * 58n + BigInt(digit);
   }
-  const hex = value.toString(16).padStart(50, "0");
-  if (hex.length !== 50) return false;
-  const bytes = Buffer.from(hex, "hex");
-  if (bytes[0] !== 0) return false;
-  const body = bytes.subarray(0, 21);
-  const checksum = createHash("sha256").update(createHash("sha256").update(body).digest()).digest().subarray(0, 4);
-  return checksum.equals(bytes.subarray(21));
+  const hex = value.toString(16).padStart(nBytes * 2, "0");
+  return hex.length === nBytes * 2 ? Buffer.from(hex, "hex") : null;
 }
 
-// Every valid address in the text: whole tokens first, then fragments split by spaces or dashes.
-function walletsIn(text: string): string[] {
-  const clean = text.replace(ZERO_WIDTH, "");
-  const found = new Set<string>();
-  for (const m of clean.matchAll(CANDIDATE)) if (isClassicAddress(m[0])) found.add(m[0]);
-  const tokens = clean.split(/[\s-]+/).map((t) => t.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, ""));
-  for (let i = 0; i < tokens.length; i++) {
-    if (!tokens[i]?.startsWith("r")) continue;
-    let joined = "";
-    for (let j = i; j < tokens.length; j++) {
-      const t = tokens[j] ?? "";
-      if (!BASE58_TOKEN.test(t)) break;
-      joined += t;
-      if (joined.length > 35) break;
-      if (joined.length >= 25 && isClassicAddress(joined)) found.add(joined);
+const checksumOk = (bytes: Buffer, bodyLength: number) =>
+  sha256(sha256(bytes.subarray(0, bodyLength))).subarray(0, 4).equals(bytes.subarray(bodyLength));
+
+// A classic address's 20-byte account as hex, or null. Comparing accounts, not strings, means extra
+// leading "r" characters in the text cannot make the approved wallet look like a different one.
+function classicAccount(s: string): string | null {
+  const b = decodeBase58(s, 25);
+  return b && b[0] === 0 && checksumOk(b, 21) ? b.subarray(1, 21).toString("hex") : null;
+}
+
+// An X-address (mainnet 0x05 0x44 or testnet 0x04 0x93 prefix): an address plus a tag.
+function isXAddress(s: string): boolean {
+  const b = decodeBase58(s, 35);
+  if (!b) return false;
+  const prefixOk = (b[0] === 0x05 && b[1] === 0x44) || (b[0] === 0x04 && b[1] === 0x93);
+  return prefixOk && checksumOk(b, 31);
+}
+
+// Every account the text names, read from the text with all non-address characters removed, so no
+// separator, invisible character or look-alike letter can hide one. X-addresses always count.
+function walletsIn(text: string): { accounts: Set<string>; xAddress: boolean } {
+  const stream = normalize(text).replace(NOT_BASE58, "");
+  const accounts = new Set<string>();
+  let xAddress = false;
+  for (let i = 0; i < stream.length; i++) {
+    const c = stream[i];
+    if (c === "r") {
+      for (let len = 25; len <= 35 && i + len <= stream.length; len++) {
+        const account = classicAccount(stream.slice(i, i + len));
+        if (account) accounts.add(account);
+      }
+    } else if (c === "X" || c === "T") {
+      for (let len = 45; len <= 49 && i + len <= stream.length; len++) {
+        if (isXAddress(stream.slice(i, i + len))) xAddress = true;
+      }
     }
   }
-  return [...found];
+  return { accounts, xAddress };
 }
 
-const BANK_PATTERNS: RegExp[] = [
+const BANK_KEYWORDS: RegExp[] = [
   /\bIBAN\b/i,
   /\bSWIFT\b/i,
   /\bBIC\b/i,
-  /\baccount\s+(?:number|no\b\.?)/i,
-  /\brouting\s+number\b/i,
+  /\b(?:account|acct|a\/c)\.?\s*(?:number|no\b\.?|num\b|#)/i,
+  /\brouting\s+(?:number|no\b)/i,
   /\bsort\s+code\b/i,
-  /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/,
+  /\bbeneficiary\s+(?:account|bank)\b/i,
 ];
+
+function ibanChecksumOk(iban: string): boolean {
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false;
+  let rem = 0;
+  for (const ch of iban.slice(4) + iban.slice(0, 4)) {
+    const v = ch >= "A" && ch <= "Z" ? ch.charCodeAt(0) - 55 : Number(ch);
+    rem = (rem * (v >= 10 ? 100 : 10) + v) % 97;
+  }
+  return rem === 1;
+}
+
+// IBANs as printed (in groups split by spaces, dots or dashes) or run together. Only mod-97 valid
+// ones count; candidates are tested at group boundaries and at the end of the run.
+function hasIban(text: string): boolean {
+  const up = text.toUpperCase();
+  for (const m of up.matchAll(/(?<![A-Z0-9])[A-Z]{2}\d{2}/g)) {
+    let i = m.index ?? 0;
+    let compact = "";
+    while (i < up.length && compact.length < 34) {
+      const ch = up[i] ?? "";
+      if (/[A-Z0-9]/.test(ch)) {
+        compact += ch;
+        i++;
+      } else if (/[ .-]/.test(ch) && /[A-Z0-9]/.test(up[i + 1] ?? "")) {
+        if (compact.length >= 15 && ibanChecksumOk(compact)) return true;
+        i++;
+      } else {
+        break;
+      }
+    }
+    if (compact.length >= 15 && ibanChecksumOk(compact)) return true;
+  }
+  return false;
+}
+
+function hasBankDetails(text: string): boolean {
+  const n = normalize(text);
+  // "I.B.A.N" and "S-W-I-F-T": separators between letters are dropped for the keyword check.
+  const joined = n.replace(/(?<=[A-Za-z])[.\-_*](?=[A-Za-z])/g, "");
+  return BANK_KEYWORDS.some((p) => p.test(n) || p.test(joined)) || hasIban(n);
+}
 
 export function runChatRules(text: string, ctx: { approvedWallet: string | null }): ChatRulesReport {
   const results: ChatRuleResult[] = [];
@@ -80,24 +149,33 @@ export function runChatRules(text: string, ctx: { approvedWallet: string | null 
       ? { id: "size", status: "fail", detail: `the message is ${text.length} characters, above ${MESSAGE_MAX_CHARS}` }
       : { id: "size", status: "pass" },
   );
-  const foreign = walletsIn(text).filter((w) => w !== ctx.approvedWallet);
+  const approved = ctx.approvedWallet ? classicAccount(ctx.approvedWallet) : null;
+  const { accounts, xAddress } = walletsIn(text);
+  const foreign = xAddress || [...accounts].some((a) => a !== approved);
   results.push(
-    foreign.length > 0
+    foreign
       ? { id: "wallet", status: "fail", detail: "the message names a wallet other than the supplier's approved one" }
       : { id: "wallet", status: "pass" },
   );
   results.push(
-    BANK_PATTERNS.some((p) => p.test(text.replace(ZERO_WIDTH, "")))
+    hasBankDetails(text)
       ? { id: "bank_details", status: "fail", detail: "the message carries bank payment details" }
       : { id: "bank_details", status: "pass" },
   );
   return { passed: results.every((r) => r.status === "pass"), results };
 }
 
-const LINK = /(?:https?:\/\/|www\.)\S+/gi;
+// Disguises undone before links are found: "[.]", "(dot)" and "hxxp".
+const deobfuscate = (text: string) =>
+  text.replace(/\[\.\]|\(\.\)|\[dot\]|\(dot\)|\{\.\}/gi, ".").replace(/\bhxxp(s?):\/\//gi, "http$1://");
 
-// Links never reach the agents: each one is replaced, and returned for the record.
+const LINK =
+  /\b(?:[a-z][a-z0-9+.-]*:\/\/\S+|(?:mailto|javascript|data|file|tel):\S+|www\.\S+|(?:[a-z0-9-]+\.)+[a-z]{2,24}(?:\/\S*)?)/gi;
+
+// Links never reach the agents: every URL, bare domain or disguised link is replaced, and returned
+// for the record. The delivered text is Unicode-normalised.
 export function stripLinks(text: string): { text: string; links: string[] } {
-  const links = text.match(LINK) ?? [];
-  return { text: text.replace(LINK, "[link removed]"), links };
+  const clean = deobfuscate(unicodeClean(text));
+  const links = clean.match(LINK) ?? [];
+  return { text: clean.replace(LINK, "[link removed]"), links };
 }

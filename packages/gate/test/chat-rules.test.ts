@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { classicAddressToXAddress } from "xrpl";
 import { CHAT_RULE_IDS, RED_CARD_RULES, runChatRules, stripLinks } from "../src/index";
 import { ATTACKER, SUPPLIER } from "../../../scripts/deal-fixtures";
 
@@ -67,6 +68,47 @@ describe("runChatRules", () => {
     expect(failed(`r${"a".repeat(30)}`)).toEqual([]);
   });
 
+  it("a wallet hidden with soft hyphens, word joiners or punctuation fails wallet", () => {
+    const softHyphen = `${ATTACKER.slice(0, 9)}­${ATTACKER.slice(9, 19)}⁠${ATTACKER.slice(19)}`;
+    expect(failed(`Details: ${softHyphen}`)).toEqual(["wallet"]);
+    const punctuated = `${ATTACKER.slice(0, 6)}.${ATTACKER.slice(6, 14)},${ATTACKER.slice(14, 22)}_${ATTACKER.slice(22)}`;
+    expect(failed(`Send to ${punctuated} today.`)).toEqual(["wallet"]);
+  });
+
+  it("a wallet written with look-alike or full-width characters fails wallet", () => {
+    const cyrillic = ATTACKER.replace("C", "С").replace("A", "А").replace("B", "В");
+    expect(failed(`New wallet ${cyrillic}`)).toEqual(["wallet"]);
+    const fullWidth = [...ATTACKER].map((c) => String.fromCodePoint(c.codePointAt(0)! + 0xfee0)).join("");
+    expect(failed(`New wallet ${fullWidth}`)).toEqual(["wallet"]);
+  });
+
+  it("an X-address, even of the approved wallet, fails wallet", () => {
+    expect(failed(`Pay ${classicAddressToXAddress(ATTACKER, false, true)}`)).toEqual(["wallet"]);
+    expect(failed(`Pay ${classicAddressToXAddress(SUPPLIER, 12345, true)}`)).toEqual(["wallet"]);
+  });
+
+  it("a printed IBAN with spaces or dashes fails bank_details", () => {
+    expect(failed("Our account: GB82 WEST 1234 5698 7654 32 thanks")).toEqual(["bank_details"]);
+    expect(failed("pay DE89-3704-0044-0532-0130-00 today")).toEqual(["bank_details"]);
+  });
+
+  it("bank keywords survive dots and abbreviations", () => {
+    expect(failed("our I.B.A.N is below")).toEqual(["bank_details"]);
+    expect(failed("acct no 12345 please")).toEqual(["bank_details"]);
+    expect(failed("a/c number to follow")).toEqual(["bank_details"]);
+    expect(failed("send to our beneficiary account")).toEqual(["bank_details"]);
+  });
+
+  it("an IBAN-shaped code with a wrong checksum and no bank words passes", () => {
+    expect(failed("Reference GB00WEST12345698765432 on the crate.")).toEqual([]);
+  });
+
+  it("an honest message with shipping words passes and has no links", () => {
+    const text = "Ships from Shenzhen (Yantian), e.g. via MSC. Price $114.00, Co. Ltd invoice to follow.";
+    expect(failed(text)).toEqual([]);
+    expect(stripLinks(text).links).toEqual([]);
+  });
+
   it("text over 1000 characters fails size", () => {
     expect(failed("a".repeat(1001))).toEqual(["size"]);
   });
@@ -77,6 +119,13 @@ describe("stripLinks", () => {
     const out = stripLinks("Spec sheet: https://example.com/spec.pdf and http://x.io/a, also www.brightway.cn/panels today.");
     expect(out.text).toBe("Spec sheet: [link removed] and [link removed] also [link removed] today.");
     expect(out.links).toEqual(["https://example.com/spec.pdf", "http://x.io/a,", "www.brightway.cn/panels"]);
+  });
+
+  it("bare domains, other schemes and disguised links are stripped", () => {
+    expect(stripLinks("Confirm at brightway-pay.cn/confirm now").text).toBe("Confirm at [link removed] now");
+    expect(stripLinks("go to evil[.]io/x").text).toBe("go to [link removed]");
+    expect(stripLinks("see hxxps://evil.io/a").text).toBe("see [link removed]");
+    expect(stripLinks("ftp://files.example/x and mailto:pay@evil.io").text).toBe("[link removed] and [link removed]");
   });
 
   it("text without links is unchanged", () => {
