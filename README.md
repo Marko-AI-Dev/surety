@@ -49,6 +49,21 @@ Four DEMO-001 invoice jobs, 1 XRP each, judged by the deterministic rules and th
 
 Jev cost for the run: $0.000064. Thresholds come from a labelled set of 28 deliverables (14 good, 14 bad, every one passing the rules, with holdout probes aimed at the band policy-v2 opened): no bad file approved on train or holdout, see [`docs/research/05-jev-calibration.md`](docs/research/05-jev-calibration.md).
 
+### Deals: intent, quote and Surety Verify (Phase 4b, 9 Nov 2026)
+
+An import purchase: 400 solar panels at up to $120 each, CIF Durban, paid in TESTUSD. Each deal goes intent, Policy check, supplier quote, the deal agent's accept or decline, a $48,000 lock, then the supplier's commercial invoice and bill of lading through Surety Verify. Six deals ran through the isolated signer under policy v5 ($100,000 per deal, $500,000 per 24 hours, 10 open), each with a 180-second deadline ([evidence](evidence/deals-2026-11-09T15-07-44-320Z.json)):
+
+| Deal | What happened | Decision | Final state | Settlement |
+|---|---|---|---|---|
+| Paid | honest documents | all 12 trade rules pass; Jev satisfies 0.95, injection 0.08 (borderline, asked three times: 0.08, 0.09, 0.07, median taken): approve | `PAID` | finish [A00463A9…](https://testnet.xrpl.org/transactions/A00463A9C91ED789BA3C9C1BADECD1826DA67DF2C518D0C02220F85CA38C37A4) |
+| Redirected | invoice says "our wallet has changed" | rule `pay_to` fails, Jev never called | `REFUNDED` | cancel [A68D5CE9…](https://testnet.xrpl.org/transactions/A68D5CE9E84D1231CF5B25E013BD4174D1FECD5DDF932046766EEDF43452A7F6) |
+| Edited | bill of lading ships 380 panels, not 400 | rule `shipment` fails, Jev never called | `REFUNDED` | cancel [E898E620…](https://testnet.xrpl.org/transactions/E898E620FD880126DFE0E25E7583CE02672197A61FBC6FC9D47CA2A1B8893D07) |
+| Injected | an instruction to the payer in the B/L remarks | rules pass; Jev injection 0.97: decline | `REFUNDED` | cancel [A37FE6D4…](https://testnet.xrpl.org/transactions/A37FE6D4AA27096F0451AA4677B60F56D7F3C2336E8CB63784185B1F54D13BC8) |
+| Over max | quote at $135.00 a panel | the deal agent declines (`unit_price`) | `DECLINED` | nothing locked |
+| Unapproved | supplier wallet not on the approved list | the Policy step refuses | `POLICY_REFUSED` | nothing locked |
+
+The treasury ended exactly $48,000.00 lower once the three refunds landed. Jev cost for the run: $0.000189. The trade thresholds (`policy-v3-trade`) come from 20 labelled document pairs: every honest pair scored 0.93 to 0.96, every manipulated pair was caught at injection 0.85 or more, and none would be paid, see [`docs/research/06-trade-calibration.md`](docs/research/06-trade-calibration.md).
+
 ## How it works
 
 See [`docs/architecture.md`](docs/architecture.md) for the diagram and trust boundaries. In short:
@@ -67,12 +82,12 @@ Requires Node 24 and pnpm 10.
 
 ```bash
 pnpm install
-pnpm test                 # 397 unit tests, no Docker needed, no network
+pnpm test                 # 678 unit tests, no Docker needed, no network
 pnpm typecheck
 pnpm check:boundaries     # lint: flags key-handling code outside the signer
 
 pnpm db:start             # local Supabase (Docker) on ports 577xx; then add DATABASE_URL to .env (see .env.example)
-pnpm test:db              # 48 database tests (they empty the local job tables)
+pnpm test:db              # 74 database tests (they empty the local job and deal tables)
 
 pnpm --filter @surety/signer init-wallets   # funds 3 testnet wallets from the official faucet, writes .env files
 pnpm signer                                 # terminal 1: the isolated signer on 127.0.0.1:4100
@@ -84,6 +99,10 @@ pnpm demo:outcomes                          # with the signer up: paid, rejected
 pnpm --filter @surety/signer setup-testusd  # once: TESTUSD issuer, treasury balance and demo suppliers; writes the TESTUSD env files
 pnpm spike:testusd                          # with the signer up: TESTUSD pay, every cap refusal, live operator limits, refunds; writes evidence/
 pnpm exec tsx --env-file=.env scripts/calibrate-jev.ts   # 28 labelled deliverables through live Jev (about $0.0009); exits 1 if a bad file is approved
+pnpm limits:set --per-deal 100000 --daily 500000 --open 10   # operator: change the signer's live limits (whole dollars)
+pnpm fixtures:deals                         # regenerate the deal document presets and the labelled trade set
+pnpm exec tsx --env-file=.env scripts/calibrate-trade.ts # 20 labelled trade document pairs through live Jev (about $0.001)
+pnpm demo:deals                             # with the signer up: paid, redirected, edited, injected, declined, refused deals; writes evidence/
 ```
 
 ## Status
@@ -91,7 +110,7 @@ pnpm exec tsx --env-file=.env scripts/calibrate-jev.ts   # 28 labelled deliverab
 1. Isolated signer and testnet escrow: **done**
 2. Durable job state and an expiry worker that survives restarts: **done**
 3. Deterministic checks and the Jev evaluator: **done**
-4. Operator spending limits and TESTUSD in the signer: **done** (Phase 4a). Deals with a quote step, trade-document rules and the agents come next
+4. Operator spending limits and TESTUSD in the signer: **done** (Phase 4a). Deals with the Policy step, the quote step, trade-document rules and Surety Verify: **done** (Phase 4b). The Claude deal agent, the document reader and the API come next
 5. Live pipeline view and ledger-linked receipts
 
 Plan: [`docs/step1-plan-review.md`](docs/step1-plan-review.md). Disclosures: [`PRIOR_WORK.md`](PRIOR_WORK.md).

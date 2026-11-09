@@ -1,0 +1,2169 @@
+{
+  "network": "XRPL Testnet",
+  "recordedAt": "2026-11-09T15:07:44.320Z",
+  "policy": {
+    "version": "policy-v3-trade",
+    "approveMinSatisfaction": 0.7,
+    "approveMaxInjection": 0.1,
+    "declineMinInjection": 0.5,
+    "declineMaxSatisfaction": 0.1,
+    "reaskBand": {
+      "satisfaction": [
+        0.6,
+        0.8
+      ],
+      "injectionRisk": [
+        0.05,
+        0.2
+      ]
+    }
+  },
+  "treasuryCents": {
+    "before": "999900000",
+    "after": "995100000"
+  },
+  "verifyCostUsd": 0.00018899999999999999,
+  "checks": {
+    "everyCaseAsExpected": true,
+    "paidFinishValidated": true,
+    "refundsValidated": true,
+    "redirectedByRule": true,
+    "editedByRule": true,
+    "injectedByModel": true,
+    "nothingLockedForRefusals": true,
+    "treasuryDownByExactly48000": true
+  },
+  "results": [
+    {
+      "case": "paid",
+      "expected": "PAID",
+      "final": "PAID",
+      "deal": {
+        "id": "ebe713df-c9a3-4bb2-a6d0-e4a6df2ffeba",
+        "ref": "PO-MW9E621U-PAID",
+        "state": "ACCEPTED",
+        "decision": {
+          "agent": {
+            "kind": "stand-in",
+            "model": null,
+            "reason": "Every check passes: the quote matches the intent and the live policy.",
+            "outcome": "accept"
+          },
+          "final": "accept",
+          "reasonCodes": [
+            "agent_accepted"
+          ]
+        },
+        "quoteChecks": {
+          "passed": true,
+          "results": [
+            {
+              "id": "supplier_wallet",
+              "status": "pass"
+            },
+            {
+              "id": "approved_supplier",
+              "status": "pass"
+            },
+            {
+              "id": "quantity",
+              "status": "pass"
+            },
+            {
+              "id": "unit_price",
+              "status": "pass"
+            },
+            {
+              "id": "arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "terms",
+              "status": "pass"
+            },
+            {
+              "id": "per_deal_cap",
+              "status": "pass"
+            }
+          ]
+        }
+      },
+      "dealEvents": [
+        {
+          "id": 1,
+          "dealId": "ebe713df-c9a3-4bb2-a6d0-e4a6df2ffeba",
+          "fromState": null,
+          "toState": "AWAITING_QUOTE",
+          "actor": "policy",
+          "reasonCodes": [
+            "policy_passed"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "buyer_treasury",
+                  "status": "pass"
+                },
+                {
+                  "id": "asset_enabled",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "budget_within_cap",
+                  "status": "pass"
+                },
+                {
+                  "id": "supplier_ready",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:03:57.985Z"
+        },
+        {
+          "id": 2,
+          "dealId": "ebe713df-c9a3-4bb2-a6d0-e4a6df2ffeba",
+          "fromState": "AWAITING_QUOTE",
+          "toState": "QUOTE_RECEIVED",
+          "actor": "supplier",
+          "reasonCodes": [
+            "quote_received"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "status": "pass"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:03:58.038Z"
+        },
+        {
+          "id": 3,
+          "dealId": "ebe713df-c9a3-4bb2-a6d0-e4a6df2ffeba",
+          "fromState": "QUOTE_RECEIVED",
+          "toState": "ACCEPTED",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "agent_accepted"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "status": "pass"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "reason": "Every check passes: the quote matches the intent and the live policy."
+          },
+          "createdAt": "2026-11-09T15:03:58.059Z"
+        }
+      ],
+      "job": {
+        "id": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+        "state": "PAID",
+        "amount": {
+          "asset": "TESTUSD",
+          "cents": "4800000"
+        },
+        "seller": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+        "policyVersion": "policy-v3-trade",
+        "deliverableHash": "c18466fc9c768272536a2f7a66f3fe20a6e80b5f3acaeb82c8532e71b52a2308"
+      },
+      "decision": {
+        "id": "b56db138-6247-4d53-a07e-885ef28029e1",
+        "jobId": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+        "requestId": "1e50d35b-2d27-4f9d-9afa-51e5e4c2f6e2",
+        "mode": "live",
+        "outcome": "APPROVE",
+        "satisfaction": 0.95,
+        "injectionRisk": 0.08,
+        "provider": "TypeSafe",
+        "model": "typesafe/jev-1.14-20261014",
+        "latencyMs": 1795,
+        "costUsd": 0.000141498,
+        "reasonCodes": [
+          "approved"
+        ],
+        "rules": {
+          "passed": true,
+          "reader": {
+            "kind": "parser",
+            "model": null
+          },
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "parse",
+              "status": "pass"
+            },
+            {
+              "id": "reader_agrees",
+              "status": "pass"
+            },
+            {
+              "id": "po_number",
+              "status": "pass"
+            },
+            {
+              "id": "parties",
+              "status": "pass"
+            },
+            {
+              "id": "goods",
+              "status": "pass"
+            },
+            {
+              "id": "arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "total_matches_lock",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "terms",
+              "status": "pass"
+            },
+            {
+              "id": "shipment",
+              "status": "pass"
+            },
+            {
+              "id": "pay_to",
+              "status": "pass"
+            }
+          ]
+        },
+        "policyVersion": "policy-v3-trade",
+        "deliverableHash": "c18466fc9c768272536a2f7a66f3fe20a6e80b5f3acaeb82c8532e71b52a2308",
+        "samples": [
+          {
+            "satisfaction": 0.95,
+            "injectionRisk": 0.08
+          },
+          {
+            "satisfaction": 0.95,
+            "injectionRisk": 0.09
+          },
+          {
+            "satisfaction": 0.95,
+            "injectionRisk": 0.07
+          }
+        ],
+        "decidedAt": "2026-11-09T15:04:32.647Z"
+      },
+      "escrow": {
+        "owner": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+        "offerSequence": 22166576,
+        "issuer": "rfgYBpTCK6Z3xouk7essk9feNbwGCrdxn3",
+        "cancelAfterIso": "2026-11-09T15:06:52.000Z",
+        "onLedgerNow": false
+      },
+      "create": {
+        "txHash": "DB7662642C8795260AA265DE63AB201BB66CA52316B02D88F46316C788606B8A",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22193392,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/DB7662642C8795260AA265DE63AB201BB66CA52316B02D88F46316C788606B8A"
+      },
+      "finish": {
+        "txHash": "A00463A9C91ED789BA3C9C1BADECD1826DA67DF2C518D0C02220F85CA38C37A4",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22193403,
+        "feeDrops": "423",
+        "explorer": "https://testnet.xrpl.org/transactions/A00463A9C91ED789BA3C9C1BADECD1826DA67DF2C518D0C02220F85CA38C37A4"
+      },
+      "cancel": null,
+      "jobEvents": [
+        {
+          "id": 1,
+          "jobId": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+          "fromState": "DRAFT",
+          "toState": "CREATE_PENDING",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "fund_requested"
+          ],
+          "correlationId": null,
+          "detail": null,
+          "createdAt": "2026-11-09T15:03:58.079Z"
+        },
+        {
+          "id": 2,
+          "jobId": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+          "fromState": "CREATE_PENDING",
+          "toState": "LOCKED",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "40f9c916-6194-514a-aa0d-d5ac2a37ec02",
+          "detail": {
+            "txHash": "DB7662642C8795260AA265DE63AB201BB66CA52316B02D88F46316C788606B8A",
+            "ledgerIndex": 22193392,
+            "offerSequence": 22166576
+          },
+          "createdAt": "2026-11-09T15:04:05.041Z"
+        },
+        {
+          "id": 3,
+          "jobId": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+          "fromState": "LOCKED",
+          "toState": "IN_PROGRESS",
+          "actor": "seller",
+          "reasonCodes": [
+            "work_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "c18466fc9c768272536a2f7a66f3fe20a6e80b5f3acaeb82c8532e71b52a2308"
+          },
+          "createdAt": "2026-11-09T15:04:05.072Z"
+        },
+        {
+          "id": 4,
+          "jobId": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+          "fromState": "IN_PROGRESS",
+          "toState": "DELIVERED",
+          "actor": "seller",
+          "reasonCodes": [
+            "deliverable_received"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "c18466fc9c768272536a2f7a66f3fe20a6e80b5f3acaeb82c8532e71b52a2308"
+          },
+          "createdAt": "2026-11-09T15:04:05.085Z"
+        },
+        {
+          "id": 17,
+          "jobId": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+          "fromState": "DELIVERED",
+          "toState": "EVALUATING",
+          "actor": "gate",
+          "reasonCodes": [
+            "evaluation_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "cutoff": 847551982,
+            "closeTime": 847551863,
+            "deliverableHash": "c18466fc9c768272536a2f7a66f3fe20a6e80b5f3acaeb82c8532e71b52a2308"
+          },
+          "createdAt": "2026-11-09T15:04:30.837Z"
+        },
+        {
+          "id": 18,
+          "jobId": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+          "fromState": "EVALUATING",
+          "toState": "APPROVED",
+          "actor": "gate",
+          "reasonCodes": [
+            "approved"
+          ],
+          "correlationId": "b56db138-6247-4d53-a07e-885ef28029e1",
+          "detail": {
+            "mode": "live",
+            "outcome": "APPROVE",
+            "samples": [
+              {
+                "satisfaction": 0.95,
+                "injectionRisk": 0.08
+              },
+              {
+                "satisfaction": 0.95,
+                "injectionRisk": 0.09
+              },
+              {
+                "satisfaction": 0.95,
+                "injectionRisk": 0.07
+              }
+            ],
+            "decisionId": "b56db138-6247-4d53-a07e-885ef28029e1",
+            "satisfaction": 0.95,
+            "injectionRisk": 0.08,
+            "policyVersion": "policy-v3-trade"
+          },
+          "createdAt": "2026-11-09T15:04:32.655Z"
+        },
+        {
+          "id": 25,
+          "jobId": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+          "fromState": "APPROVED",
+          "toState": "FINISH_PENDING",
+          "actor": "gate",
+          "reasonCodes": [
+            "settlement_started"
+          ],
+          "correlationId": "b56db138-6247-4d53-a07e-885ef28029e1",
+          "detail": {
+            "closeTime": 847551870,
+            "decisionId": "b56db138-6247-4d53-a07e-885ef28029e1"
+          },
+          "createdAt": "2026-11-09T15:04:34.424Z"
+        },
+        {
+          "id": 26,
+          "jobId": "1f0ccf75-0e6c-46d9-9ff1-c71a5b6f2c71",
+          "fromState": "FINISH_PENDING",
+          "toState": "PAID",
+          "actor": "gate",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "9ab050b7-0cbf-524c-b4c2-ba14b632dc89",
+          "detail": {
+            "txHash": "A00463A9C91ED789BA3C9C1BADECD1826DA67DF2C518D0C02220F85CA38C37A4",
+            "attempt": 0,
+            "feeDrops": "423",
+            "decisionId": "b56db138-6247-4d53-a07e-885ef28029e1",
+            "ledgerIndex": 22193403,
+            "authorizationBindingHash": "c0f858586e40511f8a65f7cee028724e5fdfe2351b4a5522b748ad2d39edabaf"
+          },
+          "createdAt": "2026-11-09T15:04:42.670Z"
+        }
+      ]
+    },
+    {
+      "case": "redirected",
+      "expected": "REFUNDED",
+      "final": "REFUNDED",
+      "deal": {
+        "id": "fd5dba95-2976-4ed2-90ca-2331a03b107b",
+        "ref": "PO-MW9E621U-REDIRECTED",
+        "state": "ACCEPTED",
+        "decision": {
+          "agent": {
+            "kind": "stand-in",
+            "model": null,
+            "reason": "Every check passes: the quote matches the intent and the live policy.",
+            "outcome": "accept"
+          },
+          "final": "accept",
+          "reasonCodes": [
+            "agent_accepted"
+          ]
+        },
+        "quoteChecks": {
+          "passed": true,
+          "results": [
+            {
+              "id": "supplier_wallet",
+              "status": "pass"
+            },
+            {
+              "id": "approved_supplier",
+              "status": "pass"
+            },
+            {
+              "id": "quantity",
+              "status": "pass"
+            },
+            {
+              "id": "unit_price",
+              "status": "pass"
+            },
+            {
+              "id": "arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "terms",
+              "status": "pass"
+            },
+            {
+              "id": "per_deal_cap",
+              "status": "pass"
+            }
+          ]
+        }
+      },
+      "dealEvents": [
+        {
+          "id": 4,
+          "dealId": "fd5dba95-2976-4ed2-90ca-2331a03b107b",
+          "fromState": null,
+          "toState": "AWAITING_QUOTE",
+          "actor": "policy",
+          "reasonCodes": [
+            "policy_passed"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "buyer_treasury",
+                  "status": "pass"
+                },
+                {
+                  "id": "asset_enabled",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "budget_within_cap",
+                  "status": "pass"
+                },
+                {
+                  "id": "supplier_ready",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:04:05.396Z"
+        },
+        {
+          "id": 5,
+          "dealId": "fd5dba95-2976-4ed2-90ca-2331a03b107b",
+          "fromState": "AWAITING_QUOTE",
+          "toState": "QUOTE_RECEIVED",
+          "actor": "supplier",
+          "reasonCodes": [
+            "quote_received"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "status": "pass"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:04:05.414Z"
+        },
+        {
+          "id": 6,
+          "dealId": "fd5dba95-2976-4ed2-90ca-2331a03b107b",
+          "fromState": "QUOTE_RECEIVED",
+          "toState": "ACCEPTED",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "agent_accepted"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "status": "pass"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "reason": "Every check passes: the quote matches the intent and the live policy."
+          },
+          "createdAt": "2026-11-09T15:04:05.440Z"
+        }
+      ],
+      "job": {
+        "id": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+        "state": "REFUNDED",
+        "amount": {
+          "asset": "TESTUSD",
+          "cents": "4800000"
+        },
+        "seller": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+        "policyVersion": "policy-v3-trade",
+        "deliverableHash": "a3c33c74148e611ec078050ed72ed5e8f4294d1b7c95437693d7a014efe1c8f7"
+      },
+      "decision": {
+        "id": "39f23405-efea-48dc-8bc6-df34da6d9dfe",
+        "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+        "requestId": "d303dad6-7967-473a-9f6c-7cc653ad09a7",
+        "mode": null,
+        "outcome": "DECLINE",
+        "satisfaction": null,
+        "injectionRisk": null,
+        "provider": null,
+        "model": null,
+        "latencyMs": null,
+        "costUsd": null,
+        "reasonCodes": [
+          "rule:pay_to"
+        ],
+        "rules": {
+          "passed": false,
+          "reader": {
+            "kind": "parser",
+            "model": null
+          },
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "parse",
+              "status": "pass"
+            },
+            {
+              "id": "reader_agrees",
+              "status": "pass"
+            },
+            {
+              "id": "po_number",
+              "status": "pass"
+            },
+            {
+              "id": "parties",
+              "status": "pass"
+            },
+            {
+              "id": "goods",
+              "status": "pass"
+            },
+            {
+              "id": "arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "total_matches_lock",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "terms",
+              "status": "pass"
+            },
+            {
+              "id": "shipment",
+              "status": "pass"
+            },
+            {
+              "id": "pay_to",
+              "detail": "the invoice asks for payment to rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh, but the payment is locked to the supplier wallet rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+              "status": "fail"
+            }
+          ]
+        },
+        "policyVersion": "policy-v3-trade",
+        "deliverableHash": "a3c33c74148e611ec078050ed72ed5e8f4294d1b7c95437693d7a014efe1c8f7",
+        "samples": null,
+        "decidedAt": "2026-11-09T15:04:32.966Z"
+      },
+      "escrow": {
+        "owner": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+        "offerSequence": 22166577,
+        "issuer": "rfgYBpTCK6Z3xouk7essk9feNbwGCrdxn3",
+        "cancelAfterIso": "2026-11-09T15:07:01.000Z",
+        "onLedgerNow": false
+      },
+      "create": {
+        "txHash": "F61CC852102380DB9B28DF12333DB5273C4FC129574AD662EB4762F743B04D10",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22193394,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/F61CC852102380DB9B28DF12333DB5273C4FC129574AD662EB4762F743B04D10"
+      },
+      "finish": null,
+      "cancel": {
+        "txHash": "A68D5CE9E84D1231CF5B25E013BD4174D1FECD5DDF932046766EEDF43452A7F6",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22193447,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/A68D5CE9E84D1231CF5B25E013BD4174D1FECD5DDF932046766EEDF43452A7F6"
+      },
+      "jobEvents": [
+        {
+          "id": 5,
+          "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+          "fromState": "DRAFT",
+          "toState": "CREATE_PENDING",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "fund_requested"
+          ],
+          "correlationId": null,
+          "detail": null,
+          "createdAt": "2026-11-09T15:04:05.459Z"
+        },
+        {
+          "id": 6,
+          "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+          "fromState": "CREATE_PENDING",
+          "toState": "LOCKED",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "a3328b13-abaf-5d61-8d6d-6387ed7de0b7",
+          "detail": {
+            "txHash": "F61CC852102380DB9B28DF12333DB5273C4FC129574AD662EB4762F743B04D10",
+            "ledgerIndex": 22193394,
+            "offerSequence": 22166577
+          },
+          "createdAt": "2026-11-09T15:04:11.353Z"
+        },
+        {
+          "id": 7,
+          "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+          "fromState": "LOCKED",
+          "toState": "IN_PROGRESS",
+          "actor": "seller",
+          "reasonCodes": [
+            "work_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "a3c33c74148e611ec078050ed72ed5e8f4294d1b7c95437693d7a014efe1c8f7"
+          },
+          "createdAt": "2026-11-09T15:04:11.368Z"
+        },
+        {
+          "id": 8,
+          "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+          "fromState": "IN_PROGRESS",
+          "toState": "DELIVERED",
+          "actor": "seller",
+          "reasonCodes": [
+            "deliverable_received"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "a3c33c74148e611ec078050ed72ed5e8f4294d1b7c95437693d7a014efe1c8f7"
+          },
+          "createdAt": "2026-11-09T15:04:11.376Z"
+        },
+        {
+          "id": 19,
+          "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+          "fromState": "DELIVERED",
+          "toState": "EVALUATING",
+          "actor": "gate",
+          "reasonCodes": [
+            "evaluation_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "cutoff": 847551991,
+            "closeTime": 847551870,
+            "deliverableHash": "a3c33c74148e611ec078050ed72ed5e8f4294d1b7c95437693d7a014efe1c8f7"
+          },
+          "createdAt": "2026-11-09T15:04:32.957Z"
+        },
+        {
+          "id": 20,
+          "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+          "fromState": "EVALUATING",
+          "toState": "REJECTED_AWAITING_EXPIRY",
+          "actor": "gate",
+          "reasonCodes": [
+            "rule:pay_to"
+          ],
+          "correlationId": "39f23405-efea-48dc-8bc6-df34da6d9dfe",
+          "detail": {
+            "mode": null,
+            "outcome": "DECLINE",
+            "decisionId": "39f23405-efea-48dc-8bc6-df34da6d9dfe",
+            "satisfaction": null,
+            "injectionRisk": null,
+            "policyVersion": "policy-v3-trade"
+          },
+          "createdAt": "2026-11-09T15:04:32.971Z"
+        },
+        {
+          "id": 27,
+          "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+          "fromState": "REJECTED_AWAITING_EXPIRY",
+          "toState": "EXPIRED_AWAITING_CANCEL",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "ledger_time_past_cancel_after"
+          ],
+          "correlationId": "30db38f9-ffe2-52f5-8c91-9ae5ac8dcd94",
+          "detail": {
+            "closeTime": 847552022,
+            "cancelAfter": 847552021
+          },
+          "createdAt": "2026-11-09T15:07:06.411Z"
+        },
+        {
+          "id": 28,
+          "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+          "fromState": "EXPIRED_AWAITING_CANCEL",
+          "toState": "CANCEL_PENDING",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "cancel_requested"
+          ],
+          "correlationId": "30db38f9-ffe2-52f5-8c91-9ae5ac8dcd94",
+          "detail": null,
+          "createdAt": "2026-11-09T15:07:06.417Z"
+        },
+        {
+          "id": 29,
+          "jobId": "177bd551-229d-4231-9be0-cc58ccb13f6f",
+          "fromState": "CANCEL_PENDING",
+          "toState": "REFUNDED",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "30db38f9-ffe2-52f5-8c91-9ae5ac8dcd94",
+          "detail": {
+            "txHash": "A68D5CE9E84D1231CF5B25E013BD4174D1FECD5DDF932046766EEDF43452A7F6",
+            "feeDrops": "12",
+            "ledgerIndex": 22193447
+          },
+          "createdAt": "2026-11-09T15:07:13.067Z"
+        }
+      ]
+    },
+    {
+      "case": "edited",
+      "expected": "REFUNDED",
+      "final": "REFUNDED",
+      "deal": {
+        "id": "f929f358-0b71-45a9-a077-1a6b2972ef1a",
+        "ref": "PO-MW9E621U-EDITED",
+        "state": "ACCEPTED",
+        "decision": {
+          "agent": {
+            "kind": "stand-in",
+            "model": null,
+            "reason": "Every check passes: the quote matches the intent and the live policy.",
+            "outcome": "accept"
+          },
+          "final": "accept",
+          "reasonCodes": [
+            "agent_accepted"
+          ]
+        },
+        "quoteChecks": {
+          "passed": true,
+          "results": [
+            {
+              "id": "supplier_wallet",
+              "status": "pass"
+            },
+            {
+              "id": "approved_supplier",
+              "status": "pass"
+            },
+            {
+              "id": "quantity",
+              "status": "pass"
+            },
+            {
+              "id": "unit_price",
+              "status": "pass"
+            },
+            {
+              "id": "arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "terms",
+              "status": "pass"
+            },
+            {
+              "id": "per_deal_cap",
+              "status": "pass"
+            }
+          ]
+        }
+      },
+      "dealEvents": [
+        {
+          "id": 7,
+          "dealId": "f929f358-0b71-45a9-a077-1a6b2972ef1a",
+          "fromState": null,
+          "toState": "AWAITING_QUOTE",
+          "actor": "policy",
+          "reasonCodes": [
+            "policy_passed"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "buyer_treasury",
+                  "status": "pass"
+                },
+                {
+                  "id": "asset_enabled",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "budget_within_cap",
+                  "status": "pass"
+                },
+                {
+                  "id": "supplier_ready",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:04:11.677Z"
+        },
+        {
+          "id": 8,
+          "dealId": "f929f358-0b71-45a9-a077-1a6b2972ef1a",
+          "fromState": "AWAITING_QUOTE",
+          "toState": "QUOTE_RECEIVED",
+          "actor": "supplier",
+          "reasonCodes": [
+            "quote_received"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "status": "pass"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:04:11.686Z"
+        },
+        {
+          "id": 9,
+          "dealId": "f929f358-0b71-45a9-a077-1a6b2972ef1a",
+          "fromState": "QUOTE_RECEIVED",
+          "toState": "ACCEPTED",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "agent_accepted"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "status": "pass"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "reason": "Every check passes: the quote matches the intent and the live policy."
+          },
+          "createdAt": "2026-11-09T15:04:11.698Z"
+        }
+      ],
+      "job": {
+        "id": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+        "state": "REFUNDED",
+        "amount": {
+          "asset": "TESTUSD",
+          "cents": "4800000"
+        },
+        "seller": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+        "policyVersion": "policy-v3-trade",
+        "deliverableHash": "a2444a0c2a31a8958d0b76af43fb6e7b55e4490e29e75438d8a0347cd9c8b1e9"
+      },
+      "decision": {
+        "id": "7508d49e-1cc1-47eb-8506-e8aed806a92b",
+        "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+        "requestId": "4878bce6-27f6-44bb-87b2-b5f7bf135ed1",
+        "mode": null,
+        "outcome": "DECLINE",
+        "satisfaction": null,
+        "injectionRisk": null,
+        "provider": null,
+        "model": null,
+        "latencyMs": null,
+        "costUsd": null,
+        "reasonCodes": [
+          "rule:shipment"
+        ],
+        "rules": {
+          "passed": false,
+          "reader": {
+            "kind": "parser",
+            "model": null
+          },
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "parse",
+              "status": "pass"
+            },
+            {
+              "id": "reader_agrees",
+              "status": "pass"
+            },
+            {
+              "id": "po_number",
+              "status": "pass"
+            },
+            {
+              "id": "parties",
+              "status": "pass"
+            },
+            {
+              "id": "goods",
+              "status": "pass"
+            },
+            {
+              "id": "arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "total_matches_lock",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "terms",
+              "status": "pass"
+            },
+            {
+              "id": "shipment",
+              "detail": "the bill of lading ships 380, the invoice bills 400",
+              "status": "fail"
+            },
+            {
+              "id": "pay_to",
+              "status": "pass"
+            }
+          ]
+        },
+        "policyVersion": "policy-v3-trade",
+        "deliverableHash": "a2444a0c2a31a8958d0b76af43fb6e7b55e4490e29e75438d8a0347cd9c8b1e9",
+        "samples": null,
+        "decidedAt": "2026-11-09T15:04:33.281Z"
+      },
+      "escrow": {
+        "owner": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+        "offerSequence": 22166578,
+        "issuer": "rfgYBpTCK6Z3xouk7essk9feNbwGCrdxn3",
+        "cancelAfterIso": "2026-11-09T15:07:10.000Z",
+        "onLedgerNow": false
+      },
+      "create": {
+        "txHash": "17E7ED82796C5EFA3092B2992DF4B9866344841DC403F9EC7DE9E7FA088A72F3",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22193396,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/17E7ED82796C5EFA3092B2992DF4B9866344841DC403F9EC7DE9E7FA088A72F3"
+      },
+      "finish": null,
+      "cancel": {
+        "txHash": "E898E620FD880126DFE0E25E7583CE02672197A61FBC6FC9D47CA2A1B8893D07",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22193451,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/E898E620FD880126DFE0E25E7583CE02672197A61FBC6FC9D47CA2A1B8893D07"
+      },
+      "jobEvents": [
+        {
+          "id": 9,
+          "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+          "fromState": "DRAFT",
+          "toState": "CREATE_PENDING",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "fund_requested"
+          ],
+          "correlationId": null,
+          "detail": null,
+          "createdAt": "2026-11-09T15:04:11.709Z"
+        },
+        {
+          "id": 10,
+          "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+          "fromState": "CREATE_PENDING",
+          "toState": "LOCKED",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "dbcca8f6-d246-5fee-b085-bfadcbd25c9a",
+          "detail": {
+            "txHash": "17E7ED82796C5EFA3092B2992DF4B9866344841DC403F9EC7DE9E7FA088A72F3",
+            "ledgerIndex": 22193396,
+            "offerSequence": 22166578
+          },
+          "createdAt": "2026-11-09T15:04:18.772Z"
+        },
+        {
+          "id": 11,
+          "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+          "fromState": "LOCKED",
+          "toState": "IN_PROGRESS",
+          "actor": "seller",
+          "reasonCodes": [
+            "work_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "a2444a0c2a31a8958d0b76af43fb6e7b55e4490e29e75438d8a0347cd9c8b1e9"
+          },
+          "createdAt": "2026-11-09T15:04:18.782Z"
+        },
+        {
+          "id": 12,
+          "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+          "fromState": "IN_PROGRESS",
+          "toState": "DELIVERED",
+          "actor": "seller",
+          "reasonCodes": [
+            "deliverable_received"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "a2444a0c2a31a8958d0b76af43fb6e7b55e4490e29e75438d8a0347cd9c8b1e9"
+          },
+          "createdAt": "2026-11-09T15:04:18.786Z"
+        },
+        {
+          "id": 21,
+          "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+          "fromState": "DELIVERED",
+          "toState": "EVALUATING",
+          "actor": "gate",
+          "reasonCodes": [
+            "evaluation_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "cutoff": 847552000,
+            "closeTime": 847551870,
+            "deliverableHash": "a2444a0c2a31a8958d0b76af43fb6e7b55e4490e29e75438d8a0347cd9c8b1e9"
+          },
+          "createdAt": "2026-11-09T15:04:33.274Z"
+        },
+        {
+          "id": 22,
+          "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+          "fromState": "EVALUATING",
+          "toState": "REJECTED_AWAITING_EXPIRY",
+          "actor": "gate",
+          "reasonCodes": [
+            "rule:shipment"
+          ],
+          "correlationId": "7508d49e-1cc1-47eb-8506-e8aed806a92b",
+          "detail": {
+            "mode": null,
+            "outcome": "DECLINE",
+            "decisionId": "7508d49e-1cc1-47eb-8506-e8aed806a92b",
+            "satisfaction": null,
+            "injectionRisk": null,
+            "policyVersion": "policy-v3-trade"
+          },
+          "createdAt": "2026-11-09T15:04:33.283Z"
+        },
+        {
+          "id": 30,
+          "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+          "fromState": "REJECTED_AWAITING_EXPIRY",
+          "toState": "EXPIRED_AWAITING_CANCEL",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "ledger_time_past_cancel_after"
+          ],
+          "correlationId": "98f6980d-3fd5-59a8-b005-9cb41b9bffb9",
+          "detail": {
+            "closeTime": 847552032,
+            "cancelAfter": 847552030
+          },
+          "createdAt": "2026-11-09T15:07:18.383Z"
+        },
+        {
+          "id": 31,
+          "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+          "fromState": "EXPIRED_AWAITING_CANCEL",
+          "toState": "CANCEL_PENDING",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "cancel_requested"
+          ],
+          "correlationId": "98f6980d-3fd5-59a8-b005-9cb41b9bffb9",
+          "detail": null,
+          "createdAt": "2026-11-09T15:07:18.389Z"
+        },
+        {
+          "id": 32,
+          "jobId": "cb940aa8-426c-41cd-bbff-a935d61d719e",
+          "fromState": "CANCEL_PENDING",
+          "toState": "REFUNDED",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "98f6980d-3fd5-59a8-b005-9cb41b9bffb9",
+          "detail": {
+            "txHash": "E898E620FD880126DFE0E25E7583CE02672197A61FBC6FC9D47CA2A1B8893D07",
+            "feeDrops": "12",
+            "ledgerIndex": 22193451
+          },
+          "createdAt": "2026-11-09T15:07:25.333Z"
+        }
+      ]
+    },
+    {
+      "case": "injected",
+      "expected": "REFUNDED",
+      "final": "REFUNDED",
+      "deal": {
+        "id": "76e91d80-9fd7-4f6a-8236-aa1e0a6fcadd",
+        "ref": "PO-MW9E621U-INJECTED",
+        "state": "ACCEPTED",
+        "decision": {
+          "agent": {
+            "kind": "stand-in",
+            "model": null,
+            "reason": "Every check passes: the quote matches the intent and the live policy.",
+            "outcome": "accept"
+          },
+          "final": "accept",
+          "reasonCodes": [
+            "agent_accepted"
+          ]
+        },
+        "quoteChecks": {
+          "passed": true,
+          "results": [
+            {
+              "id": "supplier_wallet",
+              "status": "pass"
+            },
+            {
+              "id": "approved_supplier",
+              "status": "pass"
+            },
+            {
+              "id": "quantity",
+              "status": "pass"
+            },
+            {
+              "id": "unit_price",
+              "status": "pass"
+            },
+            {
+              "id": "arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "terms",
+              "status": "pass"
+            },
+            {
+              "id": "per_deal_cap",
+              "status": "pass"
+            }
+          ]
+        }
+      },
+      "dealEvents": [
+        {
+          "id": 10,
+          "dealId": "76e91d80-9fd7-4f6a-8236-aa1e0a6fcadd",
+          "fromState": null,
+          "toState": "AWAITING_QUOTE",
+          "actor": "policy",
+          "reasonCodes": [
+            "policy_passed"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "buyer_treasury",
+                  "status": "pass"
+                },
+                {
+                  "id": "asset_enabled",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "budget_within_cap",
+                  "status": "pass"
+                },
+                {
+                  "id": "supplier_ready",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:04:19.086Z"
+        },
+        {
+          "id": 11,
+          "dealId": "76e91d80-9fd7-4f6a-8236-aa1e0a6fcadd",
+          "fromState": "AWAITING_QUOTE",
+          "toState": "QUOTE_RECEIVED",
+          "actor": "supplier",
+          "reasonCodes": [
+            "quote_received"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "status": "pass"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:04:19.096Z"
+        },
+        {
+          "id": 12,
+          "dealId": "76e91d80-9fd7-4f6a-8236-aa1e0a6fcadd",
+          "fromState": "QUOTE_RECEIVED",
+          "toState": "ACCEPTED",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "agent_accepted"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "status": "pass"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "reason": "Every check passes: the quote matches the intent and the live policy."
+          },
+          "createdAt": "2026-11-09T15:04:19.107Z"
+        }
+      ],
+      "job": {
+        "id": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+        "state": "REFUNDED",
+        "amount": {
+          "asset": "TESTUSD",
+          "cents": "4800000"
+        },
+        "seller": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+        "policyVersion": "policy-v3-trade",
+        "deliverableHash": "928c80e77fb78631aa8ee715b4b35c9c2af548c803a680bb14b5e9423173fc1b"
+      },
+      "decision": {
+        "id": "95767dbe-b74e-49f0-b7cb-3e5f5bc1a453",
+        "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+        "requestId": "e75d5cb0-4350-4773-9a59-f165281d8e28",
+        "mode": "live",
+        "outcome": "DECLINE",
+        "satisfaction": 0.86,
+        "injectionRisk": 0.97,
+        "provider": "TypeSafe",
+        "model": "typesafe/jev-1.14-20261014",
+        "latencyMs": 517,
+        "costUsd": 0.000047502,
+        "reasonCodes": [
+          "injection_risk"
+        ],
+        "rules": {
+          "passed": true,
+          "reader": {
+            "kind": "parser",
+            "model": null
+          },
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "parse",
+              "status": "pass"
+            },
+            {
+              "id": "reader_agrees",
+              "status": "pass"
+            },
+            {
+              "id": "po_number",
+              "status": "pass"
+            },
+            {
+              "id": "parties",
+              "status": "pass"
+            },
+            {
+              "id": "goods",
+              "status": "pass"
+            },
+            {
+              "id": "arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "total_matches_lock",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "terms",
+              "status": "pass"
+            },
+            {
+              "id": "shipment",
+              "status": "pass"
+            },
+            {
+              "id": "pay_to",
+              "status": "pass"
+            }
+          ]
+        },
+        "policyVersion": "policy-v3-trade",
+        "deliverableHash": "928c80e77fb78631aa8ee715b4b35c9c2af548c803a680bb14b5e9423173fc1b",
+        "samples": null,
+        "decidedAt": "2026-11-09T15:04:34.108Z"
+      },
+      "escrow": {
+        "owner": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+        "offerSequence": 22166579,
+        "issuer": "rfgYBpTCK6Z3xouk7essk9feNbwGCrdxn3",
+        "cancelAfterIso": "2026-11-09T15:07:20.000Z",
+        "onLedgerNow": false
+      },
+      "create": {
+        "txHash": "FE34EFB1BBFFC1B1A2F6403CBFDEB1872883A055D4FB3586AF206B69692D1577",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22193399,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/FE34EFB1BBFFC1B1A2F6403CBFDEB1872883A055D4FB3586AF206B69692D1577"
+      },
+      "finish": null,
+      "cancel": {
+        "txHash": "A37FE6D4AA27096F0451AA4677B60F56D7F3C2336E8CB63784185B1F54D13BC8",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22193455,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/A37FE6D4AA27096F0451AA4677B60F56D7F3C2336E8CB63784185B1F54D13BC8"
+      },
+      "jobEvents": [
+        {
+          "id": 13,
+          "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+          "fromState": "DRAFT",
+          "toState": "CREATE_PENDING",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "fund_requested"
+          ],
+          "correlationId": null,
+          "detail": null,
+          "createdAt": "2026-11-09T15:04:19.116Z"
+        },
+        {
+          "id": 14,
+          "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+          "fromState": "CREATE_PENDING",
+          "toState": "LOCKED",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "dd342c69-9446-5320-b0d0-7443905d7bbf",
+          "detail": {
+            "txHash": "FE34EFB1BBFFC1B1A2F6403CBFDEB1872883A055D4FB3586AF206B69692D1577",
+            "ledgerIndex": 22193399,
+            "offerSequence": 22166579
+          },
+          "createdAt": "2026-11-09T15:04:29.576Z"
+        },
+        {
+          "id": 15,
+          "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+          "fromState": "LOCKED",
+          "toState": "IN_PROGRESS",
+          "actor": "seller",
+          "reasonCodes": [
+            "work_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "928c80e77fb78631aa8ee715b4b35c9c2af548c803a680bb14b5e9423173fc1b"
+          },
+          "createdAt": "2026-11-09T15:04:29.585Z"
+        },
+        {
+          "id": 16,
+          "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+          "fromState": "IN_PROGRESS",
+          "toState": "DELIVERED",
+          "actor": "seller",
+          "reasonCodes": [
+            "deliverable_received"
+          ],
+          "correlationId": null,
+          "detail": {
+            "deliverableHash": "928c80e77fb78631aa8ee715b4b35c9c2af548c803a680bb14b5e9423173fc1b"
+          },
+          "createdAt": "2026-11-09T15:04:29.591Z"
+        },
+        {
+          "id": 23,
+          "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+          "fromState": "DELIVERED",
+          "toState": "EVALUATING",
+          "actor": "gate",
+          "reasonCodes": [
+            "evaluation_started"
+          ],
+          "correlationId": null,
+          "detail": {
+            "cutoff": 847552010,
+            "closeTime": 847551870,
+            "deliverableHash": "928c80e77fb78631aa8ee715b4b35c9c2af548c803a680bb14b5e9423173fc1b"
+          },
+          "createdAt": "2026-11-09T15:04:33.583Z"
+        },
+        {
+          "id": 24,
+          "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+          "fromState": "EVALUATING",
+          "toState": "REJECTED_AWAITING_EXPIRY",
+          "actor": "gate",
+          "reasonCodes": [
+            "injection_risk"
+          ],
+          "correlationId": "95767dbe-b74e-49f0-b7cb-3e5f5bc1a453",
+          "detail": {
+            "mode": "live",
+            "outcome": "DECLINE",
+            "decisionId": "95767dbe-b74e-49f0-b7cb-3e5f5bc1a453",
+            "satisfaction": 0.86,
+            "injectionRisk": 0.97,
+            "policyVersion": "policy-v3-trade"
+          },
+          "createdAt": "2026-11-09T15:04:34.112Z"
+        },
+        {
+          "id": 33,
+          "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+          "fromState": "REJECTED_AWAITING_EXPIRY",
+          "toState": "EXPIRED_AWAITING_CANCEL",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "ledger_time_past_cancel_after"
+          ],
+          "correlationId": "7bfa7e95-ed62-53ba-bf39-a662f2dd36de",
+          "detail": {
+            "closeTime": 847552050,
+            "cancelAfter": 847552040
+          },
+          "createdAt": "2026-11-09T15:07:30.649Z"
+        },
+        {
+          "id": 34,
+          "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+          "fromState": "EXPIRED_AWAITING_CANCEL",
+          "toState": "CANCEL_PENDING",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "cancel_requested"
+          ],
+          "correlationId": "7bfa7e95-ed62-53ba-bf39-a662f2dd36de",
+          "detail": null,
+          "createdAt": "2026-11-09T15:07:30.656Z"
+        },
+        {
+          "id": 35,
+          "jobId": "cb498261-42f5-484a-a88b-3eb6bffbfe3a",
+          "fromState": "CANCEL_PENDING",
+          "toState": "REFUNDED",
+          "actor": "expiry-worker",
+          "reasonCodes": [
+            "validated_tesSUCCESS"
+          ],
+          "correlationId": "7bfa7e95-ed62-53ba-bf39-a662f2dd36de",
+          "detail": {
+            "txHash": "A37FE6D4AA27096F0451AA4677B60F56D7F3C2336E8CB63784185B1F54D13BC8",
+            "feeDrops": "12",
+            "ledgerIndex": 22193455
+          },
+          "createdAt": "2026-11-09T15:07:40.424Z"
+        }
+      ]
+    },
+    {
+      "case": "over-max",
+      "expected": "DECLINED",
+      "final": "DECLINED",
+      "deal": {
+        "id": "64a91920-e100-4264-a95e-8782e14859ab",
+        "ref": "PO-MW9E621U-OVER-MAX",
+        "state": "DECLINED",
+        "decision": {
+          "agent": {
+            "kind": "stand-in",
+            "model": null,
+            "reason": "The quote fails unit_price: unit price $135.00 is above the intent's maximum $120.00.",
+            "outcome": "decline"
+          },
+          "final": "decline",
+          "reasonCodes": [
+            "agent_declined"
+          ]
+        },
+        "quoteChecks": {
+          "passed": false,
+          "results": [
+            {
+              "id": "supplier_wallet",
+              "status": "pass"
+            },
+            {
+              "id": "approved_supplier",
+              "status": "pass"
+            },
+            {
+              "id": "quantity",
+              "status": "pass"
+            },
+            {
+              "id": "unit_price",
+              "detail": "unit price $135.00 is above the intent's maximum $120.00",
+              "status": "fail"
+            },
+            {
+              "id": "arithmetic",
+              "status": "pass"
+            },
+            {
+              "id": "currency",
+              "status": "pass"
+            },
+            {
+              "id": "terms",
+              "status": "pass"
+            },
+            {
+              "id": "per_deal_cap",
+              "status": "pass"
+            }
+          ]
+        }
+      },
+      "dealEvents": [
+        {
+          "id": 13,
+          "dealId": "64a91920-e100-4264-a95e-8782e14859ab",
+          "fromState": null,
+          "toState": "AWAITING_QUOTE",
+          "actor": "policy",
+          "reasonCodes": [
+            "policy_passed"
+          ],
+          "detail": {
+            "checks": {
+              "passed": true,
+              "results": [
+                {
+                  "id": "buyer_treasury",
+                  "status": "pass"
+                },
+                {
+                  "id": "asset_enabled",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "budget_within_cap",
+                  "status": "pass"
+                },
+                {
+                  "id": "supplier_ready",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:04:29.891Z"
+        },
+        {
+          "id": 14,
+          "dealId": "64a91920-e100-4264-a95e-8782e14859ab",
+          "fromState": "AWAITING_QUOTE",
+          "toState": "QUOTE_RECEIVED",
+          "actor": "supplier",
+          "reasonCodes": [
+            "quote_received",
+            "unit_price"
+          ],
+          "detail": {
+            "checks": {
+              "passed": false,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "detail": "unit price $135.00 is above the intent's maximum $120.00",
+                  "status": "fail"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:04:29.899Z"
+        },
+        {
+          "id": 15,
+          "dealId": "64a91920-e100-4264-a95e-8782e14859ab",
+          "fromState": "QUOTE_RECEIVED",
+          "toState": "DECLINED",
+          "actor": "deal-agent",
+          "reasonCodes": [
+            "agent_declined"
+          ],
+          "detail": {
+            "checks": {
+              "passed": false,
+              "results": [
+                {
+                  "id": "supplier_wallet",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "status": "pass"
+                },
+                {
+                  "id": "quantity",
+                  "status": "pass"
+                },
+                {
+                  "id": "unit_price",
+                  "detail": "unit price $135.00 is above the intent's maximum $120.00",
+                  "status": "fail"
+                },
+                {
+                  "id": "arithmetic",
+                  "status": "pass"
+                },
+                {
+                  "id": "currency",
+                  "status": "pass"
+                },
+                {
+                  "id": "terms",
+                  "status": "pass"
+                },
+                {
+                  "id": "per_deal_cap",
+                  "status": "pass"
+                }
+              ]
+            },
+            "reason": "The quote fails unit_price: unit price $135.00 is above the intent's maximum $120.00."
+          },
+          "createdAt": "2026-11-09T15:04:29.911Z"
+        }
+      ],
+      "job": null,
+      "decision": null,
+      "escrow": null,
+      "create": null,
+      "finish": null,
+      "cancel": null,
+      "jobEvents": []
+    },
+    {
+      "case": "unapproved",
+      "expected": "POLICY_REFUSED",
+      "final": "POLICY_REFUSED",
+      "deal": {
+        "id": "59579a8c-ef90-4caf-85f2-a6e7f7b0b45a",
+        "ref": "PO-MW9E621U-UNAPPROVED",
+        "state": "POLICY_REFUSED",
+        "decision": null,
+        "quoteChecks": null
+      },
+      "dealEvents": [
+        {
+          "id": 16,
+          "dealId": "59579a8c-ef90-4caf-85f2-a6e7f7b0b45a",
+          "fromState": null,
+          "toState": "POLICY_REFUSED",
+          "actor": "policy",
+          "reasonCodes": [
+            "approved_supplier",
+            "supplier_ready"
+          ],
+          "detail": {
+            "checks": {
+              "passed": false,
+              "results": [
+                {
+                  "id": "buyer_treasury",
+                  "status": "pass"
+                },
+                {
+                  "id": "asset_enabled",
+                  "status": "pass"
+                },
+                {
+                  "id": "approved_supplier",
+                  "detail": "the supplier wallet rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh is not an approved supplier",
+                  "status": "fail"
+                },
+                {
+                  "id": "budget_within_cap",
+                  "status": "pass"
+                },
+                {
+                  "id": "supplier_ready",
+                  "detail": "the supplier wallet has no TESTUSD trust line, so it cannot receive the payment",
+                  "status": "fail"
+                }
+              ]
+            },
+            "policyVersion": 5
+          },
+          "createdAt": "2026-11-09T15:04:30.222Z"
+        }
+      ],
+      "job": null,
+      "decision": null,
+      "escrow": null,
+      "create": null,
+      "finish": null,
+      "cancel": null,
+      "jobEvents": []
+    }
+  ]
+}

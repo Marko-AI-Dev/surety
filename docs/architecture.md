@@ -61,6 +61,25 @@ Green is built and proven on testnet. Dashed is planned for the rest of the hack
 - **The gate is layered and fails closed.** A delivered answer is stored once with its canonical hash; a changed answer is refused. The worker judges it: deterministic rules first (size at most 8192 bytes, strict schema, permitted currency, line arithmetic, total, and every value bound to its own field or line of the source invoice). A failed rule declines the work without calling Jev. Only then does Jev answer two yes/no questions about the frozen evidence, with the source and deliverable inside `state` and never in the question text. A versioned policy (`policy-v2`, chosen on a labelled set) turns the two probabilities into approve, decline or escalate. A timeout, HTTP error, refusal or malformed answer is `UNAVAILABLE`, never approve. Every decision is recorded with its mode (live or fixture), scores, reasons, policy version and cost.
 - **Approval is a one-use, 60-second authorization, not a payment.** It binds network, owner, offer sequence, amount, destination, job snapshot, deliverable hash, policy version and decision id. A retry replays the same operation id so the signer finds a finish it already submitted; an expired, unused authorization is replaced by a new attempt with a new id; nothing is minted in the last 30 seconds before `CancelAfter` by ledger time. Only a validated `tesSUCCESS` makes a job `PAID`.
 
+## Deals (Phase 4b)
+
+A deal is an import purchase paid in TESTUSD. It sits in front of the job engine: nothing is locked until the deal is accepted.
+
+1. **Intent.** The buyer states the goods, quantity, maximum unit price, Incoterms, supplier and deadline, with a PO number.
+2. **Policy.** Checked before anything else: the buyer is the treasury, TESTUSD is enabled, the supplier is approved, the budget is within the per-deal cap, and the supplier's trust line can receive the money and isn't frozen. A refusal is final (`POLICY_REFUSED`) and locks nothing.
+3. **Quote.** The supplier's quote is checked against the intent and the live policy: wallet, approved supplier, quantity, unit price, arithmetic, currency, terms and the per-deal cap.
+4. **Deal agent.** The agent accepts or declines, seeing the live checks. The checks run again after it answers, so an accept that fails them is overruled and declined. Until Phase 4c the agent is a rule-following stand-in.
+5. **Lock.** Accepting creates the escrow job in the same database transaction that marks the deal `ACCEPTED`. The job freezes `{ kind: "trade", intent, quote }` and `policy-v3-trade`. The signer then locks the quoted total, and its own caps apply as for any job.
+6. **Documents.** Accepted only after the lock: a commercial invoice and a bill of lading in a fixed text template.
+
+**Surety Verify for a deal**, run by the same job engine:
+
+- **Size and parse.** Each document is at most 4096 characters. Every labelled line must appear exactly once and money must be written exactly (`$48,000.00`). A document that doesn't parse is declined before anything reads it.
+- **Reader.** Reads the documents into fields. Today it is the template parser; in Phase 4c an AI reader, whose reading must agree with the parser (`reader_agrees`). A reader that is down holds the deal for review.
+- **12 trade rules:** size, parse, reader agreement, PO number, parties, goods, arithmetic, the total matching the TESTUSD actually locked, currency, terms, shipment, and `pay_to`, the redirection check, which fails any invoice that asks for payment to a wallet other than the quoted one. A failed rule is final and the decision model is never asked.
+- **The decision model.** Jev answers two questions about the purchase order, the accepted quote and both documents: do the documents describe the same shipment without contradiction, and do they try to instruct the evaluator or payer. It is a probabilistic model, not a rule. A borderline answer is asked three times and the median is used; any failure in those asks is `UNAVAILABLE`.
+- **Policy.** `policy-v3-trade` turns the scores into approve, decline or escalate, chosen on 20 labelled document pairs. Only approve leads to payment, through the same one-use authorization as any job. Everything else refunds at the deadline by ledger time.
+
 What the ledger does not do: it does not understand the work. A compromised gate or signer could still release wrongly. That is why the gate is layered (rules first, then Jev, both fail closed) and why every release carries a binding to the exact job, deliverable and policy version.
 
 ## Escrow lifecycle
