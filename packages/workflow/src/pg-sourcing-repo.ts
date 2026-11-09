@@ -193,6 +193,17 @@ export function createPgSourcingRepo(sql: postgres.Sql): SourcingRepo {
       throw new SourcingConflict(sourcingId, current.state as string);
     },
 
+    async releaseSelection(sourcingId, dealId) {
+      const [row] = await sql`
+        update sourcings set state = 'OPEN', selected_supplier = null, deal_id = null
+        where id = ${sourcingId} and state = 'SELECTED' and deal_id = ${dealId}
+        returning *`;
+      if (row) return toSourcing(row);
+      const [current] = await sql`select state from sourcings where id = ${sourcingId}`;
+      if (!current) throw new Error(`sourcing ${sourcingId} not found`);
+      throw new SourcingConflict(sourcingId, current.state as string);
+    },
+
     async addSuggestion(s) {
       const [row] = await sql`
         insert into supplier_suggestions (sourcing_id, name, address, reason)

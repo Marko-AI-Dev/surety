@@ -69,18 +69,24 @@ export async function leadDecision(
   if (!invite) throw new SourcingRefused(`deal ${dealId} did not come from a sourcing`);
   const s = await deps.repo.getSourcing(invite.sourcingId);
   if (!s) throw new SourcingNotFound(invite.sourcingId);
-  if (s.state !== "OPEN" && s.dealId !== dealId) throw new SourcingClosed(s.id, "not_open");
-
-  const result = await decideQuote({ ...dealDeps(deps), decider: answerDecider(answer, `paperclip:${agentName}`) }, dealId);
-  if (result.deal.state === "ACCEPTED" && s.state === "OPEN") {
+  // Claim the sourcing for this deal before anything can lock: one atomic OPEN to SELECTED, so a
+  // second decision on another supplier's deal is refused instead of locking a second payment. A retry
+  // of this deal finds the sourcing already naming it and goes on.
+  if (s.state === "OPEN") {
     try {
       await deps.repo.markSelected(s.id, invite.address, dealId);
     } catch (e) {
-      // A retry that raced another call: the sourcing already names this deal.
       const now = await deps.repo.getSourcing(s.id);
-      if (!(e instanceof SourcingConflict) || now?.dealId !== dealId) throw e;
+      if (!(e instanceof SourcingConflict)) throw e;
+      if (now?.dealId !== dealId) throw new SourcingClosed(s.id, "not_open");
     }
+  } else if (s.dealId !== dealId) {
+    throw new SourcingClosed(s.id, "not_open");
   }
+
+  const result = await decideQuote({ ...dealDeps(deps), decider: answerDecider(answer, `paperclip:${agentName}`) }, dealId);
+  // Declined or overruled: nothing locked, so the sourcing opens again for another supplier.
+  if (result.deal.state === "DECLINED") await deps.repo.releaseSelection(s.id, dealId);
   return result;
 }
 

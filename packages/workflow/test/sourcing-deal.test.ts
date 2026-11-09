@@ -131,6 +131,17 @@ describe("selection and the lead's decision", () => {
     expect((await leadDecision(deps, next.id, accept, "lead")).job?.state).toBe("LOCKED");
   });
 
+  it("two lead decisions on two suppliers' deals at once lock at most one payment", async () => {
+    const s = await sourcingWithQuotes({ [SUPPLIER]: 11_400, [SECOND]: 11_600 });
+    const d1 = await selectSupplier(deps, s.id, SUPPLIER);
+    const d2 = await selectSupplier(deps, s.id, SECOND);
+    const settled = await Promise.allSettled([leadDecision(deps, d1.id, accept, "lead"), leadDecision(deps, d2.id, accept, "lead")]);
+    const locked = settled.filter((r) => r.status === "fulfilled" && r.value.job?.state === "LOCKED");
+    expect(locked).toHaveLength(1);
+    expect(settled.filter((r) => r.status === "rejected")).toHaveLength(1);
+    expect(signer.calls.filter((c) => c.method === "create")).toHaveLength(1);
+  });
+
   it("a supplier cannot be selected twice", async () => {
     const s = await sourcingWithQuotes({ [SUPPLIER]: 12_500 });
     const d = await selectSupplier(deps, s.id, SUPPLIER);

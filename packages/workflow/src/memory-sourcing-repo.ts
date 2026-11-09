@@ -144,6 +144,16 @@ export function createMemorySourcingRepo(): SourcingRepo {
       return copy(s);
     },
 
+    async releaseSelection(sourcingId, dealId) {
+      const s = sourcings.get(sourcingId);
+      if (!s) throw new Error(`sourcing ${sourcingId} not found`);
+      if (s.state !== "SELECTED" || s.dealId !== dealId) throw new SourcingConflict(sourcingId, s.state);
+      s.state = "OPEN";
+      s.selectedSupplier = null;
+      s.dealId = null;
+      return copy(s);
+    },
+
     async addSuggestion(input) {
       const g: SupplierSuggestion = { id: randomUUID(), ...input, createdAt: now() };
       suggestions.push(g);

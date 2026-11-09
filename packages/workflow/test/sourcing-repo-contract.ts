@@ -169,6 +169,15 @@ export function describeSourcingRepo(name: string, make: () => Promise<JobsRepo 
       await expect(repo.markSelected(s.id, SUPPLIER, d)).rejects.toBeInstanceOf(SourcingConflict);
     });
 
+    it("releaseSelection moves the sourcing back to OPEN only for the deal that holds it", async () => {
+      const s = await opened();
+      const d = await dealId();
+      await repo.markSelected(s.id, SUPPLIER, d);
+      await expect(repo.releaseSelection(s.id, await dealId())).rejects.toBeInstanceOf(SourcingConflict);
+      expect(await repo.releaseSelection(s.id, d)).toMatchObject({ state: "OPEN", selectedSupplier: null, dealId: null });
+      await expect(repo.releaseSelection(s.id, d)).rejects.toBeInstanceOf(SourcingConflict);
+    });
+
     it("suggestions are stored per sourcing", async () => {
       const s = await opened();
       const g = await repo.addSuggestion({ sourcingId: s.id, name: "Lowtide Trading", address: ATTACKER, reason: "Cheaper, not approved." });

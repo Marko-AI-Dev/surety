@@ -86,8 +86,12 @@ export interface SourcingRepo {
   commitQuote(sourcingId: string, address: string, quote: SupplierQuote, quoteHash: string): Promise<Invite>;
   // Once per invite: the same deal again returns it unchanged, another deal is an InviteConflict.
   attachDeal(sourcingId: string, address: string, dealId: string): Promise<Invite>;
-  // OPEN to SELECTED once; otherwise SourcingConflict.
+  // OPEN to SELECTED once; otherwise SourcingConflict. The lead's decision claims the sourcing with
+  // this before any payment locks, so two decisions can never lock two payments.
   markSelected(sourcingId: string, address: string, dealId: string): Promise<Sourcing>;
+  // SELECTED back to OPEN, only for the deal that holds it (a declined or overruled decision);
+  // otherwise SourcingConflict.
+  releaseSelection(sourcingId: string, dealId: string): Promise<Sourcing>;
   addSuggestion(s: { sourcingId: string; name: string; address: string; reason: string }): Promise<SupplierSuggestion>;
   listSuggestions(sourcingId: string): Promise<SupplierSuggestion[]>;
   addReview(address: string, note: string): Promise<SupplierReview>;
