@@ -7,7 +7,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deliverableHash } from "@surety/contracts";
-import { CURRENT_POLICY, JEV_MODEL, createJevEngine, runRules } from "@surety/gate";
+import { CURRENT_POLICY, JEV_MODEL, createJevEngine, invoiceState, runRules } from "@surety/gate";
 
 const RUNS = 5;
 const FILE = "good/long-summary.json";
@@ -37,9 +37,8 @@ const runs: Run[] = [];
 for (let i = 1; i <= RUNS; i++) {
   const r = await engine.evaluate({
     requestId: crypto.randomUUID(),
-    criteria: CRITERIA,
-    sourceText: SOURCE,
-    deliverable: report.parsed,
+    questionSet: "invoice",
+    state: invoiceState(CRITERIA, SOURCE, report.parsed),
     deliverableHash: hash,
     jobSnapshotHash: "0".repeat(64),
     policyVersion: CURRENT_POLICY.version,

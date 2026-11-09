@@ -85,9 +85,8 @@ describe("evaluateJob", () => {
     const job = await delivered(EXACT);
     await evaluate(job, engine);
     expect(engine.inputs[0]).toMatchObject({
-      criteria: CRITERIA_TEXT,
-      sourceText: SOURCE,
-      deliverable: EXACT,
+      questionSet: "invoice",
+      state: { task_criteria: CRITERIA_TEXT, source_invoice: SOURCE, deliverable: EXACT },
       deliverableHash: deliverableHash(EXACT),
       jobSnapshotHash: job.snapshotHash,
       policyVersion: "policy-v1",

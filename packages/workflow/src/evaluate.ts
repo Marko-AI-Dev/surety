@@ -5,6 +5,7 @@ import {
   type Policy,
   type RulesReport,
   decide,
+  invoiceState,
   policyFor,
   runRules,
 } from "@surety/gate";
@@ -167,9 +168,8 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
   if (rules.passed && rules.parsed) {
     evaluation = await askEngine(deps.engine, {
       requestId,
-      criteria: job.criteriaText ?? JSON.stringify(job.criteria),
-      sourceText: job.sourceText,
-      deliverable: rules.parsed,
+      questionSet: "invoice",
+      state: invoiceState(job.criteriaText ?? JSON.stringify(job.criteria), job.sourceText, rules.parsed),
       deliverableHash,
       jobSnapshotHash: job.snapshotHash,
       policyVersion: policy.version,

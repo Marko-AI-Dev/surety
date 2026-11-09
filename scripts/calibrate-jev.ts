@@ -20,6 +20,7 @@ import {
   type Policy,
   type RulesReport,
   createJevEngine,
+  invoiceState,
   runRules,
 } from "@surety/gate";
 import { type CalibrationRow, badApproved, calibrationExitCode, inBand, outcomeOf } from "./calibration-verdict";
@@ -94,9 +95,8 @@ if (fromIndex !== -1) {
     const hash = deliverableHash(JSON.parse(readFileSync(resolve(DIR, file), "utf8")));
     const result = await engine.evaluate({
       requestId: crypto.randomUUID(),
-      criteria: CRITERIA,
-      sourceText: SOURCE,
-      deliverable: report.parsed,
+      questionSet: "invoice",
+      state: invoiceState(CRITERIA, SOURCE, report.parsed),
       deliverableHash: hash,
       jobSnapshotHash: "0".repeat(64),
       policyVersion: POLICY_V1.version,

@@ -1,4 +1,5 @@
 import type { EvaluationResult } from "./engine";
+import type { ReaskBand } from "./reask";
 
 // Thresholds live in one frozen, versioned object. A change is a new version, never an edit: every
 // decision records the version it was made under, and a job freezes its version at creation.
@@ -8,6 +9,8 @@ export interface Policy {
   readonly approveMaxInjection: number;
   readonly declineMinInjection: number;
   readonly declineMaxSatisfaction: number;
+  // When set, a first answer inside this band is asked twice more and the median of three decides.
+  readonly reaskBand?: ReaskBand;
 }
 
 export const POLICY_V1: Policy = Object.freeze({
@@ -34,10 +37,24 @@ export const POLICY_V2: Policy = Object.freeze({
   declineMaxSatisfaction: 0.1,
 });
 
-export const POLICIES: readonly Policy[] = Object.freeze([POLICY_V1, POLICY_V2]);
+// Deals (trade documents). Starts from v2's thresholds; provisional until the trade calibration
+// (docs/research/06-trade-calibration.md). Borderline answers are asked three times.
+export const POLICY_V3_TRADE: Policy = Object.freeze({
+  version: "policy-v3-trade",
+  approveMinSatisfaction: 0.7,
+  approveMaxInjection: 0.1,
+  declineMinInjection: 0.5,
+  declineMaxSatisfaction: 0.1,
+  reaskBand: Object.freeze({ satisfaction: [0.6, 0.8] as const, injectionRisk: [0.05, 0.2] as const }),
+});
+
+export const POLICIES: readonly Policy[] = Object.freeze([POLICY_V1, POLICY_V2, POLICY_V3_TRADE]);
 
 // The policy new jobs freeze at creation. Existing jobs keep the version they froze.
 export const CURRENT_POLICY: Policy = POLICY_V2;
+
+// The policy new deals freeze at acceptance.
+export const TRADE_POLICY: Policy = POLICY_V3_TRADE;
 
 export function policyFor(version: string): Policy | undefined {
   return POLICIES.find((p) => p.version === version);

@@ -1,10 +1,19 @@
 export { RULE_IDS, runRules, type RuleId, type RuleResult, type RulesInput, type RulesReport } from "./rules";
 export { parseInvoiceSource, type ParsedInvoice, type SourceLine } from "./source";
-export type { DecisionEngine, EvaluationInput, EvaluationResult } from "./engine";
+export {
+  invoiceState,
+  tradeState,
+  type DecisionEngine,
+  type EvaluationInput,
+  type EvaluationResult,
+  type ScoreSample,
+} from "./engine";
+export { isBorderline, withReask, type ReaskBand } from "./reask";
 export {
   JEV_DECISIONS_URL,
   JEV_MODEL,
   JEV_QUESTIONS,
+  JEV_TRADE_QUESTIONS,
   createJevEngine,
   type JevEngineOptions,
 } from "./jev-engine";
@@ -14,6 +23,8 @@ export {
   POLICIES,
   POLICY_V1,
   POLICY_V2,
+  POLICY_V3_TRADE,
+  TRADE_POLICY,
   decide,
   policyFor,
   type Decision,

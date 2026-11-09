@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type EvaluationInput, createFixtureEngine } from "../src/index";
+import { type EvaluationInput, createFixtureEngine, invoiceState } from "../src/index";
 
 const GOOD = "1".repeat(64);
 const INJECTED = "2".repeat(64);
@@ -8,16 +8,15 @@ const OFFLINE = "3".repeat(64);
 function input(deliverableHash: string): EvaluationInput {
   return {
     requestId: "0b8f8f4e-3c55-4d0e-9a51-6f7f0e1c2d3a",
-    criteria: "criteria",
-    sourceText: "source",
-    deliverable: {
+    questionSet: "invoice",
+    state: invoiceState("criteria", "source", {
       invoice_id: "DEMO-001",
       vendor: "Demo Supplies",
       currency: "ZAR",
       total_minor: 0,
       line_items: [{ description: "x", quantity: 1, unit_minor: 0, amount_minor: 0 }],
       summary: "",
-    },
+    }),
     deliverableHash,
     jobSnapshotHash: "b".repeat(64),
     policyVersion: "policy-v1",
