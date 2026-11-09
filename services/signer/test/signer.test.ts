@@ -477,3 +477,122 @@ describe("createEscrow in TESTUSD", () => {
     expect(ledger.submitted[0]?.Amount).toBe("1000000");
   });
 });
+
+describe("TESTUSD caps", () => {
+  let issuer: string;
+  let supplier: string;
+
+  function caps(overrides: Partial<NonNullable<SignerConfig["testUsd"]>> = {}) {
+    config = {
+      ...config,
+      testUsd: {
+        issuer,
+        approvedSuppliers: [supplier],
+        maxDealCents: 10_000_000n,
+        dailyCents: 25_000_000n,
+        maxOpenDeals: 50,
+        operatorSecret: "o".repeat(40),
+        ...overrides,
+      },
+    };
+  }
+
+  const lock = (cents: string, signer = makeSigner()) => {
+    const { amountDrops: _drops, ...rest } = createReq({ destination: supplier });
+    return signer.createEscrow({ ...rest, amountTestUsdCents: cents });
+  };
+
+  beforeEach(() => {
+    issuer = Wallet.generate().classicAddress;
+    supplier = Wallet.generate().classicAddress;
+    caps();
+    ledger.trustLines.set(`${buyer.classicAddress}:${issuer}`, { balance: "10000000", limit: "1000000000", frozenByIssuer: false });
+    ledger.trustLines.set(`${supplier}:${issuer}`, { balance: "0", limit: "1000000000", frozenByIssuer: false });
+  });
+
+  it("refuses a TESTUSD lock that would take the rolling 24-hour total past the daily cap", async () => {
+    await lock("9500000");
+    await lock("9500000");
+    await expectCode(lock("6000001"), "daily_cap_reached");
+    expect((await lock("6000000")).result).toBe("tesSUCCESS");
+  });
+
+  it("names the daily cap in dollars", async () => {
+    await lock("9500000");
+    await lock("9500000");
+    await expect(lock("6000001")).rejects.toThrow("$250,000");
+  });
+
+  it("frees daily capacity once a lock is more than 24 hours old by ledger time, whatever the laptop clock says", async () => {
+    await lock("9500000");
+    await lock("9500000");
+    await lock("6000000");
+    await expectCode(lock("1"), "daily_cap_reached");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(Date.now() + 3 * 86_400_000));
+    await expectCode(lock("1"), "daily_cap_reached");
+    vi.useRealTimers();
+    ledger.closeTime = CLOSE + 86_401;
+    expect((await lock("6000000")).result).toBe("tesSUCCESS");
+  });
+
+  it("counts refunded deals toward the daily cap", async () => {
+    const a = await lock("9500000");
+    await lock("9500000");
+    ledger.closeTime = CLOSE + 181;
+    await makeSigner().cancelEscrow({ opId: randomUUID(), owner: a.owner, offerSequence: a.offerSequence });
+    await expectCode(lock("6000001"), "daily_cap_reached");
+  });
+
+  it("refuses a TESTUSD lock when the open-deal limit is reached, and allows one after a deal is refunded", async () => {
+    caps({ maxOpenDeals: 2 });
+    const a = await lock("100");
+    await lock("100");
+    await expectCode(lock("100"), "open_deal_limit_reached");
+    ledger.closeTime = CLOSE + 181;
+    await makeSigner().cancelEscrow({ opId: randomUUID(), owner: a.owner, offerSequence: a.offerSequence });
+    expect((await lock("100")).result).toBe("tesSUCCESS");
+  });
+
+  it("counts a submitted-but-unvalidated lock toward both caps", async () => {
+    caps({ maxOpenDeals: 1, dailyCents: 5_000_000n });
+    ledger.holdNextSubmit = true;
+    await expectCode(lock("4000000"), "ledger_failure");
+    await expectCode(lock("1"), "open_deal_limit_reached");
+    caps({ maxOpenDeals: 50, dailyCents: 5_000_000n });
+    await expectCode(lock("2000000"), "daily_cap_reached");
+  });
+
+  it("does not count a lock that failed on the ledger", async () => {
+    caps({ maxOpenDeals: 1 });
+    ledger.nextResult = "tecUNFUNDED";
+    await expectCode(lock("100"), "op_failed");
+    expect((await lock("100")).result).toBe("tesSUCCESS");
+  });
+
+  it("XRP locks are unaffected by TESTUSD caps", async () => {
+    caps({ maxOpenDeals: 1, dailyCents: 1n });
+    for (let i = 0; i < 6; i++) {
+      expect((await makeSigner().createEscrow(createReq())).result).toBe("tesSUCCESS");
+    }
+  });
+
+  it("two concurrent locks that together exceed the daily cap: exactly one succeeds", async () => {
+    caps({ dailyCents: 15_000_000n });
+    const signer = makeSigner();
+    const results = await Promise.allSettled([lock("9000000", signer), lock("9000000", signer)]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+    expect(rejected.reason).toMatchObject({ code: "daily_cap_reached" });
+  });
+
+  it("the daily total and open count survive a signer restart", async () => {
+    caps({ maxOpenDeals: 2 });
+    await lock("9500000", makeSigner());
+    await lock("9500000", makeSigner());
+    const restarted = makeSigner();
+    await expectCode(lock("1", restarted), "open_deal_limit_reached");
+    caps({ maxOpenDeals: 50 });
+    await expectCode(lock("6000001", makeSigner()), "daily_cap_reached");
+  });
+});

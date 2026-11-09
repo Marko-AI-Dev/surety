@@ -329,7 +329,22 @@ export function createSigner(deps: SignerDeps): Signer {
       }
       checkCancelWindow(req.cancelAfterSeconds);
 
+      // One close time decides the cap window and CancelAfter. Under the buyer lock, so two
+      // concurrent creates cannot both see room that only one of them fits in.
       const closeTime = await ledger.validatedCloseTime();
+      const pending = Object.values(journal.get())
+        .filter((e) => e.type === "create" && e.status === "submitted" && e.pending)
+        .map((e) => e.pending as PendingCreate);
+      const exposure = testUsdExposure(Object.values(escrows.get()), pending, closeTime);
+      if (exposure.usedDailyCents + amount > usd.dailyCents) {
+        throw new SignerError(
+          "daily_cap_reached",
+          `this lock would take the last 24 hours past the cap of ${formatUsd(usd.dailyCents)}`,
+        );
+      }
+      if (exposure.openDeals >= usd.maxOpenDeals) {
+        throw new SignerError("open_deal_limit_reached", `${exposure.openDeals} deals are already open; the limit is ${usd.maxOpenDeals}`);
+      }
 
       const destination = await readLine(req.destination, usd.issuer);
       const destBalance = destination ? lineCents(destination.balance) : null;
@@ -529,4 +544,25 @@ function formatUsd(cents: bigint): string {
   const whole = (cents / 100n).toLocaleString("en-US");
   const frac = cents % 100n;
   return frac === 0n ? `$${whole}` : `$${whole}.${frac.toString().padStart(2, "0")}`;
+}
+
+const DAY_SECONDS = 86_400;
+
+// TESTUSD exposure by ledger time. The rolling 24-hour total counts every TESTUSD lock (open, paid
+// or refunded) plus creates submitted but not yet validated, so lock-and-refund loops still hit the
+// cap. Open deals are locked records plus unvalidated creates. Failed creates and XRP never count.
+function testUsdExposure(
+  records: EscrowRecord[],
+  pending: PendingCreate[],
+  closeTime: number,
+): { usedDailyCents: bigint; openDeals: number } {
+  const since = closeTime - DAY_SECONDS;
+  const inWindow = (r: { lockedAtCloseTime?: number }) => r.lockedAtCloseTime !== undefined && r.lockedAtCloseTime > since;
+  const cents = (r: { amountTestUsdCents?: string }) => BigInt(r.amountTestUsdCents ?? "0");
+  const usdRecords = records.filter((r) => r.asset === "TESTUSD");
+  const usdPending = pending.filter((r) => r.asset === "TESTUSD");
+  let usedDailyCents = 0n;
+  for (const r of [...usdRecords, ...usdPending]) if (inWindow(r)) usedDailyCents += cents(r);
+  const openDeals = usdRecords.filter((r) => r.status === "locked").length + usdPending.length;
+  return { usedDailyCents, openDeals };
 }
