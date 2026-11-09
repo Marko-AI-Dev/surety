@@ -18,7 +18,8 @@
     "test:db": "vitest run --config vitest.db.config.ts",
     "db:start": "supabase start -x studio,imgproxy,analytics,vector,edge-runtime,storage",
     "db:stop": "supabase stop",
-    "db:reset": "supabase db reset"
+    "db:reset": "supabase db reset",
+    "spike:testusd": "node --env-file=.env --env-file=.env.operator --import tsx scripts/spike-testusd-signer.ts"
   },
   "devDependencies": {
     "@surety/contracts": "workspace:*",

@@ -65,6 +65,8 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | tUSD token escrow trial on testnet: 4 throwaway faucet wallets, 12 transactions including 3 escrow finishes | Free faucet; under 0.002 test XRP in fees |
 | 2026-11-09 | TESTUSD rerun of the token escrow trial: same 12 transactions, 4 new throwaway wallets | Free faucet; under 0.002 test XRP in fees |
 | 2026-11-09 | Jev repeat test: the same input 5 times | $0.000170 |
+| 2026-11-09 | TESTUSD setup on testnet: 5 faucet wallets (issuer, 3 ready suppliers, 1 supplier without a trust line), 2 AccountSets, 4 TrustSets, 1 issue of 10,000,000 TESTUSD to the treasury | Free faucet; under 0.001 test XRP in fees |
+| 2026-11-09 | TESTUSD evidence run through the signer: 6 locks, 1 finish (423 drops), 5 cancels | Under 0.001 test XRP in fees; $2,504 of the $25,000 rolling cap |
 
 ## Coding-agent spend
 

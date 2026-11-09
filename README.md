@@ -17,6 +17,25 @@ Through the isolated signer only (8 Nov 2026, evidence in [`evidence/`](evidence
 
 Refused by the signer, as designed: reusing a spent authorization, an escrow above the 2 XRP per-job cap, an escrow to a wallet not on the allowlist, and a refund before ledger time passed expiry.
 
+### TESTUSD deals, caps and live operator limits (9 Nov 2026)
+
+TESTUSD is a test dollar we issue ourselves on XRPL Testnet. It has no value, and it is locked with XRPL token escrow, the same trust-line mechanism RLUSD would use. Everything below went through the isolated signer under the build-time policy: $2,500 per deal, $25,000 per rolling 24 hours, and 5 open deals. The run is recorded in [evidence](evidence/testusd-signer-2026-11-09T09-22-15-177Z.json).
+
+| Step | Result | Transaction |
+|---|---|---|
+| Deal A: lock $1,000 TESTUSD for an approved, ready supplier | validated `tesSUCCESS` | [68A66D14…](https://testnet.xrpl.org/transactions/68A66D14C2C7FE4D7E2EA6291F0F5E0599AE65907A3A76F35AB26C85ED6F3A8E) |
+| Deal A: pay the supplier with a one-use authorization | validated `tesSUCCESS`, supplier 0 → 1,000 TESTUSD | [C0F18A6E…](https://testnet.xrpl.org/transactions/C0F18A6EF1F74E3E39121BE1653363277167413AE2ABF4B37E0FED8E37882733) |
+| Operator lowers the 24-hour cap to $3,000 (policy v2) | the next $1,000 deal is refused `daily_cap_reached` | |
+| Operator lowers the per-deal cap to $500 (policy v3) | the next $600 deal is refused `amount_over_cap` | |
+| Deals B, E, F, G, H refunded after the deadline by ledger time | validated `tesSUCCESS` ×5, treasury back to start minus $1,000 | [A2ECB696…](https://testnet.xrpl.org/transactions/A2ECB6969504AF2598E2EFB4B65DA48047D975CBC0C35E5760764880023D6BED) and 4 more |
+
+**Refused by the signer, as designed:**
+- a deal over the per-deal cap
+- a lock to a wallet that isn't an approved supplier
+- a lock to an approved supplier that has no TESTUSD trust line, so it couldn't receive the money
+- a sixth open deal
+- a policy update signed with the worker's credential, which got `401`, because only the operator's own secret can change limits
+
 ### The verification gate, every outcome (9 Nov 2026)
 
 Four DEMO-001 invoice jobs, 1 XRP each, judged by the deterministic rules and then live Jev (`typesafe/jev-1.14` via OpenRouter) under `policy-v2`, settled by the job engine through the signer ([evidence](evidence/outcomes-2026-11-08T22-55-34-429Z.json)):
@@ -62,6 +81,8 @@ pnpm worker                                 # the job engine: evaluate, settle, 
                                             # JEV_MODE=live (needs OPENROUTER_API_KEY) or fixture (scripted, labelled, not live Jev)
 pnpm demo:restart                           # with the signer up: kill the worker before expiry, restart, refund; writes evidence/
 pnpm demo:outcomes                          # with the signer up: paid, rejected, blocked and evaluator-offline jobs; writes evidence/
+pnpm --filter @surety/signer setup-testusd  # once: TESTUSD issuer, treasury balance and demo suppliers; writes the TESTUSD env files
+pnpm spike:testusd                          # with the signer up: TESTUSD pay, every cap refusal, live operator limits, refunds; writes evidence/
 pnpm exec tsx --env-file=.env scripts/calibrate-jev.ts   # 28 labelled deliverables through live Jev (about $0.0009); exits 1 if a bad file is approved
 ```
 
@@ -70,7 +91,7 @@ pnpm exec tsx --env-file=.env scripts/calibrate-jev.ts   # 28 labelled deliverab
 1. Isolated signer and testnet escrow: **done**
 2. Durable job state and an expiry worker that survives restarts: **done**
 3. Deterministic checks and the Jev evaluator: **done**
-4. Buyer and seller agents, operator spending limits
+4. Operator spending limits and TESTUSD in the signer: **done** (Phase 4a). Deals with a quote step, trade-document rules and the agents come next
 5. Live pipeline view and ledger-linked receipts
 
 Plan: [`docs/step1-plan-review.md`](docs/step1-plan-review.md). Disclosures: [`PRIOR_WORK.md`](PRIOR_WORK.md).

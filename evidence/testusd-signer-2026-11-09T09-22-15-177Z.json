@@ -1,0 +1,251 @@
+{
+  "network": "XRPL Testnet",
+  "recordedAt": "2026-11-09T09:22:15.177Z",
+  "token": {
+    "code": "TESTUSD",
+    "currencyHex": "5445535455534400000000000000000000000000",
+    "issuer": "rfgYBpTCK6Z3xouk7essk9feNbwGCrdxn3",
+    "note": "self-issued test dollar, no value"
+  },
+  "accounts": {
+    "treasury": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5",
+    "service": "rKzZaoLNcBE1qRmpMVxwP1zXLNBnRde6Lm",
+    "supplier": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+    "approvedButNotReady": "rMAmWT8fcWppmYenNLReZ69TfHJxDKkD7u"
+  },
+  "policy": {
+    "start": {
+      "version": 1,
+      "perDealCents": "250000",
+      "dailyCents": "2500000",
+      "maxOpenDeals": 5
+    },
+    "changes": [
+      {
+        "version": 2,
+        "perDealCents": "250000",
+        "dailyCents": "300000",
+        "maxOpenDeals": 5,
+        "approvedSuppliers": [
+          "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+          "rsFJVsZ2u3c57X53pPfdJq1XApXzJ3BPUx",
+          "rJSkQt8iJSgRYDEaeE54uz26SYR5Pehhic",
+          "rMAmWT8fcWppmYenNLReZ69TfHJxDKkD7u"
+        ],
+        "updatedAt": "2026-11-09T09:19:59.703Z"
+      },
+      {
+        "version": 3,
+        "perDealCents": "50000",
+        "dailyCents": "300000",
+        "maxOpenDeals": 5,
+        "approvedSuppliers": [
+          "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+          "rsFJVsZ2u3c57X53pPfdJq1XApXzJ3BPUx",
+          "rJSkQt8iJSgRYDEaeE54uz26SYR5Pehhic",
+          "rMAmWT8fcWppmYenNLReZ69TfHJxDKkD7u"
+        ],
+        "updatedAt": "2026-11-09T09:20:08.901Z"
+      },
+      {
+        "version": 4,
+        "perDealCents": "250000",
+        "dailyCents": "2500000",
+        "maxOpenDeals": 5,
+        "approvedSuppliers": [
+          "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+          "rsFJVsZ2u3c57X53pPfdJq1XApXzJ3BPUx",
+          "rJSkQt8iJSgRYDEaeE54uz26SYR5Pehhic",
+          "rMAmWT8fcWppmYenNLReZ69TfHJxDKkD7u"
+        ],
+        "updatedAt": "2026-11-09T09:20:08.917Z"
+      }
+    ],
+    "end": {
+      "issuer": "rfgYBpTCK6Z3xouk7essk9feNbwGCrdxn3",
+      "currencyHex": "5445535455534400000000000000000000000000",
+      "approvedSuppliers": [
+        "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+        "rsFJVsZ2u3c57X53pPfdJq1XApXzJ3BPUx",
+        "rJSkQt8iJSgRYDEaeE54uz26SYR5Pehhic",
+        "rMAmWT8fcWppmYenNLReZ69TfHJxDKkD7u"
+      ],
+      "policyVersion": 4,
+      "limits": {
+        "perDealCents": "250000",
+        "dailyCents": "2500000",
+        "openDeals": 5
+      }
+    }
+  },
+  "dealA_paid": {
+    "create": {
+      "txHash": "68A66D14C2C7FE4D7E2EA6291F0F5E0599AE65907A3A76F35AB26C85ED6F3A8E",
+      "validated": true,
+      "result": "tesSUCCESS",
+      "ledgerIndex": 22187294,
+      "feeDrops": "12",
+      "explorer": "https://testnet.xrpl.org/transactions/68A66D14C2C7FE4D7E2EA6291F0F5E0599AE65907A3A76F35AB26C85ED6F3A8E",
+      "offerSequence": 22166570,
+      "cancelAfter": 847531361
+    },
+    "finish": {
+      "txHash": "C0F18A6EF1F74E3E39121BE1653363277167413AE2ABF4B37E0FED8E37882733",
+      "validated": true,
+      "result": "tesSUCCESS",
+      "ledgerIndex": 22187296,
+      "feeDrops": "423",
+      "explorer": "https://testnet.xrpl.org/transactions/C0F18A6EF1F74E3E39121BE1653363277167413AE2ABF4B37E0FED8E37882733"
+    },
+    "supplierBalanceTestUsd": {
+      "before": "0",
+      "after": "1000"
+    }
+  },
+  "refunded": [
+    {
+      "ref": "B",
+      "create": {
+        "txHash": "5AAE24905EE664507A005CCEA624022DF6897CB859E9CC379B80313EBA6FEF0D",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187299,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/5AAE24905EE664507A005CCEA624022DF6897CB859E9CC379B80313EBA6FEF0D"
+      },
+      "cancel": {
+        "txHash": "A2ECB6969504AF2598E2EFB4B65DA48047D975CBC0C35E5760764880023D6BED",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187329,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/A2ECB6969504AF2598E2EFB4B65DA48047D975CBC0C35E5760764880023D6BED"
+      }
+    },
+    {
+      "ref": "E",
+      "create": {
+        "txHash": "D1EE5A790E732702C8EABB2D6C730ACA1F97BF5D34492BD449ADB7054EAC9228",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187302,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/D1EE5A790E732702C8EABB2D6C730ACA1F97BF5D34492BD449ADB7054EAC9228"
+      },
+      "cancel": {
+        "txHash": "364918976DDEED648B2B796C4ABD03BB155DF5289364081BC043212A595670EB",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187331,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/364918976DDEED648B2B796C4ABD03BB155DF5289364081BC043212A595670EB"
+      }
+    },
+    {
+      "ref": "F",
+      "create": {
+        "txHash": "2547D0EE0915FE31860864BB95C7FBE4070B84665EB0131DA3B297D1E0BEE947",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187305,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/2547D0EE0915FE31860864BB95C7FBE4070B84665EB0131DA3B297D1E0BEE947"
+      },
+      "cancel": {
+        "txHash": "905550EF2C6CCDADE849724E16F1C6F01A6BF6326846C42DAC86D5A440AE775A",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187333,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/905550EF2C6CCDADE849724E16F1C6F01A6BF6326846C42DAC86D5A440AE775A"
+      }
+    },
+    {
+      "ref": "G",
+      "create": {
+        "txHash": "C573A4D76878D8276EE824516B42AD89F21525A8A9EE2B93725B9EBBDE068BBF",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187308,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/C573A4D76878D8276EE824516B42AD89F21525A8A9EE2B93725B9EBBDE068BBF"
+      },
+      "cancel": {
+        "txHash": "3777C3AE1426AA70F31081EC28D834B05CFAD3BF140059B09CBACCD7A52D5734",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187335,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/3777C3AE1426AA70F31081EC28D834B05CFAD3BF140059B09CBACCD7A52D5734"
+      }
+    },
+    {
+      "ref": "H",
+      "create": {
+        "txHash": "1FAB74DE7D6FF4600C368D27BDF6CC2ED657C1AB5A131217A424B38ED002064E",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187310,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/1FAB74DE7D6FF4600C368D27BDF6CC2ED657C1AB5A131217A424B38ED002064E"
+      },
+      "cancel": {
+        "txHash": "4A0B0B71A7D7CC1F2B89B60A7A65EC8E8C0A96C0A8B1EE2E9C4A1A9CB81BF7C4",
+        "validated": true,
+        "result": "tesSUCCESS",
+        "ledgerIndex": 22187337,
+        "feeDrops": "12",
+        "explorer": "https://testnet.xrpl.org/transactions/4A0B0B71A7D7CC1F2B89B60A7A65EC8E8C0A96C0A8B1EE2E9C4A1A9CB81BF7C4"
+      }
+    }
+  ],
+  "refusals": [
+    {
+      "label": "$3,000 deal over the $2,500 per-deal cap",
+      "status": 403,
+      "code": "amount_over_cap",
+      "message": "amount exceeds the per-deal cap of $2,500"
+    },
+    {
+      "label": "lock to the service account, not an approved supplier",
+      "status": 403,
+      "code": "destination_not_allowed",
+      "message": "destination is not an approved supplier"
+    },
+    {
+      "label": "lock to an approved supplier with no TESTUSD trust line",
+      "status": 409,
+      "code": "destination_not_ready",
+      "message": "destination cannot receive this much TESTUSD yet"
+    },
+    {
+      "label": "policy update signed with the worker's secret",
+      "status": 401,
+      "code": "unauthenticated",
+      "message": "missing or invalid request signature"
+    },
+    {
+      "label": "C would take the last 24 hours past $3,000",
+      "status": 403,
+      "code": "daily_cap_reached",
+      "message": "this lock would take the last 24 hours past the cap of $3,000"
+    },
+    {
+      "label": "D at $600 after the per-deal cap fell to $500",
+      "status": 403,
+      "code": "amount_over_cap",
+      "message": "amount exceeds the per-deal cap of $500"
+    },
+    {
+      "label": "I with five deals already open",
+      "status": 403,
+      "code": "open_deal_limit_reached",
+      "message": "5 deals are already open; the limit is 5"
+    }
+  ],
+  "treasuryBalanceTestUsd": {
+    "start": "10000000",
+    "end": "9999000"
+  },
+  "rollingCapUsedUsd": 2504
+}
