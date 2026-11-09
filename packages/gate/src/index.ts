@@ -42,6 +42,15 @@ export {
   type TradeRulesInput,
   type TradeRulesReport,
 } from "./trade-rules";
+export {
+  CHAT_RULE_IDS,
+  RED_CARD_RULES,
+  runChatRules,
+  stripLinks,
+  type ChatRuleId,
+  type ChatRuleResult,
+  type ChatRulesReport,
+} from "./chat-rules";
 export { AUTHORIZATION_TTL_MS, mintAuthorization, type MintInput } from "./authorize";
 export {
   formatDocUsd,
