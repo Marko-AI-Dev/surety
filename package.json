@@ -22,7 +22,8 @@
     "spike:testusd": "node --env-file=.env --env-file=.env.operator --import tsx scripts/spike-testusd-signer.ts",
     "demo:deals": "node --env-file=.env --import tsx scripts/deals-demo.ts",
     "fixtures:deals":"tsx scripts/deal-fixtures.ts",
-    "limits:set":"node --env-file=.env --env-file=.env.operator --import tsx scripts/set-limits.ts"
+    "limits:set":"node --env-file=.env --env-file=.env.operator --import tsx scripts/set-limits.ts",
+    "probe:paperclip": "tsx scripts/paperclip-probe.ts"
   },
   "devDependencies": {
     "@surety/contracts": "workspace:*",
