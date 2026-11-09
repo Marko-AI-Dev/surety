@@ -5,10 +5,12 @@ import type { ZodType } from "zod";
 import {
   CancelEscrowRequestSchema,
   type CreateEscrowResponse,
+  type CreateEscrowRequest,
   CreateEscrowRequestSchema,
   FinishEscrowRequestSchema,
   type HealthResponse,
   type SettleResponse,
+  assetAmountOf,
   canonicalJson,
   sha256Hex,
   verifyAuthorization,
@@ -20,6 +22,10 @@ import {
   cancelAfterFrom,
   newPreimage,
   preimageCondition,
+  TESTUSD_CURRENCY_HEX,
+  type TrustLine,
+  testUsdAmount,
+  tokenValueToCents,
 } from "@surety/xrpl-settlement";
 import type { SignerConfig } from "./config";
 import { SignerError } from "./errors";
@@ -34,7 +40,13 @@ interface EscrowRecord {
   offerSequence: number;
   secretRef: string;
   condition: string;
-  amountDrops: string;
+  // Absent asset means XRP: records written before TESTUSD existed have no asset field.
+  asset?: "XRP" | "TESTUSD";
+  amountDrops?: string;
+  amountTestUsdCents?: string;
+  issuer?: string;
+  // Validated ledger close time read for this create; the rolling 24-hour cap counts from it.
+  lockedAtCloseTime?: number;
   destination: string;
   cancelAfter: number;
   createTxHash: string;
@@ -131,6 +143,7 @@ export function createSigner(deps: SignerDeps): Signer {
         cancelAfter: p.cancelAfter,
         ledgerIndex: res.ledgerIndex,
         result: res.result,
+        ...(p.issuer ? { issuer: p.issuer } : {}),
       };
     } else {
       const status = entry.type === "finish" ? "finished" : "cancelled";
@@ -215,9 +228,35 @@ export function createSigner(deps: SignerDeps): Signer {
     return finalize(entry, res);
   }
 
+  // Ledger token values in cents. "0" is a real balance; anything unparseable is null (fail closed).
+  const lineCents = (value: string): bigint | null => {
+    if (value === "0") return 0n;
+    const cents = tokenValueToCents(value);
+    return cents === null ? null : BigInt(cents);
+  };
+
+  async function readLine(account: string, issuer: string): Promise<TrustLine | null> {
+    try {
+      return await ledger.trustLine(account, issuer, TESTUSD_CURRENCY_HEX);
+    } catch {
+      throw new SignerError("ledger_failure", "could not read trust lines; retry with the same opId");
+    }
+  }
+
+  function checkCancelWindow(seconds: number): void {
+    if (seconds < config.minCancelSeconds || seconds > config.maxCancelSeconds) {
+      throw new SignerError(
+        "cancel_window_invalid",
+        `cancelAfterSeconds must be between ${config.minCancelSeconds} and ${config.maxCancelSeconds}`,
+      );
+    }
+  }
+
   async function createEscrow(raw: unknown): Promise<CreateEscrowResponse> {
     const req = parse(CreateEscrowRequestSchema, raw);
     const hash = requestHash("create", req);
+    const amount = assetAmountOf(req);
+    if (amount.asset === "TESTUSD") return createTestUsdEscrow(req, hash, amount.cents);
     return locks.run(buyer.classicAddress, async () => {
       const prior = await replay<CreateEscrowResponse>("create", req.opId, hash);
       if (prior) return prior;
@@ -225,15 +264,10 @@ export function createSigner(deps: SignerDeps): Signer {
       if (!config.allowlist.includes(req.destination)) {
         throw new SignerError("destination_not_allowed", "destination is not on the allowlist");
       }
-      if (BigInt(req.amountDrops) > config.maxJobDrops) {
+      if (BigInt(req.amountDrops as string) > config.maxJobDrops) {
         throw new SignerError("amount_over_cap", `amount exceeds the per-job cap of ${config.maxJobDrops} drops`);
       }
-      if (req.cancelAfterSeconds < config.minCancelSeconds || req.cancelAfterSeconds > config.maxCancelSeconds) {
-        throw new SignerError(
-          "cancel_window_invalid",
-          `cancelAfterSeconds must be between ${config.minCancelSeconds} and ${config.maxCancelSeconds}`,
-        );
-      }
+      checkCancelWindow(req.cancelAfterSeconds);
 
       const cancelAfter = cancelAfterFrom(await ledger.validatedCloseTime(), req.cancelAfterSeconds);
       const { condition, fulfillment } = preimageCondition(newPreimage());
@@ -268,6 +302,89 @@ export function createSigner(deps: SignerDeps): Signer {
             secretRef,
             condition,
             amountDrops: req.amountDrops,
+            destination: req.destination,
+            cancelAfter,
+          },
+        },
+        signed.tx_blob,
+      ) as Promise<CreateEscrowResponse>;
+    });
+  }
+
+  // TESTUSD: cheap local checks first, then ledger reads, then sign. Nothing is sealed or signed
+  // until every check has passed, so a refusal or a failed read leaves no trace and the same opId can retry.
+  async function createTestUsdEscrow(req: CreateEscrowRequest, hash: string, cents: string): Promise<CreateEscrowResponse> {
+    return locks.run(buyer.classicAddress, async () => {
+      const prior = await replay<CreateEscrowResponse>("create", req.opId, hash);
+      if (prior) return prior;
+
+      const usd = config.testUsd;
+      if (!usd) throw new SignerError("asset_not_enabled", "this signer is not configured for TESTUSD");
+      if (!usd.approvedSuppliers.includes(req.destination)) {
+        throw new SignerError("destination_not_allowed", "destination is not an approved supplier");
+      }
+      const amount = BigInt(cents);
+      if (amount > usd.maxDealCents) {
+        throw new SignerError("amount_over_cap", `amount exceeds the per-deal cap of ${formatUsd(usd.maxDealCents)}`);
+      }
+      checkCancelWindow(req.cancelAfterSeconds);
+
+      const closeTime = await ledger.validatedCloseTime();
+
+      const destination = await readLine(req.destination, usd.issuer);
+      const destBalance = destination ? lineCents(destination.balance) : null;
+      const destLimit = destination ? lineCents(destination.limit) : null;
+      if (
+        !destination ||
+        destination.frozenByIssuer ||
+        destBalance === null ||
+        destLimit === null ||
+        destLimit - destBalance < amount
+      ) {
+        throw new SignerError("destination_not_ready", "destination cannot receive this much TESTUSD yet");
+      }
+      const treasury = await readLine(buyer.classicAddress, usd.issuer);
+      const treasuryBalance = treasury && !treasury.frozenByIssuer ? lineCents(treasury.balance) : null;
+      if (treasuryBalance === null || treasuryBalance < amount) {
+        throw new SignerError("insufficient_funds", "the treasury does not hold enough spendable TESTUSD");
+      }
+
+      const cancelAfter = cancelAfterFrom(closeTime, req.cancelAfterSeconds);
+      const { condition, fulfillment } = preimageCondition(newPreimage());
+      const secretRef = randomUUID();
+      secrets.update((s) => ({ ...s, [secretRef]: seal(config.preimageKey, fulfillment) }));
+
+      const prepared = await prepare(
+        buildEscrowCreate({
+          account: buyer.classicAddress,
+          destination: req.destination,
+          amount: testUsdAmount(usd.issuer, cents),
+          condition,
+          cancelAfter,
+        }),
+      );
+      const offerSequence = prepared.Sequence;
+      if (typeof offerSequence !== "number") throw new SignerError("internal_error", "autofill did not assign a Sequence");
+      const signed = buyer.sign(prepared);
+
+      return submit(
+        {
+          opId: req.opId,
+          type: "create",
+          requestHash: hash,
+          status: "submitted",
+          txHash: signed.hash,
+          lastLedgerSequence: prepared.LastLedgerSequence,
+          escrowKey: escrowKey(buyer.classicAddress, offerSequence),
+          pending: {
+            jobRef: req.jobRef,
+            offerSequence,
+            secretRef,
+            condition,
+            asset: "TESTUSD",
+            amountTestUsdCents: cents,
+            issuer: usd.issuer,
+            lockedAtCloseTime: closeTime,
             destination: req.destination,
             cancelAfter,
           },
@@ -405,4 +522,11 @@ export function createSigner(deps: SignerDeps): Signer {
     finishEscrow,
     cancelEscrow,
   };
+}
+
+// "$100,000" or "$12,500.50" from integer cents, for refusal messages.
+function formatUsd(cents: bigint): string {
+  const whole = (cents / 100n).toLocaleString("en-US");
+  const frac = cents % 100n;
+  return frac === 0n ? `$${whole}` : `$${whole}.${frac.toString().padStart(2, "0")}`;
 }

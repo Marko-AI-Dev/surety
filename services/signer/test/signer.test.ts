@@ -5,6 +5,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Wallet } from "xrpl";
 import { type AuthorizationPayload, signAuthorization } from "@surety/contracts";
+import { testUsdAmount } from "@surety/xrpl-settlement";
 import { type Signer, createSigner } from "../src/signer";
 import type { SignerConfig } from "../src/config";
 import { FakeLedger } from "./fake-ledger";
@@ -345,5 +346,134 @@ describe("cancelEscrow", () => {
       makeSigner().cancelEscrow({ opId: randomUUID(), owner: buyer.classicAddress, offerSequence: 77 }),
       "escrow_not_found",
     );
+  });
+});
+
+describe("createEscrow in TESTUSD", () => {
+  let issuer: string;
+  let supplier: string;
+
+  function testUsdConfig(overrides: Partial<NonNullable<SignerConfig["testUsd"]>> = {}) {
+    issuer = issuer ?? Wallet.generate().classicAddress;
+    config = {
+      ...config,
+      testUsd: {
+        issuer,
+        approvedSuppliers: [supplier],
+        maxDealCents: 10_000_000n,
+        dailyCents: 100_000_000n,
+        maxOpenDeals: 50,
+        operatorSecret: "o".repeat(40),
+        ...overrides,
+      },
+    };
+  }
+
+  function readyLines(treasuryBalance = "1000000") {
+    ledger.trustLines.set(`${buyer.classicAddress}:${issuer}`, {
+      balance: treasuryBalance,
+      limit: "1000000000",
+      frozenByIssuer: false,
+    });
+    ledger.trustLines.set(`${supplier}:${issuer}`, { balance: "0", limit: "1000000000", frozenByIssuer: false });
+  }
+
+  const usdReq = (overrides: Record<string, unknown> = {}) => {
+    const { amountDrops: _drops, ...rest } = createReq({ destination: supplier });
+    return { ...rest, amountTestUsdCents: "4800000", ...overrides };
+  };
+
+  beforeEach(() => {
+    issuer = Wallet.generate().classicAddress;
+    supplier = Wallet.generate().classicAddress;
+    testUsdConfig();
+    readyLines();
+  });
+
+  it("locks TESTUSD from the treasury with a condition and ledger-time CancelAfter", async () => {
+    const res = await makeSigner().createEscrow(usdReq());
+    expect(res.result).toBe("tesSUCCESS");
+    expect(res.issuer).toBe(issuer);
+    expect(res.cancelAfter).toBe(CLOSE + 180);
+    expect(ledger.submitted[0]?.Account).toBe(buyer.classicAddress);
+    expect(ledger.submitted[0]?.Amount).toEqual(testUsdAmount(issuer, "4800000"));
+    expect(ledger.escrows.get(`${buyer.classicAddress}:${res.offerSequence}`)?.Amount).toEqual(
+      testUsdAmount(issuer, "4800000"),
+    );
+    expect(JSON.stringify(res)).not.toMatch(/fulfil/i);
+  });
+
+  it("refuses TESTUSD when no issuer is configured", async () => {
+    config = { ...config, testUsd: null };
+    await expectCode(makeSigner().createEscrow(usdReq()), "asset_not_enabled");
+    expect(ledger.submitted).toHaveLength(0);
+  });
+
+  it("refuses a TESTUSD lock to an address on the XRP allowlist but not an approved supplier", async () => {
+    await expectCode(makeSigner().createEscrow(usdReq({ destination: seller })), "destination_not_allowed");
+    expect(ledger.submitted).toHaveLength(0);
+  });
+
+  it("refuses a TESTUSD lock over the per-deal cap, and locks exactly at it", async () => {
+    await expectCode(makeSigner().createEscrow(usdReq({ amountTestUsdCents: "10000001" })), "amount_over_cap");
+    expect(ledger.submitted).toHaveLength(0);
+    readyLines("1000000000");
+    const res = await makeSigner().createEscrow(usdReq({ amountTestUsdCents: "10000000" }));
+    expect(res.result).toBe("tesSUCCESS");
+  });
+
+  it("names the per-deal cap in dollars", async () => {
+    await expect(makeSigner().createEscrow(usdReq({ amountTestUsdCents: "10000001" }))).rejects.toThrow(
+      "amount exceeds the per-deal cap of $100,000",
+    );
+  });
+
+  it("refuses a destination without a TESTUSD trust line", async () => {
+    ledger.trustLines.delete(`${supplier}:${issuer}`);
+    await expectCode(makeSigner().createEscrow(usdReq()), "destination_not_ready");
+    expect(ledger.submitted).toHaveLength(0);
+  });
+
+  it("refuses a destination whose trust line limit leaves no room", async () => {
+    ledger.trustLines.set(`${supplier}:${issuer}`, { balance: "990000", limit: "1000000", frozenByIssuer: false });
+    await expectCode(makeSigner().createEscrow(usdReq()), "destination_not_ready");
+    expect(ledger.submitted).toHaveLength(0);
+  });
+
+  it("refuses a destination whose trust line the issuer froze", async () => {
+    ledger.trustLines.set(`${supplier}:${issuer}`, { balance: "0", limit: "1000000000", frozenByIssuer: true });
+    await expectCode(makeSigner().createEscrow(usdReq()), "destination_not_ready");
+    expect(ledger.submitted).toHaveLength(0);
+  });
+
+  it("refuses when the treasury holds less TESTUSD than the amount", async () => {
+    readyLines("47999.99");
+    await expectCode(makeSigner().createEscrow(usdReq()), "insufficient_funds");
+    expect(ledger.submitted).toHaveLength(0);
+  });
+
+  it("refuses when the treasury has no TESTUSD line at all", async () => {
+    ledger.trustLines.delete(`${buyer.classicAddress}:${issuer}`);
+    await expectCode(makeSigner().createEscrow(usdReq()), "insufficient_funds");
+  });
+
+  it("a failed trust-line read refuses with ledger_failure, signs nothing, and the same opId then locks", async () => {
+    const req = usdReq();
+    ledger.throwOnNextTrustLine = true;
+    await expectCode(makeSigner().createEscrow(req), "ledger_failure");
+    expect(ledger.submitted).toHaveLength(0);
+    const res = await makeSigner().createEscrow(req);
+    expect(res.result).toBe("tesSUCCESS");
+  });
+
+  it("refuses a body with both amountDrops and amountTestUsdCents", async () => {
+    await expectCode(makeSigner().createEscrow(usdReq({ amountDrops: "1000000" })), "bad_request");
+  });
+
+  it("still locks XRP to the allowlist with TESTUSD configured", async () => {
+    const res = await makeSigner().createEscrow(createReq());
+    expect(res.result).toBe("tesSUCCESS");
+    expect(res.issuer).toBeUndefined();
+    expect(ledger.submitted[0]?.Amount).toBe("1000000");
   });
 });
