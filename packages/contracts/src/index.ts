@@ -28,6 +28,20 @@ export {
   deliverableHash,
   type InvoiceDeliverable,
 } from "./deliverable";
+export {
+  DOCUMENT_MAX_CHARS,
+  DealIntentSchema,
+  INCOTERMS,
+  SupplierQuoteSchema,
+  TradeDocumentsSchema,
+  TradeFieldsSchema,
+  budgetCents,
+  type DealIntent,
+  type Incoterm,
+  type SupplierQuote,
+  type TradeDocuments,
+  type TradeFields,
+} from "./deal";
 export { MAX_CLOCK_SKEW_MS, SIG_HEADER, TS_HEADER, signRequest, verifyRequest } from "./transport";
 export {
   CancelEscrowRequestSchema,
