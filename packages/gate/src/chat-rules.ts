@@ -30,6 +30,19 @@ const CONFUSABLES: Record<string, string> = {
   "ѕ": "s", "ԁ": "d", "ɡ": "g", "Α": "A", "Β": "B", "Ε": "E", "Ζ": "Z",
   "Η": "H", "Ι": "I", "Κ": "K", "Μ": "M", "Ν": "N", "Ο": "O", "Ρ": "P",
   "Τ": "T", "Υ": "Y", "Χ": "X", "ο": "o", "ν": "v",
+  // More Cyrillic and Greek, Latin Extended and IPA letters, phonetic small capitals, Cherokee and
+  // Armenian. Mapping only feeds the checksum-validated address scan and the bank-word check, so a
+  // wider map can never red-card an honest message: mapped text must still form a valid address.
+  "Ԛ": "Q", "ԛ": "q", "Ԝ": "W", "ԝ": "w", "Ѕ": "S", "І": "I", "Ј": "J",
+  "һ": "h", "α": "a", "ι": "i", "κ": "k", "ρ": "p", "υ": "u",
+  "ı": "i", "ȷ": "j", "ĸ": "k", "ƅ": "b", "ɑ": "a", "ɩ": "i", "ʏ": "Y",
+  "ɢ": "G", "ʜ": "H", "ʙ": "B", "ʀ": "R", "ɴ": "N",
+  "ᴀ": "A", "ᴄ": "C", "ᴅ": "D", "ᴇ": "E", "ᴊ": "J", "ᴋ": "K", "ᴍ": "M",
+  "ᴘ": "P", "ᴛ": "T", "ᴜ": "U", "ᴠ": "V", "ᴡ": "W", "ᴢ": "Z",
+  "Ꭺ": "A", "Ᏼ": "B", "Ꮯ": "C", "Ꭼ": "E", "Ꮐ": "G", "Ꮋ": "H", "Ꭻ": "J",
+  "Ꮶ": "K", "Ꮮ": "L", "Ꮇ": "M", "Ꮲ": "P", "Ꭱ": "R", "Ꮪ": "S", "Ꭲ": "T",
+  "Ꮩ": "V", "Ꮃ": "W", "Ꮓ": "Z",
+  "օ": "o", "ս": "u", "ց": "g", "հ": "h", "ո": "n", "զ": "q", "Ս": "U",
 };
 
 const FORMAT_CHARS = /\p{Cf}/gu;

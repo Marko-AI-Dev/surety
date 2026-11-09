@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classicAddressToXAddress } from "xrpl";
+import { classicAddressToXAddress, encodeAccountID } from "xrpl";
 import { CHAT_RULE_IDS, RED_CARD_RULES, runChatRules, stripLinks } from "../src/index";
 import { ATTACKER, SUPPLIER } from "../../../scripts/deal-fixtures";
 
@@ -126,6 +126,17 @@ describe("runChatRules", () => {
     expect(failed(`Pay ${six.slice(0, 9)} ${six.slice(9, 18)} ${six.slice(18, 27)} ${six.slice(27)}`)).toEqual(["wallet"]);
     const decoy = `${ATTACKER.slice(0, 10)} Наша ${ATTACKER.slice(10, 20)} ${ATTACKER.slice(20).replace("w", "ԝ")}`;
     expect(failed(`Pay ${decoy}`)).toEqual(["wallet"]);
+  });
+
+  it("mapped look-alikes rebuild a space-split wallet, even set apart by spaces", () => {
+    // A valid address that contains an "i", written with a dotless i (U+0131) and split by spaces.
+    let withI = "";
+    for (let n = 1; !withI.includes("i"); n++) withI = encodeAccountID(Buffer.alloc(20, n));
+    const dotless = withI.replace("i", "ı");
+    expect(failed(`Pay ${dotless.slice(0, 10)} ${dotless.slice(10, 20)} ${dotless.slice(20)}`)).toEqual(["wallet"]);
+    expect(failed(`Pay ${ATTACKER.slice(0, 5)} Ꭻ ${ATTACKER.slice(6)}`)).toEqual(["wallet"]);
+    const smallCaps = ATTACKER.replace("H", "ʜ").replace("B", "ʙ").replace("T", "ᴛ");
+    expect(failed(`Pay ${smallCaps.slice(0, 12)} ${smallCaps.slice(12)}`)).toEqual(["wallet"]);
   });
 
   it("Vietnamese, Twi and Turkish names, and Russian short words beside English, pass", () => {
