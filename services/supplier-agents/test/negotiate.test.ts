@@ -20,6 +20,13 @@ describe("nextMove", () => {
     expect(counter!.state.priceCents).toBeGreaterThanOrEqual(p.floorUnitCents);
   });
 
+  it("counters once whatever words the negotiator uses for its target (the dry run said USD 110.00)", () => {
+    const p = PERSONAS.brightway;
+    const opened = { ...fresh, priceCents: 11_800 };
+    const thread = [ask("Price?"), said("$118.00"), ask("Thank you. Could you meet our target unit price of USD 110.00 for 400 panels, CIF Durban?")];
+    expect(nextMove(p, opened, thread, 60)?.move).toEqual({ say: { unitCents: 11_400, deliveryDays: 21, intent: "counter" } });
+  });
+
   it("waits for the negotiator before saying anything, and doesn't answer twice", () => {
     expect(nextMove(PERSONAS.brightway, fresh, [], 80)).toBeNull();
     const s = { ...fresh, priceCents: 11_800 };

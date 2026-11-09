@@ -33,7 +33,6 @@ export interface Order {
 export const DEMO_ORDER: Order = { quantity: 400, incoterm: "CIF", port: "Durban" };
 
 export const COMMIT_SECONDS = 15;
-const ASKS_FOR_LESS = /lower|better|discount|reduce|cheaper|best|\$\s?\d/i;
 
 const quoteNumber = (p: Persona) => `Q-${p.key.slice(0, 4).toUpperCase()}-${Date.now().toString(36).toUpperCase().slice(-6)}`;
 
@@ -66,7 +65,9 @@ export function nextMove(
     state: { ...state, priceCents: unitCents, countered },
   });
   if (state.priceCents === null) return say(persona.openingUnitCents, "open");
-  if (!state.countered && ASKS_FOR_LESS.test(last.text)) {
+  // Any follow-up after the opening price is a push for a better one: one counter, whatever its
+  // wording, if there is room above the floor. A supplier already at its floor holds.
+  if (!state.countered && price > persona.floorUnitCents) {
     const halfway = Math.round((price + persona.floorUnitCents) / 2 / 100) * 100;
     return say(Math.max(persona.floorUnitCents, halfway), "counter", true);
   }
