@@ -47,6 +47,12 @@ describe("nextMove", () => {
     expect(r?.move).toMatchObject({ commit: { unitCents: 11_400 } });
   });
 
+  it("Coastline never commits a quote unless it has played its script (final review)", () => {
+    expect(nextMove(PERSONAS.coastline, fresh, [], 10)).toBeNull();
+    expect(nextMove(PERSONAS.coastline, { ...fresh, scriptIndex: 1 }, [ask("Price?"), said("x")], 10)).toBeNull();
+    expect(nextMove(PERSONAS.coastline, { ...fresh, scriptIndex: 2, priceCents: 10_400 }, [ask("x")], 10)?.move).toMatchObject({ commit: { unitCents: 10_400 } });
+  });
+
   it("Coastline sends its two script lines in order", () => {
     const p = PERSONAS.coastline;
     const first = nextMove(p, fresh, [ask("Price?")], 80);

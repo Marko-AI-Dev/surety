@@ -159,6 +159,7 @@ function hasBankDetails(text: string): boolean {
 
 // A look-alike letter planted in an address is a hidden wallet whatever the map above misses.
 const ASCII_BASE58 = /^[1-9A-HJ-NP-Za-km-z]$/;
+const ASCII_LETTER = /^[A-HJ-NP-Za-km-z]$/;
 // Scripts with no Latin look-alikes: a supplier writing in them is never mistaken for a hidden wallet.
 const SAFE_SCRIPT =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Thai}\p{Script=Devanagari}]/u;
@@ -177,7 +178,9 @@ function mixedScriptAddressLike(text: string): boolean {
   // characters, wherever it sits. Names are short; a disguised address is not.
   for (const word of clean.split(/\s+/)) {
     const ascii = [...word].filter((c) => ASCII_BASE58.test(c)).length;
-    if (ascii >= 15 && [...word].some((c) => NON_ASCII_LETTER.test(c) && isLetterOrDigit(c) && !SAFE_SCRIPT.test(c))) return true;
+    // A real address almost always holds a digit; long words in German or Turkish do not.
+    const hasDigit = /[1-9]/.test(word);
+    if (ascii >= 15 && hasDigit && [...word].some((c) => NON_ASCII_LETTER.test(c) && isLetterOrDigit(c) && !SAFE_SCRIPT.test(c))) return true;
   }
   // Across spaces and punctuation. A planted letter is a run of one or two look-alikes stuck to an
   // address character inside a word; a short foreign word standing on its own ("за") is not one, and
@@ -193,7 +196,8 @@ function mixedScriptAddressLike(text: string): boolean {
     }
     let j = i;
     while (j < all.length && LOOKALIKE.test(all[j] ?? "")) j++;
-    const stuck = ASCII_BASE58.test(all[i - 1] ?? "") || ASCII_BASE58.test(all[j] ?? "");
+    // Stuck to an address letter, not to a digit: "$114за" is a price beside a Russian word.
+    const stuck = ASCII_LETTER.test(all[i - 1] ?? "") || ASCII_LETTER.test(all[j] ?? "");
     if (j - i <= 2 && stuck) for (let k = i; k < j; k++) plantedAt[k] = true;
     i = j;
   }

@@ -49,7 +49,10 @@ export function nextMove(
     move: { commit: { quoteNumber: quoteNumber(persona), quantity: order.quantity, unitCents: price, incoterm: order.incoterm, port: order.port, notes: "" } },
     state: { ...state, priceCents: price, committed: true },
   });
-  if (secondsLeft <= COMMIT_SECONDS) return commit();
+  // The crook commits only once it has played its whole script (and so been carded): a crook nobody
+  // talked to never slips in an unscreened cheap quote for the lead to pick.
+  const scriptPlayed = !persona.script || state.scriptIndex >= persona.script.length;
+  if (secondsLeft <= COMMIT_SECONDS) return scriptPlayed ? commit() : null;
 
   const last = thread.at(-1);
   if (!last || last.kind !== "to_supplier") return null;

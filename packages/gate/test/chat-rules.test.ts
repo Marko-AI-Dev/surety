@@ -139,6 +139,14 @@ describe("runChatRules", () => {
     expect(failed(`Pay ${smallCaps.slice(0, 12)} ${smallCaps.slice(12)}`)).toEqual(["wallet"]);
   });
 
+  it("long accented business words and Russian stuck to a price pass (final review)", () => {
+    expect(failed("Lieferbestätigung folgt morgen, $114.00 CIF Durban.")).toEqual([]);
+    expect(failed("Zahlungsbestätigung erhalten, Versand in 21 Tagen.")).toEqual([]);
+    expect(failed("Qualitätssicherungsmaßnahmen sind abgeschlossen.")).toEqual([]);
+    expect(failed("Fiyat değerlendirmesinde $114.00 CIF Durban.")).toEqual([]);
+    expect(failed("$114за панель ready to ship from Shenzhen port tomorrow.")).toEqual([]);
+  });
+
   it("Vietnamese, Twi and Turkish names, and Russian short words beside English, pass", () => {
     expect(failed("Công ty Thương mại and Kwame Ɔforiwaa Ltd are ready to ship from Shenzhen port tomorrow.")).toEqual([]);
     expect(failed("Yıldız Solar is ready to ship from Shenzhen port tomorrow at $114.00.")).toEqual([]);

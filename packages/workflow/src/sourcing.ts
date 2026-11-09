@@ -18,7 +18,7 @@ import { type DecisionEngine, type ScreenResult, type SupplierLine, chatState, s
 import type { SignerClient } from "@surety/signer-client";
 import type { DealsRepo } from "./deal-repo";
 import type { JobsRepo } from "./repo";
-import type { Invite, Sourcing, SourcingMessage, SourcingRepo, SupplierSuggestion } from "./sourcing-repo";
+import { CommittedQuoteConflict, type Invite, type Sourcing, type SourcingMessage, type SourcingRepo, type SupplierSuggestion } from "./sourcing-repo";
 
 // Sourcing and negotiation: the lead opens a sourcing from the buyer's brief, the sourcing agent
 // invites approved suppliers, the negotiator and suppliers chat through Surety, and suppliers commit
@@ -320,6 +320,14 @@ export async function commitQuote(deps: SourcingDeps, sourcingId: string, addres
   const invite = await mustInvite(deps, s.id, address);
   mustBeOpen(s, nowOf(deps), { timed: false });
   if ((await statusOf(deps, s.id, address)) === "out") throw new SupplierOut(s.id, address);
+  // A quote is committed once. The same form again (a retry) returns it without screening its notes a
+  // second time, so one sentence can never earn two cards; different terms are a conflict.
+  if (invite.quote) {
+    const q = invite.quote;
+    const same = q.quoteNumber === form.quoteNumber && q.quantity === form.quantity && q.unitCents === form.unitCents && q.incoterm === form.incoterm && q.port === form.port;
+    if (same) return invite;
+    throw new CommittedQuoteConflict(s.id, address);
+  }
   const total = BigInt(form.quantity) * BigInt(form.unitCents);
   if (total > MAX_TESTUSD_CENTS) throw new SourcingRefused("the quote total is above the largest amount Surety handles");
 
