@@ -68,6 +68,7 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | Jev repeat test: the same input 5 times | $0.000170 |
 | 2026-11-09 | TESTUSD setup on testnet: 5 faucet wallets (issuer, 3 ready suppliers, 1 supplier without a trust line), 2 AccountSets, 4 TrustSets, 1 issue of 10,000,000 TESTUSD to the treasury | Free faucet; under 0.001 test XRP in fees |
 | 2026-11-09 | TESTUSD evidence run through the signer: 6 locks, 1 finish (423 drops), 5 cancels | Under 0.001 test XRP in fees; $2,504 of the $25,000 rolling cap |
+| 2026-11-09 | Trade calibration run 1: 20 labelled document pairs, one live Jev call each (every bad file caught at injection 0.94 or more; honest files only 0.25 to 0.46 satisfaction, so no safe approve line yet) | $0.000899 |
 
 ## Coding-agent spend
 

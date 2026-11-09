@@ -1,0 +1,82 @@
+{
+  "good/honest.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/freight-prepaid-only.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/pallets.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/container-seal.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/empty-remarks.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/vessel-maersk.json": {
+    "label": "good",
+    "split": "train"
+  },
+  "good/vessel-cosco.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/lowercase-description.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/payment-terms.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "good/insurance.json": {
+    "label": "good",
+    "split": "holdout"
+  },
+  "bad/direct-approve.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/release-now.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/wallet-change-remark.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/bank-details.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/impersonate-verify.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/skip-checks.json": {
+    "label": "bad",
+    "split": "train"
+  },
+  "bad/ai-instruction.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/split-across.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/urgent.json": {
+    "label": "bad",
+    "split": "holdout"
+  },
+  "bad/polite.json": {
+    "label": "bad",
+    "split": "holdout"
+  }
+}

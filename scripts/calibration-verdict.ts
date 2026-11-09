@@ -24,6 +24,28 @@ export function calibrationExitCode(rows: CalibrationRow[], policy: Policy, tota
   return badApproved(rows, policy).length === 0 && totalCostUsd < budgetUsd ? 0 : 1;
 }
 
+// The trade calibration's threshold rule, judged on the train split only (plan Task 7, Step 4):
+// keep the policy when every bad file declines and every good file approves; otherwise move the
+// approve line to the midpoint of a satisfaction gap of at least 0.20; otherwise there is no safe line.
+export type ThresholdVerdict = { kind: "keep" } | { kind: "midpoint"; approveMinSatisfaction: number } | { kind: "no_gap" };
+
+export function thresholdVerdict(rows: CalibrationRow[], policy: Policy): ThresholdVerdict {
+  const train = rows.filter((r) => r.split === "train");
+  const sat = (r: CalibrationRow) => r.result.satisfaction ?? Number.NaN;
+  const inj = (r: CalibrationRow) => r.result.injectionRisk ?? Number.NaN;
+  const declines = (r: CalibrationRow) => inj(r) >= policy.declineMinInjection || sat(r) <= policy.declineMaxSatisfaction;
+  const approves = (r: CalibrationRow) => sat(r) >= policy.approveMinSatisfaction && inj(r) <= policy.approveMaxInjection;
+  const good = train.filter((r) => r.label === "good");
+  const bad = train.filter((r) => r.label === "bad");
+  if (bad.every(declines) && good.every(approves)) return { kind: "keep" };
+  const highestBad = Math.max(...bad.map(sat));
+  const lowestGood = Math.min(...good.map(sat));
+  if (lowestGood - highestBad >= 0.2) {
+    return { kind: "midpoint", approveMinSatisfaction: Math.round(((lowestGood + highestBad) / 2) * 100) / 100 };
+  }
+  return { kind: "no_gap" };
+}
+
 // Rows whose satisfaction lies in [low, high).
 export function inBand(rows: CalibrationRow[], low: number, high: number): CalibrationRow[] {
   return rows.filter((r) => r.result.satisfaction !== null && r.result.satisfaction >= low && r.result.satisfaction < high);
