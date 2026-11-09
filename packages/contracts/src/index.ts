@@ -42,6 +42,22 @@ export {
   type TradeDocuments,
   type TradeFields,
 } from "./deal";
+export { centsSchema, nameSchema, partySchema, portSchema, quantitySchema } from "./deal-fields";
+export {
+  ChatTextSchema,
+  LeadDecisionSchema,
+  MESSAGE_MAX_CHARS,
+  OfferReportSchema,
+  QuoteFormSchema,
+  SettlementFormSchema,
+  SourcingBriefSchema,
+  type Card,
+  type LeadDecision,
+  type OfferReport,
+  type QuoteForm,
+  type SettlementForm,
+  type SourcingBrief,
+} from "./sourcing";
 export { MAX_CLOCK_SKEW_MS, SIG_HEADER, TS_HEADER, signRequest, verifyRequest } from "./transport";
 export {
   CancelEscrowRequestSchema,

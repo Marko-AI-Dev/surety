@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_TESTUSD_CENTS } from "./money";
+import { centsSchema as cents, nameSchema as name, partySchema as party, portSchema as port, quantitySchema as quantity } from "./deal-fields";
 import { Address } from "./schemas";
 
 // A deal is an import purchase paid through escrow: the buyer's intent, the supplier's quote and,
@@ -8,13 +8,6 @@ import { Address } from "./schemas";
 
 export const INCOTERMS = ["EXW", "FOB", "CFR", "CIF", "DAP", "DDP"] as const;
 export type Incoterm = (typeof INCOTERMS)[number];
-
-const MAX_CENTS = Number(MAX_TESTUSD_CENTS);
-const cents = z.number().int().min(0).max(MAX_CENTS);
-const name = z.string().min(1).max(120);
-const port = z.string().min(1).max(64);
-const quantity = z.number().int().min(1).max(1_000_000);
-const party = z.object({ name, address: Address }).strict();
 
 export const DealIntentSchema = z
   .object({
