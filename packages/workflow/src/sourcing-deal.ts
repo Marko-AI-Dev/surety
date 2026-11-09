@@ -1,6 +1,6 @@
 import { type DealIntent, type LeadDecision, LeadDecisionSchema, SettlementFormSchema } from "@surety/contracts";
 import { type SettlementDraft, buildSettlementDocuments, settlementDraft } from "@surety/gate";
-import type { Deal } from "./deal-repo";
+import { type Deal, DealTransitionConflict } from "./deal-repo";
 import { type DealDeps, type QuoteDecider, decideQuote, openDeal, ruleFollowingDecider, submitDocuments, submitQuote } from "./deals";
 import type { Job } from "./repo";
 import { InviteConflict, SourcingConflict } from "./sourcing-repo";
@@ -69,6 +69,11 @@ export async function leadDecision(
   if (!invite) throw new SourcingRefused(`deal ${dealId} did not come from a sourcing`);
   const s = await deps.repo.getSourcing(invite.sourcingId);
   if (!s) throw new SourcingNotFound(invite.sourcingId);
+  // Only a deal the lead can still decide (or an accepted one whose lock is resuming) may claim it.
+  const current = await deps.repo.getDeal(dealId);
+  if (!current || !(current.state === "QUOTE_RECEIVED" || (current.state === "ACCEPTED" && current.jobId))) {
+    throw new DealTransitionConflict(dealId, current?.state ?? "missing", "ACCEPTED");
+  }
   // Claim the sourcing for this deal before anything can lock: one atomic OPEN to SELECTED, so a
   // second decision on another supplier's deal is refused instead of locking a second payment. A retry
   // of this deal finds the sourcing already naming it and goes on.
@@ -84,9 +89,23 @@ export async function leadDecision(
     throw new SourcingClosed(s.id, "not_open");
   }
 
-  const result = await decideQuote({ ...dealDeps(deps), decider: answerDecider(answer, `paperclip:${agentName}`) }, dealId);
-  // Declined or overruled: nothing locked, so the sourcing opens again for another supplier.
-  if (result.deal.state === "DECLINED") await deps.repo.releaseSelection(s.id, dealId);
+  // Whenever the deal does not end ACCEPTED (declined, overruled, or the decision threw before
+  // deciding), nothing is locked, so the claim is released and the sourcing opens again.
+  const release = async () => {
+    try {
+      await deps.repo.releaseSelection(s.id, dealId);
+    } catch (e) {
+      if (!(e instanceof SourcingConflict)) throw e;
+    }
+  };
+  let result: { deal: Deal; job: Job | null };
+  try {
+    result = await decideQuote({ ...dealDeps(deps), decider: answerDecider(answer, `paperclip:${agentName}`) }, dealId);
+  } catch (e) {
+    if ((await deps.repo.getDeal(dealId))?.state !== "ACCEPTED") await release();
+    throw e;
+  }
+  if (result.deal.state !== "ACCEPTED") await release();
   return result;
 }
 
@@ -107,6 +126,8 @@ export async function settlementDraftFor(deps: SourcingDeps, dealId: string, add
 export async function submitSettlement(deps: SourcingDeps, dealId: string, address: string, raw: unknown): Promise<Job> {
   const form = SettlementFormSchema.parse(raw);
   const deal = await ownDeal(deps, dealId, address);
+  // Documents are accepted only once the deal is accepted and its payment is being locked.
+  if (deal.state !== "ACCEPTED" || !deal.jobId) throw new DealTransitionConflict(deal.id, deal.state, "ACCEPTED");
   const docs = buildSettlementDocuments(deal.intent, deal.quote as NonNullable<Deal["quote"]>, form);
   return submitDocuments(dealDeps(deps), dealId, docs);
 }

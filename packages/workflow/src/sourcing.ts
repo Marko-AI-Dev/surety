@@ -155,6 +155,12 @@ export async function openSourcing(deps: SourcingDeps, raw: unknown): Promise<So
   return deps.repo.createSourcing(newRef(now), brief, new Date(now.getTime() + brief.negotiationSeconds * 1000));
 }
 
+// Any card since the operator last reviewed this supplier puts it on hold across sourcings.
+export async function supplierOnHold(deps: SourcingDeps, address: string): Promise<boolean> {
+  const review = await deps.repo.lastReview(address);
+  return (await deps.repo.listCards(address, review ? new Date(review.clearedAt) : null)).length > 0;
+}
+
 export async function inviteSupplier(
   deps: SourcingDeps,
   sourcingId: string,
@@ -165,9 +171,7 @@ export async function inviteSupplier(
   if (s.state !== "OPEN" || now.getTime() >= Date.parse(s.negotiationEndsAt)) return { invited: false, reason: "closed" };
   const health = await deps.signer.health();
   if (!health.testUsd?.approvedSuppliers.includes(address)) return { invited: false, reason: "not_approved" };
-  const review = await deps.repo.lastReview(address);
-  const cards = await deps.repo.listCards(address, review ? new Date(review.clearedAt) : null);
-  if (cards.length > 0) return { invited: false, reason: "on_hold" };
+  if (await supplierOnHold(deps, address)) return { invited: false, reason: "on_hold" };
   const invite = await deps.repo.addInvite(s.id, { address, name: deps.directory(address) ?? address });
   return { invited: true, invite };
 }

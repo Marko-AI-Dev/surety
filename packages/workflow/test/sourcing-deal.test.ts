@@ -142,6 +142,31 @@ describe("selection and the lead's decision", () => {
     expect(signer.calls.filter((c) => c.method === "create")).toHaveLength(1);
   });
 
+  it("a decision on a policy-refused deal is refused and leaves the sourcing open", async () => {
+    const s = await sourcingWithQuotes({ [SUPPLIER]: 11_400, [SECOND]: 11_600 });
+    const ready = deps.supplierLine;
+    deps.supplierLine = async (a) => (a === SECOND ? null : ready(a));
+    const refused = await selectSupplier(deps, s.id, SECOND);
+    expect(refused.state).toBe("POLICY_REFUSED");
+    await expect(leadDecision(deps, refused.id, accept, "lead")).rejects.toThrow(/POLICY_REFUSED/);
+    expect(await repo.getSourcing(s.id)).toMatchObject({ state: "OPEN", dealId: null });
+    const ok = await selectSupplier(deps, s.id, SUPPLIER);
+    expect((await leadDecision(deps, ok.id, accept, "lead")).job?.state).toBe("LOCKED");
+  });
+
+  it("a decision that throws before deciding releases the sourcing, and a retry works", async () => {
+    const s = await sourcingWithQuotes({ [SUPPLIER]: 11_400 });
+    const d = await selectSupplier(deps, s.id, SUPPLIER);
+    const health = signer.health.bind(signer);
+    signer.health = async () => {
+      throw new Error("signer unreachable");
+    };
+    await expect(leadDecision(deps, d.id, accept, "lead")).rejects.toThrow(/unreachable/);
+    expect(await repo.getSourcing(s.id)).toMatchObject({ state: "OPEN", dealId: null });
+    signer.health = health;
+    expect((await leadDecision(deps, d.id, accept, "lead")).job?.state).toBe("LOCKED");
+  });
+
   it("a supplier cannot be selected twice", async () => {
     const s = await sourcingWithQuotes({ [SUPPLIER]: 12_500 });
     const d = await selectSupplier(deps, s.id, SUPPLIER);
