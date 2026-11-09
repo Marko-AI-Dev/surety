@@ -1,6 +1,16 @@
-export { MAX_DROPS, isDrops } from "./money";
+export {
+  MAX_DROPS,
+  MAX_TESTUSD_CENTS,
+  assetAmountOf,
+  hasExactlyOneAmount,
+  isCents,
+  isDrops,
+  wireAmount,
+  type AssetAmount,
+  type WireAmount,
+} from "./money";
 export { canonicalJson, sha256Hex } from "./canonical";
-export { Address, Drops, Hash256, OfferSequence } from "./schemas";
+export { Address, Cents, Drops, EXACTLY_ONE_AMOUNT, Hash256, OfferSequence } from "./schemas";
 export {
   AuthorizationPayloadSchema,
   MAX_AUTHORIZATION_LIFETIME_MS,

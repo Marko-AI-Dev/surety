@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { canonicalJson, sha256Hex } from "./canonical";
-import { Address, Drops, Hash256, OfferSequence } from "./schemas";
+import { hasExactlyOneAmount } from "./money";
+import { Address, Cents, Drops, EXACTLY_ONE_AMOUNT, Hash256, OfferSequence } from "./schemas";
 
 // A short-lived, one-use permission from the gate to the signer to finish one exact escrow.
 export const MAX_AUTHORIZATION_LIFETIME_MS = 120_000;
@@ -11,7 +12,9 @@ export const AuthorizationPayloadSchema = z
     network: z.literal("testnet"),
     owner: Address,
     offerSequence: OfferSequence,
-    amountDrops: Drops,
+    // Exactly one amount field: drops for XRP, cents for TESTUSD.
+    amountDrops: Drops.optional(),
+    amountTestUsdCents: Cents.optional(),
     destination: Address,
     jobSnapshotHash: Hash256,
     deliverableHash: Hash256,
@@ -20,7 +23,8 @@ export const AuthorizationPayloadSchema = z
     expiresAt: z.iso.datetime(),
     nonce: z.string().regex(/^[0-9a-f]{32}$/),
   })
-  .strict();
+  .strict()
+  .refine(hasExactlyOneAmount, EXACTLY_ONE_AMOUNT);
 
 export type AuthorizationPayload = z.infer<typeof AuthorizationPayloadSchema>;
 

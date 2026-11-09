@@ -67,3 +67,29 @@ describe("authorization", () => {
     expect(verifyAuthorization("not an object", SECRET, NOW)).toEqual({ ok: false, reason: "malformed" });
   });
 });
+
+describe("authorization amounts", () => {
+  it("an XRP payload's binding hash is unchanged", () => {
+    expect(bindingHash(payload())).toBe("4f6196f3c44584db7ca6b36a49dc76fde1092ee1043a14369ede8a9cc27b921d");
+  });
+
+  it("a TESTUSD payload round-trips", () => {
+    const { amountDrops: _drop, ...rest } = payload();
+    const testUsd = { ...rest, amountTestUsdCents: "4800000" } as AuthorizationPayload;
+    const result = verifyAuthorization(signAuthorization(testUsd, SECRET), SECRET, NOW);
+    expect(result.ok).toBe(true);
+  });
+
+  it("a payload with both amount fields is malformed", () => {
+    const both = { ...payload(), amountTestUsdCents: "4800000" } as AuthorizationPayload;
+    expect(verifyAuthorization(signAuthorization(both, SECRET), SECRET, NOW)).toEqual({ ok: false, reason: "malformed" });
+  });
+
+  it("a payload with no amount field is malformed", () => {
+    const { amountDrops: _drop, ...none } = payload();
+    expect(verifyAuthorization(signAuthorization(none as AuthorizationPayload, SECRET), SECRET, NOW)).toEqual({
+      ok: false,
+      reason: "malformed",
+    });
+  });
+});
