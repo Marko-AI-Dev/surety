@@ -306,15 +306,45 @@ export async function reportOffer(deps: SourcingDeps, sourcingId: string, raw: u
   });
 }
 
-// The supplier's binding quote. The wallet is the invite's; the total is computed here.
+// The supplier's binding quote. The wallet is the invite's; the total is computed here. The notes are
+// supplier free text the lead agent reads, so they pass the bouncer like a chat message: clean notes
+// arrive link-stripped, held notes are blanked and recorded (with their card) in the chat record.
 export async function commitQuote(deps: SourcingDeps, sourcingId: string, address: string, raw: unknown): Promise<Invite> {
   const form = QuoteFormSchema.parse(raw);
   const s = await mustSourcing(deps, sourcingId);
   mustBeOpen(s, nowOf(deps), { timed: false });
-  await mustInvite(deps, s.id, address);
+  const invite = await mustInvite(deps, s.id, address);
   if ((await statusOf(deps, s.id, address)) === "out") throw new SupplierOut(s.id, address);
   const total = BigInt(form.quantity) * BigInt(form.unitCents);
   if (total > MAX_TESTUSD_CENTS) throw new SourcingRefused("the quote total is above the largest amount Surety handles");
+
+  let notes = "";
+  const rawNotes = form.notes.trim();
+  if (rawNotes.length > 0) {
+    const result = await screenMessage(deps.engine, {
+      text: rawNotes,
+      approvedWallet: address,
+      state: chatState(orderOf(s.brief), invite.name, rawNotes),
+      sourcingId: s.id,
+      secondsRemaining: SCREEN_SECONDS,
+    });
+    if (result.verdict === "deliver") {
+      notes = result.deliveredText ?? "";
+    } else {
+      await deps.repo.addMessage({
+        sourcingId: s.id,
+        supplier: address,
+        kind: "from_supplier",
+        body: rawNotes,
+        deliveredBody: null,
+        verdict: "quarantine",
+        card: result.card,
+        screen: { ...screenRecord(result), source: "quote_notes" },
+        offer: null,
+      });
+      if ((await statusOf(deps, s.id, address)) === "out") throw new SupplierOut(s.id, address);
+    }
+  }
   const quote: SupplierQuote = SupplierQuoteSchema.parse({
     quoteNumber: form.quoteNumber,
     supplierAddress: address,
@@ -324,7 +354,7 @@ export async function commitQuote(deps: SourcingDeps, sourcingId: string, addres
     currency: "USD",
     incoterm: form.incoterm,
     port: form.port,
-    notes: form.notes,
+    notes,
   });
   return deps.repo.commitQuote(s.id, address, quote, sha256Hex(canonicalJson(quote)));
 }
