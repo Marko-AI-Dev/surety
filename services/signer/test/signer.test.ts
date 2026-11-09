@@ -718,6 +718,7 @@ describe("finish, cancel and health for TESTUSD", () => {
       issuer,
       currencyHex: "5445535455534400000000000000000000000000",
       approvedSuppliers: [supplier],
+      policyVersion: 1,
       limits: { perDealCents: "10000000", dailyCents: "25000000", openDeals: 50 },
     });
     const text = JSON.stringify(health);
@@ -729,5 +730,116 @@ describe("finish, cancel and health for TESTUSD", () => {
   it("health has no TESTUSD section when TESTUSD is off", async () => {
     config = { ...config, testUsd: null };
     expect(await makeSigner().health()).not.toHaveProperty("testUsd");
+  });
+});
+
+describe("operator policy", () => {
+  let issuer: string;
+  let supplier: string;
+  let other: string;
+
+  const lock = (cents: string, destination = supplier) => {
+    const { amountDrops: _drops, ...rest } = createReq({ destination });
+    return makeSigner().createEscrow({ ...rest, amountTestUsdCents: cents });
+  };
+
+  const policyReq = (version: number, overrides: Record<string, unknown> = {}) => ({
+    opId: randomUUID(),
+    expectedVersion: version,
+    perDealCents: "250000",
+    dailyCents: "2500000",
+    maxOpenDeals: 5,
+    approvedSuppliers: [supplier, other],
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    issuer = Wallet.generate().classicAddress;
+    supplier = Wallet.generate().classicAddress;
+    other = Wallet.generate().classicAddress;
+    config = {
+      ...config,
+      testUsd: {
+        issuer,
+        approvedSuppliers: [supplier, other],
+        maxDealCents: 250_000n,
+        dailyCents: 2_500_000n,
+        maxOpenDeals: 5,
+        operatorSecret: "o".repeat(40),
+      },
+    };
+    ledger.trustLines.set(`${buyer.classicAddress}:${issuer}`, { balance: "1000000", limit: "1000000000", frozenByIssuer: false });
+    ledger.trustLines.set(`${supplier}:${issuer}`, { balance: "0", limit: "1000000000", frozenByIssuer: false });
+    ledger.trustLines.set(`${other}:${issuer}`, { balance: "0", limit: "1000000000", frozenByIssuer: false });
+  });
+
+  it("lowering the per-deal cap applies to the next lock", async () => {
+    expect((await lock("200000")).result).toBe("tesSUCCESS");
+    const view = await makeSigner().updatePolicy(policyReq(1, { perDealCents: "100000" }));
+    expect(view.version).toBe(2);
+    await expectCode(lock("200000"), "amount_over_cap");
+    expect((await lock("100000")).result).toBe("tesSUCCESS");
+  });
+
+  it("removing a supplier blocks new locks to it but its locked deal still pays", async () => {
+    const res = await lock("200000");
+    await makeSigner().updatePolicy(policyReq(1, { approvedSuppliers: [other] }));
+    await expectCode(lock("100"), "destination_not_allowed");
+    const { payload } = authFor(res.offerSequence, { destination: supplier });
+    const { amountDrops: _drops, ...rest } = payload;
+    const auth = signAuthorization({ ...rest, amountTestUsdCents: "200000" } as AuthorizationPayload, GATE_SECRET);
+    const paid = await makeSigner().finishEscrow({ opId: randomUUID(), authorization: auth });
+    expect(paid.result).toBe("tesSUCCESS");
+  });
+
+  it("raising the daily cap frees capacity immediately", async () => {
+    await makeSigner().updatePolicy(policyReq(1, { perDealCents: "200000", dailyCents: "300000" }));
+    await lock("200000");
+    await expectCode(lock("150000"), "daily_cap_reached");
+    await makeSigner().updatePolicy(policyReq(2, { perDealCents: "200000", dailyCents: "400000" }));
+    expect((await lock("150000")).result).toBe("tesSUCCESS");
+  });
+
+  it("health reports the live policy and its version", async () => {
+    await makeSigner().updatePolicy(policyReq(1, { perDealCents: "100000", maxOpenDeals: 3, approvedSuppliers: [other] }));
+    const health = await makeSigner().health();
+    expect(health.testUsd).toMatchObject({
+      policyVersion: 2,
+      approvedSuppliers: [other],
+      limits: { perDealCents: "100000", dailyCents: "2500000", openDeals: 3 },
+    });
+  });
+
+  it("refuses a policy update when TESTUSD is off", async () => {
+    config = { ...config, testUsd: null };
+    await expectCode(makeSigner().updatePolicy(policyReq(1)), "asset_not_enabled");
+  });
+
+  it("a lock queued before a cap cut is judged by the old policy only", async () => {
+    const signer = makeSigner();
+    const [locked, updated] = await Promise.allSettled([
+      (async () => {
+        const { amountDrops: _drops, ...rest } = createReq({ destination: supplier });
+        return signer.createEscrow({ ...rest, amountTestUsdCents: "200000" });
+      })(),
+      signer.updatePolicy(policyReq(1, { perDealCents: "100000" })),
+    ]);
+    expect(locked.status).toBe("fulfilled");
+    expect(updated.status).toBe("fulfilled");
+    await expectCode(lock("200000"), "amount_over_cap");
+  });
+
+  it("a lock queued after a cap cut is judged by the new policy only", async () => {
+    const signer = makeSigner();
+    const [updated, locked] = await Promise.allSettled([
+      signer.updatePolicy(policyReq(1, { perDealCents: "100000" })),
+      (async () => {
+        const { amountDrops: _drops, ...rest } = createReq({ destination: supplier });
+        return signer.createEscrow({ ...rest, amountTestUsdCents: "200000" });
+      })(),
+    ]);
+    expect(updated.status).toBe("fulfilled");
+    expect(locked.status).toBe("rejected");
+    expect((locked as PromiseRejectedResult).reason).toMatchObject({ code: "amount_over_cap" });
   });
 });

@@ -8,7 +8,9 @@ import {
   type CreateEscrowRequest,
   CreateEscrowRequestSchema,
   FinishEscrowRequestSchema,
+  UpdatePolicyRequestSchema,
   type HealthResponse,
+  type PolicyView,
   type SettleResponse,
   assetAmountOf,
   canonicalJson,
@@ -32,6 +34,7 @@ import type { SignerConfig } from "./config";
 import { SignerError } from "./errors";
 import type { LedgerPort, SubmitResult } from "./ledger";
 import { KeyedLock } from "./lock";
+import { createPolicyStore } from "./policy";
 import { type Sealed, open, seal } from "./secretbox";
 import { JsonFile } from "./store";
 
@@ -79,6 +82,8 @@ export interface Signer {
   createEscrow(req: unknown): Promise<CreateEscrowResponse>;
   finishEscrow(req: unknown): Promise<SettleResponse>;
   cancelEscrow(req: unknown): Promise<SettleResponse>;
+  // Operator only: the HTTP layer authenticates this route with its own secret.
+  updatePolicy(req: unknown): Promise<PolicyView>;
 }
 
 export interface SignerDeps {
@@ -100,6 +105,19 @@ export function createSigner(deps: SignerDeps): Signer {
   );
   const journal = new JsonFile<Record<string, JournalEntry>>(join(config.dataDir, "journal.json"), {});
   const locks = new KeyedLock();
+  const usdConfig = config.testUsd;
+  const policy = usdConfig
+    ? createPolicyStore(
+        config.dataDir,
+        {
+          perDealCents: usdConfig.maxDealCents.toString(),
+          dailyCents: usdConfig.dailyCents.toString(),
+          maxOpenDeals: usdConfig.maxOpenDeals,
+          approvedSuppliers: usdConfig.approvedSuppliers,
+        },
+        now,
+      )
+    : null;
 
   const escrowKey = (owner: string, offerSequence: number) => `${owner}:${offerSequence}`;
 
@@ -320,13 +338,18 @@ export function createSigner(deps: SignerDeps): Signer {
       if (prior) return prior;
 
       const usd = config.testUsd;
-      if (!usd) throw new SignerError("asset_not_enabled", "this signer is not configured for TESTUSD");
-      if (!usd.approvedSuppliers.includes(req.destination)) {
+      if (!usd || !policy) throw new SignerError("asset_not_enabled", "this signer is not configured for TESTUSD");
+      // Read once under the buyer lock: a policy update queues behind this lock, so a create is
+      // judged entirely by one policy version.
+      const live = policy.current();
+      if (!live.approvedSuppliers.includes(req.destination)) {
         throw new SignerError("destination_not_allowed", "destination is not an approved supplier");
       }
       const amount = BigInt(cents);
-      if (amount > usd.maxDealCents) {
-        throw new SignerError("amount_over_cap", `amount exceeds the per-deal cap of ${formatUsd(usd.maxDealCents)}`);
+      const perDealCents = BigInt(live.perDealCents);
+      const dailyCents = BigInt(live.dailyCents);
+      if (amount > perDealCents) {
+        throw new SignerError("amount_over_cap", `amount exceeds the per-deal cap of ${formatUsd(perDealCents)}`);
       }
       checkCancelWindow(req.cancelAfterSeconds);
 
@@ -337,14 +360,14 @@ export function createSigner(deps: SignerDeps): Signer {
         .filter((e) => e.type === "create" && e.status === "submitted" && e.pending)
         .map((e) => e.pending as PendingCreate);
       const exposure = testUsdExposure(Object.values(escrows.get()), pending, closeTime);
-      if (exposure.usedDailyCents + amount > usd.dailyCents) {
+      if (exposure.usedDailyCents + amount > dailyCents) {
         throw new SignerError(
           "daily_cap_reached",
-          `this lock would take the last 24 hours past the cap of ${formatUsd(usd.dailyCents)}`,
+          `this lock would take the last 24 hours past the cap of ${formatUsd(dailyCents)}`,
         );
       }
-      if (exposure.openDeals >= usd.maxOpenDeals) {
-        throw new SignerError("open_deal_limit_reached", `${exposure.openDeals} deals are already open; the limit is ${usd.maxOpenDeals}`);
+      if (exposure.openDeals >= live.maxOpenDeals) {
+        throw new SignerError("open_deal_limit_reached", `${exposure.openDeals} deals are already open; the limit is ${live.maxOpenDeals}`);
       }
 
       const destination = await readLine(req.destination, usd.issuer);
@@ -531,20 +554,32 @@ export function createSigner(deps: SignerDeps): Signer {
     );
   }
 
-  // Built from config only: no ledger read, and never the operator secret.
+  // No ledger read, and never the operator secret.
   async function health(): Promise<HealthResponse> {
     const base: HealthResponse = { network: "testnet", buyer: buyer.classicAddress, service: service.classicAddress };
     const usd = config.testUsd;
-    if (!usd) return base;
+    if (!usd || !policy) return base;
+    const live = policy.current();
     return {
       ...base,
       testUsd: {
         issuer: usd.issuer,
         currencyHex: TESTUSD_CURRENCY_HEX,
-        approvedSuppliers: [...usd.approvedSuppliers],
-        limits: { perDealCents: usd.maxDealCents.toString(), dailyCents: usd.dailyCents.toString(), openDeals: usd.maxOpenDeals },
+        approvedSuppliers: [...live.approvedSuppliers],
+        policyVersion: live.version,
+        limits: { perDealCents: live.perDealCents, dailyCents: live.dailyCents, openDeals: live.maxOpenDeals },
       },
     };
+  }
+
+  // Applies to the next lock. Locks already on the ledger settle on their own terms.
+  async function updatePolicy(raw: unknown): Promise<PolicyView> {
+    const req = parse(UpdatePolicyRequestSchema, raw);
+    const usd = config.testUsd;
+    if (!usd || !policy) throw new SignerError("asset_not_enabled", "this signer is not configured for TESTUSD");
+    return locks.run(buyer.classicAddress, async () =>
+      policy.update(req, { forbidden: [buyer.classicAddress, service.classicAddress, usd.issuer] }),
+    );
   }
 
   return {
@@ -552,6 +587,7 @@ export function createSigner(deps: SignerDeps): Signer {
     createEscrow,
     finishEscrow,
     cancelEscrow,
+    updatePolicy,
   };
 }
 

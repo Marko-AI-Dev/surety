@@ -15,6 +15,8 @@ export const ERROR_STATUS = {
   finish_window_closed: 409,
   cancel_not_yet_eligible: 409,
   op_conflict: 409,
+  // The operator's policy changed since they read it.
+  policy_conflict: 409,
   // The destination cannot receive TESTUSD (no trust line, frozen, or no room under its limit).
   destination_not_ready: 409,
   insufficient_funds: 409,

@@ -3,7 +3,7 @@ import type { Server } from "node:http";
 import { randomUUID } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SIG_HEADER, TS_HEADER, signRequest } from "@surety/contracts";
-import { createSignerClient } from "@surety/signer-client";
+import { createOperatorClient, createSignerClient } from "@surety/signer-client";
 import { createHttpServer } from "../src/http";
 import { SignerError } from "../src/errors";
 import type { Signer } from "../src/signer";
@@ -27,6 +27,10 @@ const stub: Signer = {
   },
   cancelEscrow: async () => {
     throw new Error("not stubbed");
+  },
+  updatePolicy: async (req) => {
+    if (!behaviour.updatePolicy) throw new Error("not stubbed");
+    return behaviour.updatePolicy(req);
   },
 };
 
@@ -123,5 +127,95 @@ describe("signer http boundary", () => {
     const text = await res.text();
     expect(text).not.toMatch(/fulfil|seed|preimage/i);
     expect(JSON.parse(text)).toEqual({ error: "internal_error", message: "internal error" });
+  });
+});
+
+describe("operator policy route", () => {
+  const OPERATOR = "o".repeat(40);
+  const view = {
+    version: 2,
+    perDealCents: "100000",
+    dailyCents: "2500000",
+    maxOpenDeals: 5,
+    approvedSuppliers: [SELLER],
+    updatedAt: "2026-11-09T12:00:00.000Z",
+  };
+  const policyBody = () => ({
+    opId: randomUUID(),
+    expectedVersion: 1,
+    perDealCents: "100000",
+    dailyCents: "2500000",
+    maxOpenDeals: 5,
+    approvedSuppliers: [SELLER],
+  });
+
+  let operatorServer: Server;
+  let operatorUrl: string;
+
+  beforeEach(async () => {
+    const testUsd = {
+      issuer: BUYER,
+      approvedSuppliers: [SELLER],
+      maxDealCents: 250_000n,
+      dailyCents: 2_500_000n,
+      maxOpenDeals: 5,
+      operatorSecret: OPERATOR,
+    };
+    operatorServer = createHttpServer(stub, { hmacSecret: SECRET, testUsd });
+    await new Promise<void>((resolve) => operatorServer.listen(0, "127.0.0.1", resolve));
+    operatorUrl = `http://127.0.0.1:${(operatorServer.address() as AddressInfo).port}`;
+  });
+
+  afterEach(async () => {
+    await new Promise<void>((resolve) => operatorServer.close(() => resolve()));
+  });
+
+  async function post(base: string, path: string, body: unknown, secret: string) {
+    const text = JSON.stringify(body);
+    const ts = String(Date.now());
+    return fetch(base + path, {
+      method: "POST",
+      headers: { "content-type": "application/json", [TS_HEADER]: ts, [SIG_HEADER]: signRequest(secret, ts, "POST", path, text) },
+      body: text,
+    });
+  }
+
+  it("a policy update signed with SIGNER_HMAC_SECRET gets 401", async () => {
+    behaviour.updatePolicy = async () => view;
+    const res = await post(operatorUrl, "/operator/policy", policyBody(), SECRET);
+    expect(res.status).toBe(401);
+  });
+
+  it("a create signed with OPERATOR_HMAC_SECRET gets 401", async () => {
+    behaviour.createEscrow = async () => {
+      throw new Error("must not be reached");
+    };
+    const res = await post(operatorUrl, "/escrows/create", createBody(), OPERATOR);
+    expect(res.status).toBe(401);
+  });
+
+  it("a policy update signed with OPERATOR_HMAC_SECRET reaches the signer", async () => {
+    let seen: unknown;
+    behaviour.updatePolicy = async (req) => {
+      seen = req;
+      return view;
+    };
+    const body = policyBody();
+    const client = createOperatorClient({ url: operatorUrl, operatorSecret: OPERATOR });
+    expect(await client.updatePolicy(body)).toEqual(view);
+    expect(seen).toEqual(body);
+  });
+
+  it("the operator client surfaces a refusal code", async () => {
+    behaviour.updatePolicy = async () => {
+      throw new SignerError("policy_conflict", "the policy is at version 3");
+    };
+    const client = createOperatorClient({ url: operatorUrl, operatorSecret: OPERATOR });
+    await expect(client.updatePolicy(policyBody())).rejects.toMatchObject({ status: 409, code: "policy_conflict" });
+  });
+
+  it("without TESTUSD the policy route does not exist", async () => {
+    const res = await post(url, "/operator/policy", policyBody(), SECRET);
+    expect(res.status).toBe(404);
   });
 });

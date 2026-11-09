@@ -66,6 +66,7 @@ export interface HealthResponse {
     issuer: string;
     currencyHex: string;
     approvedSuppliers: string[];
+    policyVersion: number;
     limits: { perDealCents: string; dailyCents: string; openDeals: number };
   };
 }
@@ -73,4 +74,31 @@ export interface HealthResponse {
 export interface ErrorBody {
   error: string;
   message: string;
+}
+
+// The operator-only policy update. Authenticated with OPERATOR_HMAC_SECRET, which the worker and the
+// agents never hold. A full replacement, guarded by the version the operator last saw.
+export const UpdatePolicyRequestSchema = z
+  .object({
+    opId: z.uuid(),
+    expectedVersion: z.number().int().min(1),
+    perDealCents: Cents,
+    dailyCents: Cents,
+    maxOpenDeals: z.number().int().min(1).max(50),
+    approvedSuppliers: z
+      .array(Address)
+      .min(1)
+      .max(50)
+      .refine((a) => new Set(a).size === a.length, "approved suppliers must be unique"),
+  })
+  .strict();
+export type UpdatePolicyRequest = z.infer<typeof UpdatePolicyRequestSchema>;
+
+export interface PolicyView {
+  version: number;
+  perDealCents: string;
+  dailyCents: string;
+  maxOpenDeals: number;
+  approvedSuppliers: string[];
+  updatedAt: string;
 }

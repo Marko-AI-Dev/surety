@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CreateEscrowRequestSchema } from "../src/signer-api";
+import { CreateEscrowRequestSchema, UpdatePolicyRequestSchema } from "../src/signer-api";
 
 const base = {
   opId: "7d3c5c0e-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
@@ -33,5 +33,34 @@ describe("CreateEscrowRequestSchema amounts", () => {
 
   it("still rejects unknown keys", () => {
     expect(CreateEscrowRequestSchema.safeParse({ ...base, amountDrops: "1", extra: 1 }).success).toBe(false);
+  });
+});
+
+describe("UpdatePolicyRequestSchema", () => {
+  const supplier = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh";
+  const valid = {
+    opId: "7d3c5c0e-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
+    expectedVersion: 1,
+    perDealCents: "250000",
+    dailyCents: "2500000",
+    maxOpenDeals: 5,
+    approvedSuppliers: [supplier],
+  };
+
+  it("accepts a full policy", () => {
+    expect(UpdatePolicyRequestSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it.each([
+    ["duplicate suppliers", { approvedSuppliers: [supplier, supplier] }],
+    ["no suppliers", { approvedSuppliers: [] }],
+    ["maxOpenDeals 0", { maxOpenDeals: 0 }],
+    ["maxOpenDeals 51", { maxOpenDeals: 51 }],
+    ["51 suppliers", { approvedSuppliers: Array.from({ length: 51 }, (_, i) => `r${String(i).padStart(25, "a")}`) }],
+    ["a decimal cap", { perDealCents: "2500.00" }],
+    ["expectedVersion 0", { expectedVersion: 0 }],
+    ["an extra key", { extra: true }],
+  ] as const)("rejects %s", (_name, change) => {
+    expect(UpdatePolicyRequestSchema.safeParse({ ...valid, ...change }).success).toBe(false);
   });
 });
