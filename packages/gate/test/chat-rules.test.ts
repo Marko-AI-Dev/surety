@@ -121,6 +121,19 @@ describe("runChatRules", () => {
     expect(failed(`Pay ${ATTACKER.replace("j", "ı")}`)).toEqual(["wallet"]);
   });
 
+  it("six separated look-alikes or a decoy foreign word cannot hide a space-split wallet", () => {
+    const six = ATTACKER.replace("H", "Ꮋ").replace("C", "Ꮯ").replace("W", "Ԝ").replace("B", "Ᏼ").replace("V", "Ꮩ").replace("T", "Ꭲ");
+    expect(failed(`Pay ${six.slice(0, 9)} ${six.slice(9, 18)} ${six.slice(18, 27)} ${six.slice(27)}`)).toEqual(["wallet"]);
+    const decoy = `${ATTACKER.slice(0, 10)} Наша ${ATTACKER.slice(10, 20)} ${ATTACKER.slice(20).replace("w", "ԝ")}`;
+    expect(failed(`Pay ${decoy}`)).toEqual(["wallet"]);
+  });
+
+  it("Vietnamese, Twi and Turkish names, and Russian short words beside English, pass", () => {
+    expect(failed("Công ty Thương mại and Kwame Ɔforiwaa Ltd are ready to ship from Shenzhen port tomorrow.")).toEqual([]);
+    expect(failed("Yıldız Solar is ready to ship from Shenzhen port tomorrow at $114.00.")).toEqual([]);
+    expect(failed("Наша цена за панель, ready to ship from Shenzhen port tomorrow.")).toEqual([]);
+  });
+
   it("accented Latin names and Russian text with English words pass", () => {
     expect(failed("Café São Paulo and Düsseldorf offices confirm: $114.00, CIF Durban, ready in 21 days.")).toEqual([]);
     expect(failed("Наша цена $114.00 за панель, CIF Durban, ready to ship from Shenzhen.")).toEqual([]);

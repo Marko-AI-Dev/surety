@@ -144,62 +144,63 @@ function hasBankDetails(text: string): boolean {
   return BANK_KEYWORDS.some((p) => p.test(n) || p.test(joined)) || hasIban(n);
 }
 
-// A look-alike letter planted inside an address-like run is a hidden wallet whatever the map above
-// misses. Scripts with Latin look-alikes: Greek, Coptic, Cyrillic (all blocks), Armenian, Latin
-// Extended-B and D, IPA and phonetic letters, spacing modifiers, Cherokee, letterlike symbols and Lisu.
-// CJK, accented Latin-1 and Extended-A names pass. The scan crosses spaces and punctuation, like the
-// wallet scan; a planted letter must sit between two address characters, which words of another
-// script (in runs) do not.
-const LOOKALIKE =
-  /[ıĸƀ-˿Ͱ-ϿЀ-ԯ԰-֏Ꭰ-᏿ᲀ-᲏ᴀ-ᶿ℀-⅏Ⲁ-⳿ⷠ-ⷿꙀ-ꚟꓐ-꓿꜠-ꟿꭰ-ꮿ]/u;
+// A look-alike letter planted in an address is a hidden wallet whatever the map above misses.
 const ASCII_BASE58 = /^[1-9A-HJ-NP-Za-km-z]$/;
 // Scripts with no Latin look-alikes: a supplier writing in them is never mistaken for a hidden wallet.
 const SAFE_SCRIPT =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Thai}\p{Script=Devanagari}]/u;
 const NON_ASCII_LETTER = /[^\x00-\x7F]/;
 const isLetterOrDigit = (c: string) => /[\p{L}\p{N}]/u.test(c);
-const addressChar = (c: string) => ASCII_BASE58.test(c) || LOOKALIKE.test(c);
+// For the scan across word gaps: scripts no Latin-alphabet language mixes into its words (Greek,
+// Coptic, every Cyrillic block, Armenian, Cherokee, phonetic small capitals, letterlike symbols, Lisu).
+// Letters that real languages do use inside Latin words (Vietnamese, Twi, Lingala, Turkish: Latin
+// Extended-A and B, IPA) are left to the word-by-word check, so those suppliers' names pass.
+const LOOKALIKE =
+  /[Ͱ-ϿЀ-ԯ԰-֏Ꭰ-᏿ᲀ-᲏ᴀ-ᶿ℀-⅏Ⲁ-⳿ⷠ-ⷿꙀ-ꚟꓐ-꓿ꭰ-ꮿ]/u;
 
 function mixedScriptAddressLike(text: string): boolean {
   const clean = unicodeClean(text);
   // Word by word: a non-ASCII letter (outside the safe scripts) in a word with 15 or more address
-  // characters, wherever it sits. Accented names are short; a disguised address is not.
+  // characters, wherever it sits. Names are short; a disguised address is not.
   for (const word of clean.split(/\s+/)) {
     const ascii = [...word].filter((c) => ASCII_BASE58.test(c)).length;
     if (ascii >= 15 && [...word].some((c) => NON_ASCII_LETTER.test(c) && isLetterOrDigit(c) && !SAFE_SCRIPT.test(c))) return true;
   }
-  // Across spaces and punctuation: from any "r" or planted look-alike, 35 letters and digits holding
-  // at least 25 address characters, of which 1 to 5 are look-alikes. A planted letter stands alone or
-  // in a pair; words of another script come in runs of three or more, so a window touching one is
-  // ordinary bilingual text, not a disguised address.
-  const chars = [...clean].filter(isLetterOrDigit);
-  const runLength = new Array<number>(chars.length).fill(0);
-  for (let i = 0; i < chars.length; ) {
-    if (!LOOKALIKE.test(chars[i] ?? "")) {
+  // Across spaces and punctuation. A planted letter is a run of one or two look-alikes stuck to an
+  // address character inside a word; a short foreign word standing on its own ("за") is not one, and
+  // longer foreign words are skipped, never counted and never a veto. From any "r" or planted letter,
+  // the next 35 counted characters (address characters and planted letters, within 120 letters and
+  // digits) must hold at least 25 of them, with planted letters at most half.
+  const all = [...clean];
+  const plantedAt = new Array<boolean>(all.length).fill(false);
+  for (let i = 0; i < all.length; ) {
+    if (!LOOKALIKE.test(all[i] ?? "")) {
       i++;
       continue;
     }
     let j = i;
-    while (j < chars.length && LOOKALIKE.test(chars[j] ?? "")) j++;
-    for (let k = i; k < j; k++) runLength[k] = j - i;
+    while (j < all.length && LOOKALIKE.test(all[j] ?? "")) j++;
+    const stuck = ASCII_BASE58.test(all[i - 1] ?? "") || ASCII_BASE58.test(all[j] ?? "");
+    if (j - i <= 2 && stuck) for (let k = i; k < j; k++) plantedAt[k] = true;
     i = j;
   }
-  const planted = (k: number) => (runLength[k] ?? 0) >= 1 && (runLength[k] ?? 0) <= 2;
-  for (let i = 0; i < chars.length; i++) {
-    if (chars[i] !== "r" && !planted(i)) continue;
-    const end = Math.min(chars.length, i + 35);
-    let look = 0;
+  const stream = all.flatMap((c, i) => (isLetterOrDigit(c) ? [{ c, planted: plantedAt[i] === true }] : []));
+  for (let i = 0; i < stream.length; i++) {
+    const head = stream[i];
+    if (!head || (head.c !== "r" && !head.planted)) continue;
+    let planted = 0;
     let address = 0;
-    let foreignWord = false;
-    for (let k = i; k < end; k++) {
-      const c = chars[k] ?? "";
-      if (LOOKALIKE.test(c)) {
-        if (!planted(k)) foreignWord = true;
-        look++;
+    for (let k = i; k < Math.min(stream.length, i + 120) && address < 35; k++) {
+      const s = stream[k];
+      if (!s) break;
+      if (s.planted) {
+        planted++;
+        address++;
+      } else if (ASCII_BASE58.test(s.c)) {
+        address++;
       }
-      if (addressChar(c)) address++;
     }
-    if (!foreignWord && look >= 1 && look <= 5 && address >= 25) return true;
+    if (planted >= 1 && planted * 2 <= address && address >= 25) return true;
   }
   return false;
 }
