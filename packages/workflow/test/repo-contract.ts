@@ -76,6 +76,7 @@ export function newDecision(jobId: string, overrides: Partial<NewDecision> = {})
     rules: RULES,
     policyVersion: "policy-v1",
     deliverableHash: HASH_A,
+    samples: null,
     ...overrides,
   };
 }
@@ -369,6 +370,20 @@ export function describeRepo(name: string, make: () => Promise<JobsRepo>): void 
         deliverableHash: HASH_B,
       });
       expect(await repo.latestDecision(job.id)).toEqual(approved);
+    });
+
+    it("recordDecision stores and returns samples", async () => {
+      const job = await repo.createJob(newJob());
+      const samples = [
+        { satisfaction: 0.72, injectionRisk: 0.02 },
+        { satisfaction: 0.66, injectionRisk: 0.03 },
+        { satisfaction: 0.69, injectionRisk: 0.01 },
+      ];
+      const recorded = await repo.recordDecision(newDecision(job.id, { satisfaction: 0.69, samples }));
+      expect(recorded.samples).toEqual(samples);
+      expect((await repo.latestDecision(job.id))?.samples).toEqual(samples);
+      const other = await repo.createJob(newJob());
+      expect((await repo.recordDecision(newDecision(other.id))).samples).toBeNull();
     });
 
     it("keeps one decision per job and deliverable hash: a second is a DecisionConflict and writes nothing", async () => {

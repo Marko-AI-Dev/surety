@@ -30,6 +30,17 @@ export {
   type TxRecord,
 } from "./repo";
 export { snapshotHash } from "./snapshot";
+export { DEAL_STATES, TERMINAL_DEAL_STATES, type DealState } from "./deal-states";
+export {
+  DealConflict,
+  DealTransitionConflict,
+  QuoteConflict,
+  type Deal,
+  type DealEvent,
+  type DealEventInput,
+  type DealsRepo,
+  type QuoteDecision,
+} from "./deal-repo";
 export { createMemoryRepo } from "./memory-repo";
 export { createPgRepo } from "./pg-repo";
 export { fundJob, type FundDeps } from "./fund";

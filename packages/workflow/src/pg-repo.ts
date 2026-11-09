@@ -1,5 +1,15 @@
 import postgres, { type Row } from "postgres";
-import type { AssetAmount } from "@surety/contracts";
+import { type AssetAmount, canonicalJson, sha256Hex } from "@surety/contracts";
+import {
+  type Deal,
+  DealConflict,
+  type DealEvent,
+  type DealEventInput,
+  DealTransitionConflict,
+  type DealsRepo,
+  QuoteConflict,
+} from "./deal-repo";
+import type { DealState } from "./deal-states";
 import type { Operation } from "./operation-id";
 import {
   AuthorizationConflict,
@@ -12,6 +22,7 @@ import {
   type JobEvent,
   type JobsRepo,
   type NewDecision,
+  type NewJob,
   TransitionConflict,
   type TxRecord,
   assertAmount,
@@ -63,6 +74,7 @@ function toDecision(r: Row): Decision {
     rules: r.rules,
     policyVersion: r.policy_version,
     deliverableHash: r.deliverable_hash,
+    samples: r.samples ?? null,
     decidedAt: (r.decided_at as Date).toISOString(),
   };
 }
@@ -133,24 +145,166 @@ function toEvent(r: Row): JobEvent {
   };
 }
 
+function toDeal(r: Row): Deal {
+  return {
+    id: r.id,
+    ref: r.ref,
+    intent: r.intent,
+    intentHash: r.intent_hash,
+    quote: r.quote ?? null,
+    quoteHash: r.quote_hash ?? null,
+    quoteChecks: r.quote_checks ?? null,
+    decision: r.decision ?? null,
+    state: r.state as DealState,
+    jobId: r.job_id ?? null,
+    version: r.version,
+    createdAt: (r.created_at as Date).toISOString(),
+  };
+}
+
+function toDealEvent(r: Row): DealEvent {
+  return {
+    id: Number(r.id),
+    dealId: r.deal_id,
+    fromState: r.from_state as DealState | null,
+    toState: r.to_state as DealState,
+    actor: r.actor,
+    reasonCodes: r.reason_codes,
+    detail: r.detail,
+    createdAt: (r.created_at as Date).toISOString(),
+  };
+}
+
 // The backend connects as postgres (RLS has no policies yet, so only this role can use the tables).
-export function createPgRepo(databaseUrl: string): JobsRepo {
+export function createPgRepo(databaseUrl: string): JobsRepo & DealsRepo {
   const sql = postgres(databaseUrl, { onnotice: () => {} });
   const json = (value: unknown) => (value === undefined ? null : sql.json(value as Json));
 
-  return {
+  // Shared by createJob and acceptDeal, so a deal's job is written by the same statement inside the
+  // deal's transaction.
+  async function insertJob(q: postgres.Sql, input: NewJob) {
+    assertAmount(input.amount);
+    const { asset, drops, cents } = amountColumns(input.amount);
+    const [row] = await q`
+      insert into jobs (ref, buyer_address, seller_address, asset, amount_drops, amount_testusd_cents, source_text,
+                        criteria, snapshot_hash, policy_version, cancel_after_seconds, criteria_text)
+      values (${input.ref}, ${input.buyerAddress}, ${input.sellerAddress}, ${asset}, ${drops}, ${cents},
+              ${input.sourceText}, ${json(input.criteria)}, ${snapshotHash(input)}, ${input.policyVersion},
+              ${input.cancelAfterSeconds}, ${input.criteriaText ?? null})
+      returning *`;
+    if (!row) throw new Error("insert into jobs returned no row");
+    return toJob(row);
+  }
+
+  async function addDealEvent(q: postgres.Sql, dealId: string, from: DealState | null, to: DealState, event: DealEventInput) {
+    await q`
+      insert into deal_events (deal_id, from_state, to_state, actor, reason_codes, detail)
+      values (${dealId}, ${from}, ${to}, ${event.actor}, ${event.reasonCodes}::text[], ${json(event.detail)})`;
+  }
+
+  const dealsRepo: DealsRepo = {
+    async createDeal(intent, state, event) {
+      try {
+        return await sql.begin(async (tx) => {
+          const q = tx as unknown as postgres.Sql;
+          const [row] = await q`
+            insert into deals (ref, intent, intent_hash, state)
+            values (${intent.poNumber}, ${json(intent)}, ${sha256Hex(canonicalJson(intent))}, ${state})
+            returning *`;
+          if (!row) throw new Error("insert into deals returned no row");
+          await addDealEvent(q, row.id, null, state, event);
+          return toDeal(row);
+        });
+      } catch (e) {
+        const err = e as { code?: string; constraint_name?: string };
+        if (err.code === UNIQUE_VIOLATION && err.constraint_name === "deals_ref_key") throw new DealConflict(intent.poNumber);
+        throw e;
+      }
+    },
+
+    async getDeal(id) {
+      const [row] = await sql`select * from deals where id = ${id}`;
+      return row ? toDeal(row) : null;
+    },
+
+    async getDealByJob(jobId) {
+      const [row] = await sql`select * from deals where job_id = ${jobId}`;
+      return row ? toDeal(row) : null;
+    },
+
+    async listDeals(limit) {
+      const rows = await sql`select * from deals order by created_at desc, id desc limit ${limit}`;
+      return rows.map(toDeal);
+    },
+
+    async listDealEvents(dealId) {
+      const rows = await sql`select * from deal_events where deal_id = ${dealId} order by id`;
+      return rows.map(toDealEvent);
+    },
+
+    async saveQuote(dealId, quote, quoteHash, checks, event) {
+      return sql.begin(async (tx) => {
+        const q = tx as unknown as postgres.Sql;
+        const [current] = await q`select * from deals where id = ${dealId} for update`;
+        if (!current) throw new DealTransitionConflict(dealId, "missing", "QUOTE_RECEIVED");
+        if (current.quote_hash === quoteHash) return toDeal(current);
+        if (current.quote_hash !== null) throw new QuoteConflict(dealId);
+        if (current.state !== "AWAITING_QUOTE") throw new DealTransitionConflict(dealId, current.state, "QUOTE_RECEIVED");
+        const [row] = await q`
+          update deals set quote = ${json(quote)}, quote_hash = ${quoteHash}, quote_checks = ${json(checks)},
+                           state = 'QUOTE_RECEIVED', version = version + 1, updated_at = now()
+          where id = ${dealId}
+          returning *`;
+        if (!row) throw new DealTransitionConflict(dealId, "missing", "QUOTE_RECEIVED");
+        await addDealEvent(q, dealId, "AWAITING_QUOTE", "QUOTE_RECEIVED", event);
+        return toDeal(row);
+      });
+    },
+
+    async declineDeal(dealId, decision, event) {
+      return sql.begin(async (tx) => {
+        const q = tx as unknown as postgres.Sql;
+        const [row] = await q`
+          update deals set decision = ${json(decision)}, state = 'DECLINED', version = version + 1, updated_at = now()
+          where id = ${dealId} and state = 'QUOTE_RECEIVED'
+          returning *`;
+        if (!row) {
+          const [current] = await q`select state from deals where id = ${dealId}`;
+          throw new DealTransitionConflict(dealId, current?.state ?? "missing", "DECLINED");
+        }
+        await addDealEvent(q, dealId, "QUOTE_RECEIVED", "DECLINED", event);
+        return toDeal(row);
+      });
+    },
+
+    async acceptDeal(dealId, decision, newJob, event) {
+      return sql.begin(async (tx) => {
+        const q = tx as unknown as postgres.Sql;
+        const [current] = await q`select * from deals where id = ${dealId} for update`;
+        if (current?.state === "ACCEPTED" && current.job_id) {
+          const [job] = await q`select * from jobs where id = ${current.job_id}`;
+          if (!job) throw new Error(`deal ${dealId} points at a missing job`);
+          return { deal: toDeal(current), job: toJob(job) };
+        }
+        if (!current || current.state !== "QUOTE_RECEIVED") {
+          throw new DealTransitionConflict(dealId, current?.state ?? "missing", "ACCEPTED");
+        }
+        const job = await insertJob(q, newJob);
+        const [row] = await q`
+          update deals set job_id = ${job.id}, decision = ${json(decision)}, state = 'ACCEPTED',
+                           version = version + 1, updated_at = now()
+          where id = ${dealId}
+          returning *`;
+        if (!row) throw new DealTransitionConflict(dealId, "missing", "ACCEPTED");
+        await addDealEvent(q, dealId, "QUOTE_RECEIVED", "ACCEPTED", event);
+        return { deal: toDeal(row), job };
+      });
+    },
+  };
+
+  const jobsRepo: JobsRepo = {
     async createJob(input) {
-      assertAmount(input.amount);
-      const { asset, drops, cents } = amountColumns(input.amount);
-      const [row] = await sql`
-        insert into jobs (ref, buyer_address, seller_address, asset, amount_drops, amount_testusd_cents, source_text,
-                          criteria, snapshot_hash, policy_version, cancel_after_seconds, criteria_text)
-        values (${input.ref}, ${input.buyerAddress}, ${input.sellerAddress}, ${asset}, ${drops}, ${cents},
-                ${input.sourceText}, ${json(input.criteria)}, ${snapshotHash(input)}, ${input.policyVersion},
-                ${input.cancelAfterSeconds}, ${input.criteriaText ?? null})
-        returning *`;
-      if (!row) throw new Error("insert into jobs returned no row");
-      return toJob(row);
+      return insertJob(sql, input);
     },
 
     async getJob(id) {
@@ -323,13 +477,15 @@ export function createPgRepo(databaseUrl: string): JobsRepo {
     },
   };
 
+  return { ...jobsRepo, ...dealsRepo };
+
   async function insertDecision(d: NewDecision): Promise<Decision> {
     const [row] = await sql`
       insert into decisions (job_id, request_id, mode, outcome, satisfaction, injection_risk, provider, model,
-                             latency_ms, cost_usd, reason_codes, rules, policy_version, deliverable_hash)
+                             latency_ms, cost_usd, reason_codes, rules, policy_version, deliverable_hash, samples)
       values (${d.jobId}, ${d.requestId}, ${d.mode}, ${d.outcome}, ${d.satisfaction}, ${d.injectionRisk},
               ${d.provider}, ${d.model}, ${d.latencyMs}, ${d.costUsd}, ${d.reasonCodes}::text[], ${json(d.rules)},
-              ${d.policyVersion}, ${d.deliverableHash})
+              ${d.policyVersion}, ${d.deliverableHash}, ${d.samples === null ? null : json(d.samples)})
       returning *`;
     if (!row) throw new Error("insert into decisions returned no row");
     return toDecision(row);

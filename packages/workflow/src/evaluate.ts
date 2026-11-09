@@ -196,6 +196,7 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
       rules: rulesRecord,
       policyVersion: policy.version,
       deliverableHash,
+      samples: evaluation?.samples ?? null,
     });
   } catch (e) {
     // Another evaluator recorded its verdict for this deliverable first: that one is the decision.

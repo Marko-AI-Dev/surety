@@ -1,4 +1,5 @@
 import { type AssetAmount, isCents, isDrops } from "@surety/contracts";
+import type { ScoreSample } from "@surety/gate";
 import type { Operation } from "./operation-id";
 import type { JobState } from "./states";
 
@@ -47,6 +48,8 @@ export interface NewDecision {
   rules: unknown;
   policyVersion: string;
   deliverableHash: string;
+  // Every answer behind the scores when a borderline result was asked three times; null otherwise.
+  samples: ScoreSample[] | null;
 }
 
 export interface Decision extends NewDecision {

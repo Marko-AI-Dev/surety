@@ -12,9 +12,21 @@ import {
   type JobsRepo,
   TransitionConflict,
   type TxRecord,
+  type NewJob,
   assertAmount,
   assertHash,
 } from "./repo";
+import { canonicalJson, sha256Hex } from "@surety/contracts";
+import {
+  type Deal,
+  DealConflict,
+  type DealEvent,
+  type DealEventInput,
+  DealTransitionConflict,
+  type DealsRepo,
+  QuoteConflict,
+} from "./deal-repo";
+import type { DealState } from "./deal-states";
 import { snapshotHash } from "./snapshot";
 import { CANCELLABLE_STATES, type JobState, assertTransition } from "./states";
 
@@ -22,7 +34,7 @@ const cancellable: ReadonlySet<JobState> = new Set(CANCELLABLE_STATES);
 
 // Same behaviour as the Postgres repo, for unit tests. Each method runs without awaiting
 // part-way through, so every operation is atomic. Callers get copies, never live rows.
-export function createMemoryRepo(): JobsRepo {
+export function createMemoryRepo(): JobsRepo & DealsRepo {
   const jobs = new Map<string, Job>();
   const escrows = new Map<string, EscrowRow>();
   const txs = new Map<string, TxRecord>();
@@ -33,22 +45,131 @@ export function createMemoryRepo(): JobsRepo {
   const resumes = new Map<string, number>();
   const copy = structuredClone;
 
-  return {
-    async createJob(input) {
-      assertAmount(input.amount);
-      const job: Job = {
-        ...copy(input),
-        criteriaText: input.criteriaText ?? null,
-        deliverable: null,
-        deliverableHash: null,
+  const deals = new Map<string, Deal>();
+  const dealEvents: DealEvent[] = [];
+  const hashOf = (v: unknown) => sha256Hex(canonicalJson(v));
+
+  // Synchronous on purpose: acceptDeal inserts the job and moves the deal with no await in between.
+  function insertJob(input: NewJob): Job {
+    assertAmount(input.amount);
+    if ([...jobs.values()].some((j) => j.ref === input.ref)) throw new Error(`job ref ${input.ref} already exists`);
+    const job: Job = {
+      ...copy(input),
+      criteriaText: input.criteriaText ?? null,
+      deliverable: null,
+      deliverableHash: null,
+      id: randomUUID(),
+      network: "testnet",
+      snapshotHash: snapshotHash(input),
+      state: "DRAFT",
+      version: 0,
+    };
+    jobs.set(job.id, job);
+    return job;
+  }
+
+  function dealEvent(deal: Deal, from: DealState | null, event: DealEventInput): void {
+    dealEvents.push({
+      id: dealEvents.length + 1,
+      dealId: deal.id,
+      fromState: from,
+      toState: deal.state,
+      actor: event.actor,
+      reasonCodes: [...event.reasonCodes],
+      detail: event.detail === undefined ? null : copy(event.detail),
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  function move(dealId: string, from: DealState, to: DealState, event: DealEventInput, change: (d: Deal) => void = () => {}): Deal {
+    const deal = deals.get(dealId);
+    if (!deal || deal.state !== from) throw new DealTransitionConflict(dealId, deal?.state ?? "missing", to);
+    change(deal);
+    deal.state = to;
+    deal.version += 1;
+    dealEvent(deal, from, event);
+    return copy(deal);
+  }
+
+  const dealsRepo: DealsRepo = {
+    async createDeal(intent, state, event) {
+      if ([...deals.values()].some((d) => d.ref === intent.poNumber)) throw new DealConflict(intent.poNumber);
+      const deal: Deal = {
         id: randomUUID(),
-        network: "testnet",
-        snapshotHash: snapshotHash(input),
-        state: "DRAFT",
+        ref: intent.poNumber,
+        intent: copy(intent),
+        intentHash: hashOf(intent),
+        quote: null,
+        quoteHash: null,
+        quoteChecks: null,
+        decision: null,
+        state,
+        jobId: null,
         version: 0,
+        createdAt: new Date().toISOString(),
       };
-      jobs.set(job.id, job);
-      return copy(job);
+      deals.set(deal.id, deal);
+      dealEvent(deal, null, event);
+      return copy(deal);
+    },
+
+    async getDeal(id) {
+      const deal = deals.get(id);
+      return deal ? copy(deal) : null;
+    },
+
+    async getDealByJob(jobId) {
+      const deal = [...deals.values()].find((d) => d.jobId === jobId);
+      return deal ? copy(deal) : null;
+    },
+
+    async listDeals(limit) {
+      return [...deals.values()].reverse().slice(0, limit).map((d) => copy(d));
+    },
+
+    async listDealEvents(dealId) {
+      return dealEvents.filter((e) => e.dealId === dealId).map((e) => copy(e));
+    },
+
+    async saveQuote(dealId, quote, quoteHash, checks, event) {
+      const deal = deals.get(dealId);
+      if (deal?.quoteHash === quoteHash) return copy(deal);
+      if (deal && deal.quoteHash !== null) throw new QuoteConflict(dealId);
+      return move(dealId, "AWAITING_QUOTE", "QUOTE_RECEIVED", event, (d) => {
+        d.quote = copy(quote);
+        d.quoteHash = quoteHash;
+        d.quoteChecks = copy(checks);
+      });
+    },
+
+    async declineDeal(dealId, decision, event) {
+      return move(dealId, "QUOTE_RECEIVED", "DECLINED", event, (d) => {
+        d.decision = copy(decision);
+      });
+    },
+
+    async acceptDeal(dealId, decision, newJob, event) {
+      const existing = deals.get(dealId);
+      if (existing?.state === "ACCEPTED" && existing.jobId) {
+        const job = jobs.get(existing.jobId);
+        if (!job) throw new Error(`deal ${dealId} points at a missing job`);
+        return { deal: copy(existing), job: copy(job) };
+      }
+      if (!existing || existing.state !== "QUOTE_RECEIVED") {
+        throw new DealTransitionConflict(dealId, existing?.state ?? "missing", "ACCEPTED");
+      }
+      const job = insertJob(newJob);
+      const deal = move(dealId, "QUOTE_RECEIVED", "ACCEPTED", event, (d) => {
+        d.decision = copy(decision);
+        d.jobId = job.id;
+      });
+      return { deal, job: copy(job) };
+    },
+  };
+
+  const jobsRepo: JobsRepo = {
+    async createJob(input) {
+      return copy(insertJob(input));
     },
 
     async getJob(id) {
@@ -218,4 +339,6 @@ export function createMemoryRepo(): JobsRepo {
 
     async close() {},
   };
+
+  return { ...jobsRepo, ...dealsRepo };
 }
