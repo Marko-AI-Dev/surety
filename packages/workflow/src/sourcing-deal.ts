@@ -89,23 +89,17 @@ export async function leadDecision(
     throw new SourcingClosed(s.id, "not_open");
   }
 
-  // Whenever the deal does not end ACCEPTED (declined, overruled, or the decision threw before
-  // deciding), nothing is locked, so the claim is released and the sourcing opens again.
-  const release = async () => {
+  const result = await decideQuote({ ...dealDeps(deps), decider: answerDecider(answer, `paperclip:${agentName}`) }, dealId);
+  // Only a final decline (or an overruled accept) releases the claim: nothing was locked, so the
+  // sourcing opens again for another supplier. A decision that throws keeps the claim, so its retry
+  // resumes it and no concurrent decision can slip a second lock in; the lead may also decline it.
+  if (result.deal.state === "DECLINED") {
     try {
       await deps.repo.releaseSelection(s.id, dealId);
     } catch (e) {
       if (!(e instanceof SourcingConflict)) throw e;
     }
-  };
-  let result: { deal: Deal; job: Job | null };
-  try {
-    result = await decideQuote({ ...dealDeps(deps), decider: answerDecider(answer, `paperclip:${agentName}`) }, dealId);
-  } catch (e) {
-    if ((await deps.repo.getDeal(dealId))?.state !== "ACCEPTED") await release();
-    throw e;
   }
-  if (result.deal.state !== "ACCEPTED") await release();
   return result;
 }
 
