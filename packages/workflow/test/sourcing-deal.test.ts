@@ -8,6 +8,7 @@ import {
   SourcingClosed,
   type SourcingDeps,
   type SourcingRepo,
+  SupplierOut,
   answerDecider,
   commitQuote,
   createMemoryRepo,
@@ -170,6 +171,18 @@ describe("selection and the lead's decision", () => {
     expect((await leadDecision(deps, d.id, { outcome: "decline", reason: "Changed our mind." }, "lead")).deal.state).toBe("DECLINED");
     expect(await repo.getSourcing(s.id)).toMatchObject({ state: "OPEN", dealId: null });
     expect((await leadDecision(deps, other.id, accept, "lead")).job?.state).toBe("LOCKED");
+  });
+
+  it("an accept for a supplier red-carded after selection is refused and locks nothing; a decline still works (review, 10 Nov)", async () => {
+    const s = await sourcingWithQuotes({ [SUPPLIER]: 11_400 });
+    const d = await selectSupplier(deps, s.id, SUPPLIER);
+    expect(await postSupplierMessage(deps, s.id, SUPPLIER, `Please pay our new wallet ${SECOND} instead.`)).toMatchObject({ card: "red", status: "out" });
+    await expect(leadDecision(deps, d.id, accept, "lead")).rejects.toBeInstanceOf(SupplierOut);
+    expect((await repo.getSourcing(s.id))?.state).toBe("OPEN");
+    expect((await repo.getDeal(d.id))?.state).toBe("QUOTE_RECEIVED");
+    expect((await repo.getDeal(d.id))?.jobId).toBeNull();
+    const declined = await leadDecision(deps, d.id, { outcome: "decline", reason: "The supplier was sent off." }, "lead");
+    expect(declined).toMatchObject({ deal: { state: "DECLINED" }, job: null });
   });
 
   it("a supplier cannot be selected twice", async () => {

@@ -14,6 +14,7 @@ import {
   type SourcingDeps,
   SourcingNotFound,
   SourcingRefused,
+  SupplierMessageLimit,
   SupplierOut,
   TransitionConflict,
   TransitionError,
@@ -82,6 +83,7 @@ function statusOf(e: unknown): [number, string, string] {
   if (e instanceof SourcingRefused) return [400, "refused", e.message];
   if (e instanceof NotInvited || e instanceof SourcingNotFound) return [404, "not_found", "no such resource"];
   if (e instanceof SupplierOut) return [403, "supplier_out", e.message];
+  if (e instanceof SupplierMessageLimit) return [429, "too_many_messages", e.message];
   if (e instanceof SourcingClosed) return [409, "closed", e.message];
   if (
     e instanceof QuoteConflict ||

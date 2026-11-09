@@ -31,6 +31,7 @@ Every error is `{ "error": "<code>", "message": "<text>" }`.
 | 401 | `unauthenticated` | Missing or unknown token |
 | 403 | `forbidden` | The token's role may not use this route |
 | 403 | `supplier_out` | The supplier has one red card or two yellow cards in this sourcing |
+| 429 | `too_many_messages` | The supplier has sent 20 messages in this sourcing, delivered or held |
 | 404 | `not_found` | No such resource, or one that belongs to another supplier |
 | 409 | `closed` | The sourcing is no longer open, or its negotiation time is over |
 | 409 | `conflict` | A different quote is already committed, the supplier already has a deal, the sourcing is claimed by another deal, or the deal isn't in a state for this |

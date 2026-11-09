@@ -104,9 +104,14 @@ function walletsIn(text: string): { accounts: Set<string>; xAddress: boolean } {
   return { accounts, xAddress };
 }
 
+// "Swift" is also an ordinary word. It is a bank word unless one of these everyday nouns follows it;
+// anything else ("swift code", "swift transfer", "our swift is") stays a red card, so the list fails closed.
+const SWIFT_AS_ADJECTIVE =
+  "delivery|deliveries|shipping|shipment|shipments|dispatch|response|reply|turnaround|clearance|customs|handling|processing|loading|transit|confirmation|service|production|installation|quotation|feedback";
+
 const BANK_KEYWORDS: RegExp[] = [
   /\bIBAN\b/i,
-  /\bSWIFT\b/i,
+  new RegExp(`\\bSWIFT\\b(?!\\s+(?:${SWIFT_AS_ADJECTIVE})\\b)`, "i"),
   /\bBIC\b/i,
   /\b(?:account|acct|a\/c)\.?\s*(?:number|no\b\.?|num\b|#)/i,
   /\brouting\s+(?:number|no\b)/i,

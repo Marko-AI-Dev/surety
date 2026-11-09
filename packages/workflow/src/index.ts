@@ -60,6 +60,8 @@ export {
   SourcingClosed,
   SourcingNotFound,
   SourcingRefused,
+  SUPPLIER_MESSAGE_LIMIT,
+  SupplierMessageLimit,
   SupplierOut,
   commitQuote,
   inviteSupplier,

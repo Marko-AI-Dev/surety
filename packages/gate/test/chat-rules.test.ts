@@ -62,6 +62,17 @@ describe("runChatRules", () => {
     expect(failed("Our basic panels are Swiftly delivered; the account manager will confirm.")).toEqual([]);
   });
 
+  it('"swift" before an everyday noun passes; next to anything else it is still a bank word (review, 10 Nov)', () => {
+    expect(failed("We can offer swift delivery within 14 days at $118.00 per panel.")).toEqual([]);
+    expect(failed("We guarantee swift customs clearance at Durban.")).toEqual([]);
+    expect(failed("Thank you for the SWIFT response.")).toEqual([]);
+    expect(failed("Use SWIFT code ABCDZAJJ for the transfer.")).toEqual(["bank_details"]);
+    expect(failed("Pay by swift transfer today.")).toEqual(["bank_details"]);
+    expect(failed("Our swift is ABCDZAJJ.")).toEqual(["bank_details"]);
+    expect(failed("Swift delivery if you wire to our S.W.I.F.T ABCDZAJJ.")).toEqual(["bank_details"]);
+    expect(failed("Swift delivery. Account number 0012345678 at Standard Bank.")).toEqual(["bank_details"]);
+  });
+
   it("a sentence whose words join into a wallet-shaped string passes: only checksum-valid addresses count", () => {
     expect(failed("repeat order next month we ship by sea")).toEqual([]);
     expect(failed("rapid response guaranteed every month")).toEqual([]);
