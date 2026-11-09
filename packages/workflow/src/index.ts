@@ -41,6 +41,20 @@ export {
   type DealsRepo,
   type QuoteDecision,
 } from "./deal-repo";
+export { SOURCING_STATES, type SourcingState } from "./sourcing-states";
+export {
+  CommittedQuoteConflict,
+  InviteConflict,
+  SourcingConflict,
+  type Invite,
+  type MessageKind,
+  type NewSourcingMessage,
+  type Sourcing,
+  type SourcingMessage,
+  type SourcingRepo,
+  type SupplierReview,
+  type SupplierSuggestion,
+} from "./sourcing-repo";
 export { createMemoryRepo } from "./memory-repo";
 export { createPgRepo } from "./pg-repo";
 export { fundJob, type FundDeps } from "./fund";

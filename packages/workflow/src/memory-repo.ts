@@ -27,6 +27,8 @@ import {
   QuoteConflict,
 } from "./deal-repo";
 import type { DealState } from "./deal-states";
+import { createMemorySourcingRepo } from "./memory-sourcing-repo";
+import type { SourcingRepo } from "./sourcing-repo";
 import { snapshotHash } from "./snapshot";
 import { CANCELLABLE_STATES, type JobState, assertTransition } from "./states";
 
@@ -34,7 +36,7 @@ const cancellable: ReadonlySet<JobState> = new Set(CANCELLABLE_STATES);
 
 // Same behaviour as the Postgres repo, for unit tests. Each method runs without awaiting
 // part-way through, so every operation is atomic. Callers get copies, never live rows.
-export function createMemoryRepo(): JobsRepo & DealsRepo {
+export function createMemoryRepo(): JobsRepo & DealsRepo & SourcingRepo {
   const jobs = new Map<string, Job>();
   const escrows = new Map<string, EscrowRow>();
   const txs = new Map<string, TxRecord>();
@@ -340,5 +342,5 @@ export function createMemoryRepo(): JobsRepo & DealsRepo {
     async close() {},
   };
 
-  return { ...jobsRepo, ...dealsRepo };
+  return { ...jobsRepo, ...dealsRepo, ...createMemorySourcingRepo() };
 }

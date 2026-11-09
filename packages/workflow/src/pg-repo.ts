@@ -11,6 +11,8 @@ import {
 } from "./deal-repo";
 import type { DealState } from "./deal-states";
 import type { Operation } from "./operation-id";
+import { createPgSourcingRepo } from "./pg-sourcing-repo";
+import type { SourcingRepo } from "./sourcing-repo";
 import {
   AuthorizationConflict,
   type AuthorizationRow,
@@ -176,7 +178,7 @@ function toDealEvent(r: Row): DealEvent {
 }
 
 // The backend connects as postgres (RLS has no policies yet, so only this role can use the tables).
-export function createPgRepo(databaseUrl: string): JobsRepo & DealsRepo {
+export function createPgRepo(databaseUrl: string): JobsRepo & DealsRepo & SourcingRepo {
   const sql = postgres(databaseUrl, { onnotice: () => {} });
   const json = (value: unknown) => (value === undefined ? null : sql.json(value as Json));
 
@@ -477,7 +479,7 @@ export function createPgRepo(databaseUrl: string): JobsRepo & DealsRepo {
     },
   };
 
-  return { ...jobsRepo, ...dealsRepo };
+  return { ...jobsRepo, ...dealsRepo, ...createPgSourcingRepo(sql) };
 
   async function insertDecision(d: NewDecision): Promise<Decision> {
     const [row] = await sql`
