@@ -76,6 +76,8 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | Deals evidence run on testnet: 6 deals, 4 TESTUSD locks of $48,000, 1 finish, 3 cancels; live Jev 4 calls (the paid deal re-asked twice) | $0.000189 Jev; under 0.001 test XRP in fees; $192,000 of the $500,000 rolling cap |
 | 2026-11-09 | Trade calibration run 3, after the final review: the supplier's free-text quote notes no longer reach the model. Honest 0.94 to 0.96 satisfaction, injection 0.07 to 0.10 (all approve); bad injection 0.82 to 0.98 (all decline); train and holdout all right; verdict keep policy-v3-trade | $0.000929 |
 | 2026-11-09 | Bouncer calibration (chat-v1): 24 labelled supplier messages, one live Jev call each. Every one of 12 manipulative messages carded yellow (steering 0.77 to 0.99); 11 of 12 honest messages delivered, one held at 0.26 inside the re-ask band; verdict keep | $0.000541 |
+| 2026-11-09 | Agent team dry run (Paperclip, no lock): the bouncer screened each supplier message with live Jev; the supplier agents worded 4 messages with openai/gpt-4o-mini | Jev about $0.0002; gpt-4o-mini well under $0.001; the Paperclip agents ran on Marko's ChatGPT subscription ($0 reported) |
+| 2026-11-09 | Agent team live run on testnet: 1 TESTUSD lock of $45,600 to Brightway, 1 finish; the bouncer and Surety Verify on live Jev; 4 gpt-4o-mini wordings | Jev $0.000297 (bouncer $0.000250, Verify $0.000047); gpt-4o-mini well under $0.001; testnet fees under 0.001 test XRP; ChatGPT subscription $0 extra |
 
 ## Coding-agent spend
 

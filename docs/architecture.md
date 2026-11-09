@@ -80,6 +80,23 @@ A deal is an import purchase paid in TESTUSD. It sits in front of the job engine
 - **The decision model.** Jev answers two questions about the purchase order, the accepted quote and both documents: do the documents describe the same shipment without contradiction, and do they try to instruct the evaluator or payer. It is a probabilistic model, not a rule. A borderline answer is asked three times and the median is used; any failure in those asks is `UNAVAILABLE`.
 - **Policy.** `policy-v4-trade` turns the scores into approve, decline or escalate, chosen on 20 labelled document pairs: approve needs satisfaction 0.70 or more and injection 0.20 or less. Only approve leads to payment, through the same one-use authorization as any job. Everything else refunds at the deadline by ledger time.
 
+## The agent team, sourcing and the bouncer (Phase 4c)
+
+A sourcing sits in front of a deal: the buyer's brief, the invited suppliers, the chat and each supplier's committed quote.
+
+- **The buyer team runs on Paperclip** (Codex adapter, CLI engine, the operator's ChatGPT subscription): a Lead (CEO), a Sourcing agent and a Negotiator. They reach Surety only through the API (`services/api`, `docs/api.md`), each with its own bearer token stored as a Paperclip secret. A token's role fixes what it can do: only the lead opens sourcings, selects and decides; only sourcing invites and suggests; only the negotiator chats and reports. The agents have a shell, so this boundary is the token and the API, not the absence of tools.
+- **The supplier agents are a separate service** with their own per-supplier tokens. Their prices are set by code; a model only words the message, and its text is used only if it states exactly the code's price.
+- **The negotiator never sees the maximum.** Its views carry the target price only; the maximum lives in the brief, the lead's view and the quote checks.
+- **Chat to negotiate, form to commit.** No message is binding or moves money. A supplier commits on the quote form; the wallet comes from its invite and the total is computed. Selecting a supplier opens a 4b deal (the Policy step) with that quote; the lead's decision runs through `decideQuote`, whose checks overrule an accept that breaks the brief or the live policy. The decision claims the sourcing atomically before any lock, so two decisions can never lock two payments.
+- **The bouncer screens every supplier message before any agent reads it,** and quote notes and the negotiator's summaries too:
+  1. Code rules on every form of the text (as sent, normalised, de-disguised, without links): a checksum-valid wallet other than the supplier's own, any X-address, or bank details (keywords, IBANs checked by mod-97) is a red card. Look-alike letters are mapped, or caught when planted in an address-shaped run.
+  2. Links are stripped from what is delivered.
+  3. The decision model answers two questions under `chat-v1` (ordinary business message, and steering of the buyer's agent); a decline for steering is a yellow card; anything uncertain or unavailable is held without a card.
+
+  One red card or two yellows puts the supplier out of the sourcing; any card puts it on hold for future sourcings until the operator clears it (`pnpm supplier:clear`). Held messages appear to the negotiator only as "withheld" and to the operator in full.
+- **Forms replace typed documents.** The supplier's settlement form fills the 4b invoice and bill of lading template from the deal plus a few fields it knows, so the 12 trade rules and Surety Verify run unchanged. Attack-lab tampering goes through explicit edits that the rules catch.
+- **The API holds the signer's worker secret**, like the worker, and never the operator secret: it can lock and settle within the signer's limits but never change them.
+
 What the ledger does not do: it does not understand the work. A compromised gate or signer could still release wrongly. That is why the gate is layered (rules first, then Jev, both fail closed) and why every release carries a binding to the exact job, deliverable and policy version.
 
 ## Escrow lifecycle
