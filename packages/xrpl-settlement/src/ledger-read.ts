@@ -1,11 +1,12 @@
 import type { Client } from "xrpl";
+import type { IssuedAmount } from "./token";
 
 // Read-only ledger queries. Always against the validated ledger.
 
 export interface EscrowEntry {
   Account: string;
   Destination: string;
-  Amount: string;
+  Amount: string | IssuedAmount;
   Condition?: string;
   CancelAfter?: number;
 }
@@ -33,6 +34,47 @@ function rippledErrorCode(e: unknown): string | undefined {
   return typeof error === "string" ? error : undefined;
 }
 
+// XRP drops or a trust-line token amount. Anything else (an MPT amount, say) is refused.
+function escrowAmount(raw: unknown): string | IssuedAmount {
+  if (typeof raw === "string") return raw;
+  const a = raw as Record<string, unknown> | null;
+  if (
+    a &&
+    typeof a.currency === "string" &&
+    typeof a.issuer === "string" &&
+    typeof a.value === "string" &&
+    Object.keys(a).length === 3
+  ) {
+    return { currency: a.currency, issuer: a.issuer, value: a.value };
+  }
+  throw new Error("escrow holds an unsupported amount");
+}
+
+export interface TrustLine {
+  balance: string;
+  limit: string;
+  frozenByIssuer: boolean;
+}
+
+// The holder's trust line to one issuer for one currency, from the validated ledger.
+// null when the account has no such line or does not exist.
+export async function getTrustLine(
+  client: Client,
+  account: string,
+  issuer: string,
+  currencyHex: string,
+): Promise<TrustLine | null> {
+  try {
+    const r = await client.request({ command: "account_lines", account, peer: issuer, ledger_index: "validated" });
+    const line = r.result.lines.find((l) => l.currency === currencyHex);
+    if (!line) return null;
+    return { balance: line.balance, limit: line.limit, frozenByIssuer: line.freeze_peer === true };
+  } catch (e) {
+    if (rippledErrorCode(e) === "actNotFound") return null;
+    throw e;
+  }
+}
+
 export async function getValidatedCloseTime(client: Client): Promise<number> {
   const r = await client.request({ command: "ledger", ledger_index: "validated" });
   return r.result.ledger.close_time;
@@ -50,13 +92,11 @@ export async function getEscrow(
       ledger_index: "validated",
     });
     const node = r.result.node as unknown as Record<string, unknown>;
-    if (typeof node.Amount !== "string") {
-      throw new Error("escrow holds a non-XRP amount, which Surety does not support");
-    }
+    const amount = escrowAmount(node.Amount);
     return {
       Account: String(node.Account),
       Destination: String(node.Destination),
-      Amount: node.Amount,
+      Amount: amount,
       Condition: typeof node.Condition === "string" ? node.Condition : undefined,
       CancelAfter: typeof node.CancelAfter === "number" ? node.CancelAfter : undefined,
     };

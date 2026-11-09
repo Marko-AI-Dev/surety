@@ -1,9 +1,11 @@
 import type { EscrowCancel, EscrowCreate, EscrowFinish } from "xrpl";
+import type { IssuedAmount } from "./token";
 
 export function buildEscrowCreate(p: {
   account: string;
   destination: string;
-  amountDrops: string;
+  // Drops for XRP, an issued amount for TESTUSD.
+  amount: string | IssuedAmount;
   condition: string;
   cancelAfter: number;
 }): EscrowCreate {
@@ -11,7 +13,7 @@ export function buildEscrowCreate(p: {
     TransactionType: "EscrowCreate",
     Account: p.account,
     Destination: p.destination,
-    Amount: p.amountDrops,
+    Amount: p.amount,
     Condition: p.condition,
     CancelAfter: p.cancelAfter,
   };

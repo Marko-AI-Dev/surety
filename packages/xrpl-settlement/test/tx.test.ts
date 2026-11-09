@@ -11,7 +11,7 @@ describe("escrow transaction builders", () => {
     const tx = buildEscrowCreate({
       account: BUYER,
       destination: SELLER,
-      amountDrops: "1000000",
+      amount: "1000000",
       condition: "A0258020AA",
       cancelAfter: 800000180,
     });
@@ -24,6 +24,12 @@ describe("escrow transaction builders", () => {
       CancelAfter: 800000180,
     });
     expect("FinishAfter" in tx).toBe(false);
+  });
+
+  it("puts an issued TESTUSD amount in Amount unchanged", () => {
+    const amount = { currency: "5445535455534400000000000000000000000000", issuer: SERVICE, value: "48000" };
+    const tx = buildEscrowCreate({ account: BUYER, destination: SELLER, amount, condition: "A0258020AA", cancelAfter: 5 });
+    expect(tx.Amount).toEqual(amount);
   });
 
   it("builds an EscrowFinish carrying condition and fulfillment", () => {
