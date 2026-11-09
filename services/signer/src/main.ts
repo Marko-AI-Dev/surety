@@ -1,5 +1,6 @@
 import { Wallet } from "xrpl";
 import { loadConfig } from "./config";
+import { bootLine } from "./boot-line";
 import { createHttpServer } from "./http";
 import { createSigner } from "./signer";
 import { XrplLedger } from "./xrpl-ledger";
@@ -28,14 +29,9 @@ const service = Wallet.fromSeed(seeds.service);
 const signer = createSigner({ config, ledger, buyer, service });
 const server = createHttpServer(signer, config, { log: (line) => console.log(line) });
 
+const startHealth = await signer.health();
 server.listen(config.port, "127.0.0.1", () => {
-  const usd = config.testUsd;
-  const testUsdLine = usd
-    ? ` | TESTUSD issuer ${usd.issuer} | caps ${dollars(usd.maxDealCents)} per deal, ${dollars(usd.dailyCents)} per 24h, ${usd.maxOpenDeals} open`
-    : "";
-  console.log(
-    `Surety signer on 127.0.0.1:${config.port} | XRPL Testnet | buyer ${buyer.classicAddress} | service ${service.classicAddress}${testUsdLine}`,
-  );
+  console.log(bootLine(config.port, startHealth));
 });
 
 async function shutdown() {
@@ -46,6 +42,3 @@ async function shutdown() {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-function dollars(cents: bigint): string {
-  return `$${(cents / 100n).toLocaleString("en-US")}`;
-}

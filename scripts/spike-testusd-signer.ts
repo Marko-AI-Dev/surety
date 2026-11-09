@@ -175,7 +175,8 @@ const evidence = {
   ),
   refusals,
   treasuryBalanceTestUsd: { start: treasuryStart, end: treasuryEnd },
-  rollingCapUsedUsd: 2504,
+  // Every lock this run made counts toward the rolling 24-hour cap, paid or refunded.
+  rollingCapUsedUsd: [100000, 150000, 100, 100, 100, 100].reduce((sum, cents) => sum + cents, 0) / 100,
 };
 await xrpl.disconnect();
 

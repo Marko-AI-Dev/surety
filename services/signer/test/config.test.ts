@@ -109,3 +109,19 @@ describe("loadConfig TESTUSD", () => {
     expect(() => loadConfig(testUsdEnv({ OPERATOR_HMAC_SECRET: "g".repeat(40) }))).toThrow(/OPERATOR_HMAC_SECRET must differ/);
   });
 });
+
+describe("loadConfig TESTUSD starting policy", () => {
+  it("refuses a per-deal cap above the 24-hour cap", () => {
+    expect(() =>
+      loadConfig(
+        env({
+          TESTUSD_ISSUER: Wallet.generate().classicAddress,
+          APPROVED_SUPPLIERS: Wallet.generate().classicAddress,
+          OPERATOR_HMAC_SECRET: "o".repeat(40),
+          MAX_DEAL_TESTUSD_CENTS: "3000000",
+          DAILY_TESTUSD_CENTS: "2500000",
+        }),
+      ),
+    ).toThrow(/MAX_DEAL_TESTUSD_CENTS cannot exceed DAILY_TESTUSD_CENTS/);
+  });
+});

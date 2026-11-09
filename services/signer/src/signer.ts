@@ -35,6 +35,7 @@ import { SignerError } from "./errors";
 import type { LedgerPort, SubmitResult } from "./ledger";
 import { KeyedLock } from "./lock";
 import { createPolicyStore } from "./policy";
+import { formatUsd } from "./usd";
 import { type Sealed, open, seal } from "./secretbox";
 import { JsonFile } from "./store";
 
@@ -106,6 +107,14 @@ export function createSigner(deps: SignerDeps): Signer {
   const journal = new JsonFile<Record<string, JournalEntry>>(join(config.dataDir, "journal.json"), {});
   const locks = new KeyedLock();
   const usdConfig = config.testUsd;
+  if (usdConfig) {
+    const forbidden = [buyer.classicAddress, service.classicAddress, usdConfig.issuer];
+    if (usdConfig.approvedSuppliers.some((a) => forbidden.includes(a))) {
+      throw new Error(
+        "Invalid signer configuration: APPROVED_SUPPLIERS cannot include the treasury, the service account or the issuer",
+      );
+    }
+  }
   const policy = usdConfig
     ? createPolicyStore(
         config.dataDir,
@@ -385,8 +394,11 @@ export function createSigner(deps: SignerDeps): Signer {
       // concurrent creates cannot both see room that only one of them fits in.
       const closeTime = await ledger.validatedCloseTime();
       await resolveStaleCreates();
+      // A pending entry whose escrow is already recorded is the same deal (a crash landed between
+      // writing the record and closing the journal entry), so it is not counted twice.
+      const recorded = escrows.get();
       const pending = Object.values(journal.get())
-        .filter((e) => e.type === "create" && e.status === "submitted" && e.pending)
+        .filter((e) => e.type === "create" && e.status === "submitted" && e.pending && !recorded[e.escrowKey])
         .map((e) => e.pending as PendingCreate);
       const exposure = testUsdExposure(Object.values(escrows.get()), pending, closeTime);
       if (exposure.usedDailyCents + amount > dailyCents) {
@@ -625,12 +637,6 @@ export function createSigner(deps: SignerDeps): Signer {
   };
 }
 
-// "$100,000" or "$12,500.50" from integer cents, for refusal messages.
-function formatUsd(cents: bigint): string {
-  const whole = (cents / 100n).toLocaleString("en-US");
-  const frac = cents % 100n;
-  return frac === 0n ? `$${whole}` : `$${whole}.${frac.toString().padStart(2, "0")}`;
-}
 
 const DAY_SECONDS = 86_400;
 

@@ -95,6 +95,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): { config: SignerConfig; seed
     };
     const maxDealCents = cents("MAX_DEAL_TESTUSD_CENTS", "250000");
     const dailyCents = cents("DAILY_TESTUSD_CENTS", "2500000");
+    if (maxDealCents > dailyCents) problems.push("MAX_DEAL_TESTUSD_CENTS cannot exceed DAILY_TESTUSD_CENTS");
     const maxOpenDeals = integer("MAX_OPEN_TESTUSD_DEALS", 5);
     if (maxOpenDeals < 1) problems.push("MAX_OPEN_TESTUSD_DEALS must be at least 1");
     const operatorSecret = env.OPERATOR_HMAC_SECRET ?? "";

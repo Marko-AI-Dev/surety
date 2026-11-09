@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -904,5 +904,49 @@ describe("review fixes", () => {
       "bad_request",
     );
     expect((await makeSigner().health()).testUsd?.policyVersion).toBe(1);
+  });
+});
+
+describe("starting policy and crash safety", () => {
+  let issuer: string;
+  let supplier: string;
+
+  beforeEach(() => {
+    issuer = Wallet.generate().classicAddress;
+    supplier = Wallet.generate().classicAddress;
+    config = {
+      ...config,
+      testUsd: {
+        issuer,
+        approvedSuppliers: [supplier],
+        maxDealCents: 250_000n,
+        dailyCents: 2_500_000n,
+        maxOpenDeals: 2,
+        operatorSecret: "o".repeat(40),
+      },
+    };
+    ledger.trustLines.set(`${buyer.classicAddress}:${issuer}`, { balance: "1000000", limit: "1000000000", frozenByIssuer: false });
+    ledger.trustLines.set(`${supplier}:${issuer}`, { balance: "0", limit: "1000000000", frozenByIssuer: false });
+  });
+
+  const lock = () => {
+    const { amountDrops: _drops, ...rest } = createReq({ destination: supplier });
+    return makeSigner().createEscrow({ ...rest, amountTestUsdCents: "100" });
+  };
+
+  it.each(["treasury", "service", "issuer"])("refuses to start with the %s among the starting approved suppliers", (who) => {
+    const address = who === "treasury" ? buyer.classicAddress : who === "service" ? service.classicAddress : issuer;
+    config = { ...config, testUsd: { ...(config.testUsd as NonNullable<SignerConfig["testUsd"]>), approvedSuppliers: [supplier, address] } };
+    expect(() => makeSigner()).toThrow(/APPROVED_SUPPLIERS cannot include the treasury, the service account or the issuer/);
+  });
+
+  it("a deal recorded as locked whose journal entry still says submitted (a crash between the two writes) counts once", async () => {
+    const res = await lock();
+    const journalPath = join(dataDir, "journal.json");
+    const journal = JSON.parse(readFileSync(journalPath, "utf8"));
+    journal[res.opId].status = "submitted";
+    writeFileSync(journalPath, JSON.stringify(journal));
+    expect((await lock()).result).toBe("tesSUCCESS");
+    await expectCode(lock(), "open_deal_limit_reached");
   });
 });
