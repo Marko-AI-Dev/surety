@@ -195,8 +195,9 @@ export async function postSupplierMessage(
 ): Promise<{ delivered: boolean; card: Card | null; status: "in" | "out" }> {
   const text = ChatTextSchema.parse(raw);
   const s = await mustSourcing(deps, sourcingId);
-  mustBeOpen(s, nowOf(deps), { timed: true });
+  // The invite first: a supplier that isn't part of this sourcing learns nothing about its state.
   const invite = await mustInvite(deps, s.id, address);
+  mustBeOpen(s, nowOf(deps), { timed: true });
   if ((await statusOf(deps, s.id, address)) === "out") throw new SupplierOut(s.id, address);
 
   const result = await screenMessage(deps.engine, {
@@ -316,8 +317,8 @@ export async function reportOffer(deps: SourcingDeps, sourcingId: string, raw: u
 export async function commitQuote(deps: SourcingDeps, sourcingId: string, address: string, raw: unknown): Promise<Invite> {
   const form = QuoteFormSchema.parse(raw);
   const s = await mustSourcing(deps, sourcingId);
-  mustBeOpen(s, nowOf(deps), { timed: false });
   const invite = await mustInvite(deps, s.id, address);
+  mustBeOpen(s, nowOf(deps), { timed: false });
   if ((await statusOf(deps, s.id, address)) === "out") throw new SupplierOut(s.id, address);
   const total = BigInt(form.quantity) * BigInt(form.unitCents);
   if (total > MAX_TESTUSD_CENTS) throw new SourcingRefused("the quote total is above the largest amount Surety handles");

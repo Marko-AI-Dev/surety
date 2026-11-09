@@ -180,6 +180,13 @@ describe("the screened chat", () => {
     expect(await repo.listMessages(s.id)).toEqual([]);
   });
 
+  it("a supplier that isn't invited learns nothing about a closed sourcing (NotInvited, not SourcingClosed)", async () => {
+    const s = await openWithSupplier();
+    clock = new Date("2026-11-10T09:05:00.000Z");
+    await expect(postSupplierMessage(deps, s.id, SECOND, "Hi")).rejects.toBeInstanceOf(NotInvited);
+    await expect(commitQuote(deps, s.id, SECOND, form)).rejects.toBeInstanceOf(NotInvited);
+  });
+
   it("a supplier that isn't invited cannot post", async () => {
     const s = await openWithSupplier();
     await expect(postSupplierMessage(deps, s.id, SECOND, "Hi")).rejects.toBeInstanceOf(NotInvited);
