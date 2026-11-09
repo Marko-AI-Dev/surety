@@ -1,4 +1,5 @@
 import {
+  type AssetAmount,
   DELIVERABLE_MAX_BYTES,
   type DealIntent,
   type SupplierQuote,
@@ -45,8 +46,8 @@ export interface TradeRulesInput {
   documents: unknown;
   // What the document reader extracted. null when the documents did not parse, so no reader was asked.
   readerFields: TradeFields | null;
-  // The escrow on the ledger: who it pays and how much.
-  lock: { destination: string; amountCents: string };
+  // The escrow on the ledger: who it pays, in which asset and how much. A deal only ever locks TESTUSD.
+  lock: { destination: string; amount: AssetAmount };
 }
 
 const norm = (s: string) => s.trim().toLowerCase();
@@ -100,7 +101,11 @@ function arithmetic(f: TradeFields): string | undefined {
 function totalMatchesLock(f: TradeFields, quote: SupplierQuote, lock: TradeRulesInput["lock"]): string | undefined {
   const wrong: string[] = [];
   if (f.invoice.totalCents !== quote.totalCents) wrong.push(`the invoice total ${usd(f.invoice.totalCents)} is not the quoted ${usd(quote.totalCents)}`);
-  if (String(quote.totalCents) !== lock.amountCents) wrong.push(`the locked amount ${usd(Number(lock.amountCents))} is not the quoted ${usd(quote.totalCents)}`);
+  if (lock.amount.asset !== "TESTUSD") {
+    wrong.push(`the payment is locked in ${lock.amount.asset}, not TESTUSD`);
+  } else if (String(quote.totalCents) !== lock.amount.cents) {
+    wrong.push(`the locked amount ${usd(Number(lock.amount.cents))} is not the quoted ${usd(quote.totalCents)}`);
+  }
   return wrong.length > 0 ? wrong.join("; ") : undefined;
 }
 

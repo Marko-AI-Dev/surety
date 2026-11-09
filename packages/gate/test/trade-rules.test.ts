@@ -3,7 +3,7 @@ import type { TradeDocuments, TradeFields } from "@surety/contracts";
 import { RULE_IDS, TRADE_RULE_IDS, POLICY_V2, decide, parseTradeDocuments, runRules, runTradeRules } from "../src/index";
 import { ATTACKER, SUPPLIER, intent, presets, quote } from "../../../scripts/deal-fixtures";
 
-const lock = { destination: SUPPLIER, amountCents: "4800000" };
+const lock = { destination: SUPPLIER, amount: { asset: "TESTUSD", cents: "4800000" } as const };
 
 // The parser stands in for the document reader, so reader_agrees passes unless a test says otherwise.
 function rules(documents: TradeDocuments, readerFields: TradeFields | null = parseTradeDocuments(documents)) {
@@ -64,8 +64,26 @@ describe("runTradeRules", () => {
   });
 
   it("a lock to another wallet or for another amount fails", () => {
-    const r = runTradeRules({ intent, quote, documents: doc("docs-honest"), readerFields: parseTradeDocuments(doc("docs-honest")), lock: { destination: ATTACKER, amountCents: "4700000" } });
+    const r = runTradeRules({
+      intent,
+      quote,
+      documents: doc("docs-honest"),
+      readerFields: parseTradeDocuments(doc("docs-honest")),
+      lock: { destination: ATTACKER, amount: { asset: "TESTUSD", cents: "4700000" } },
+    });
     expect(failed(r)).toEqual(["total_matches_lock", "pay_to"]);
+  });
+
+  it("a lock in XRP fails total_matches_lock even when the number matches", () => {
+    const r = runTradeRules({
+      intent,
+      quote,
+      documents: doc("docs-honest"),
+      readerFields: parseTradeDocuments(doc("docs-honest")),
+      lock: { destination: SUPPLIER, amount: { asset: "XRP", drops: "4800000" } },
+    });
+    expect(failed(r)).toEqual(["total_matches_lock"]);
+    expect(r.results.find((x) => x.id === "total_matches_lock")?.detail).toContain("not TESTUSD");
   });
 
   it("documents that are not the documents schema fail parse", () => {
