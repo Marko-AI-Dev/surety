@@ -79,8 +79,11 @@ export class FakeSigner implements SignerClient {
     return this.calls.filter((c) => c.method === method).length;
   }
 
+  // Set to report a live TESTUSD policy, as a signer with TESTUSD enabled does.
+  testUsd: HealthResponse["testUsd"] = undefined;
+
   async health(): Promise<HealthResponse> {
-    return { network: "testnet", buyer: this.buyer, service: this.service };
+    return { network: "testnet", buyer: this.buyer, service: this.service, ...(this.testUsd ? { testUsd: structuredClone(this.testUsd) } : {}) };
   }
 
   async createEscrow(req: CreateEscrowRequest): Promise<CreateEscrowResponse> {

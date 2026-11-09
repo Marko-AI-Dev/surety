@@ -49,3 +49,16 @@ export { SELLER_ACTOR, deliverJob, type DeliverDeps } from "./deliver";
 export { DECISION_CUTOFF_SECONDS, GATE_ACTOR, MAX_EVALUATION_RESUMES, evaluateJob, type EvaluateDeps } from "./evaluate";
 export { settleJob, type SettleDeps } from "./settle";
 export { runEngineOnce, type EngineDeps, type EngineReport } from "./engine-loop";
+export {
+  DEAL_AGENT_ACTOR,
+  POLICY_ACTOR,
+  SUPPLIER_ACTOR,
+  TRADE_CRITERIA,
+  decideQuote,
+  openDeal,
+  ruleFollowingDecider,
+  submitDocuments,
+  submitQuote,
+  type DealDeps,
+  type QuoteDecider,
+} from "./deals";
