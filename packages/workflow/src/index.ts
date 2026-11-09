@@ -80,6 +80,7 @@ export {
   type SourcingDeps,
   type ThreadItem,
 } from "./sourcing";
+export { answerDecider, leadDecision, selectSupplier, settlementDraftFor, submitSettlement } from "./sourcing-deal";
 export { createMemoryRepo } from "./memory-repo";
 export { createPgRepo } from "./pg-repo";
 export { fundJob, type FundDeps } from "./fund";

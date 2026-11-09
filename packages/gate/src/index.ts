@@ -11,6 +11,7 @@ export {
 export { isBorderline, withReask, type ReaskBand } from "./reask";
 export { parserReader, type DocumentReader, type ReadResult } from "./reader";
 export { chatState, screenMessage, type ScreenInput, type ScreenResult } from "./screen";
+export { buildSettlementDocuments, settlementDraft, type SettlementDraft } from "./settlement-form";
 export {
   JEV_CHAT_QUESTIONS,
   JEV_DECISIONS_URL,
