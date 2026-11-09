@@ -43,6 +43,7 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | Build with small TESTUSD limits ($2,500 per deal, $25,000 per rolling 24 hours, 5 open deals), and raise them to demo values ($100,000 and $500,000) on Thursday | Marko: keep test values low while building. The amounts cost nothing either way, because TESTUSD is self-issued |
 | 2026-11-09 | Limits change instantly through an operator-only signer operation with its own secret, which the worker and agents never hold, and every change is kept in a history file | Marko chose live changes over restart-to-apply. The demo shows the operator lowering a cap and the agent's next deal being refused. The signer becomes three money operations plus one policy update |
 | 2026-11-09 | In Phase 4b, Surety Verify re-asks the decision model when a score lands next to a threshold and uses the middle of three answers | Jev's scores move a few hundredths between identical calls (OpenRouter and TypeSafe document this). Only borderline cases cost the two extra calls |
+| 2026-11-09 | Demo limits now: $100,000 per deal, $500,000 per 24h, 10 open (live policy v5, set with `pnpm limits:set`, and the new config defaults). Replaces the small build limits | Marko wants realistic $40k to $50k deals; no testnet limit exists. All caps are our own operator policy |
 
 ## Open questions
 

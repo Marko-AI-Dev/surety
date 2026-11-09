@@ -11,9 +11,9 @@ describe("TESTUSD env files", () => {
     const text = renderTestUsdEnv({ issuer, approvedSuppliers: suppliers, operatorSecret });
     expect(text).toMatch(new RegExp(`^TESTUSD_ISSUER=${issuer}$`, "m"));
     expect(text).toMatch(new RegExp(`^APPROVED_SUPPLIERS=${suppliers.join(",")}$`, "m"));
-    expect(text).toMatch(/^MAX_DEAL_TESTUSD_CENTS=250000$/m);
-    expect(text).toMatch(/^DAILY_TESTUSD_CENTS=2500000$/m);
-    expect(text).toMatch(/^MAX_OPEN_TESTUSD_DEALS=5$/m);
+    expect(text).toMatch(/^MAX_DEAL_TESTUSD_CENTS=10000000$/m);
+    expect(text).toMatch(/^DAILY_TESTUSD_CENTS=50000000$/m);
+    expect(text).toMatch(/^MAX_OPEN_TESTUSD_DEALS=10$/m);
     expect(text).toMatch(new RegExp(`^OPERATOR_HMAC_SECRET=${operatorSecret}$`, "m"));
     expect(text).not.toMatch(/SEED|^s[1-9A-HJ-NP-Za-km-z]{20,}/m);
     expect(text).toContain("# initial policy; change it live through the operator policy update");

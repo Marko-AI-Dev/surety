@@ -62,13 +62,13 @@ describe("loadConfig TESTUSD", () => {
     expect(loadConfig(env()).config.testUsd).toBeNull();
   });
 
-  it("applies TESTUSD cap defaults of 250000 cents, 2500000 cents and 5 open deals", () => {
+  it("applies the demo TESTUSD cap defaults of 10000000 cents, 50000000 cents and 10 open deals", () => {
     expect(loadConfig(testUsdEnv()).config.testUsd).toEqual({
       issuer,
       approvedSuppliers: [supplierA, supplierB],
-      maxDealCents: 250_000n,
-      dailyCents: 2_500_000n,
-      maxOpenDeals: 5,
+      maxDealCents: 10_000_000n,
+      dailyCents: 50_000_000n,
+      maxOpenDeals: 10,
       operatorSecret: "o".repeat(40),
     });
   });

@@ -19,7 +19,8 @@
     "db:start": "supabase start -x studio,imgproxy,analytics,vector,edge-runtime,storage",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "spike:testusd": "node --env-file=.env --env-file=.env.operator --import tsx scripts/spike-testusd-signer.ts"
+    "spike:testusd": "node --env-file=.env --env-file=.env.operator --import tsx scripts/spike-testusd-signer.ts",
+    "limits:set": "node --env-file=.env --env-file=.env.operator --import tsx scripts/set-limits.ts"
   },
   "devDependencies": {
     "@surety/contracts": "workspace:*",
