@@ -596,3 +596,138 @@ describe("TESTUSD caps", () => {
     await expectCode(lock("6000001", makeSigner()), "daily_cap_reached");
   });
 });
+
+describe("finish, cancel and health for TESTUSD", () => {
+  let issuer: string;
+  let supplier: string;
+
+  function usdConfig(overrides: Partial<NonNullable<SignerConfig["testUsd"]>> = {}) {
+    config = {
+      ...config,
+      testUsd: {
+        issuer,
+        approvedSuppliers: [supplier],
+        maxDealCents: 10_000_000n,
+        dailyCents: 25_000_000n,
+        maxOpenDeals: 50,
+        operatorSecret: "o".repeat(40),
+        ...overrides,
+      },
+    };
+  }
+
+  const lock = (cents = "4800000") => {
+    const { amountDrops: _drops, ...rest } = createReq({ destination: supplier });
+    return makeSigner().createEscrow({ ...rest, amountTestUsdCents: cents });
+  };
+
+  function usdAuthFor(offerSequence: number, cents = "4800000", overrides: Record<string, unknown> = {}) {
+    const { payload } = authFor(offerSequence, { destination: supplier });
+    const { amountDrops: _drops, ...rest } = payload;
+    return signAuthorization({ ...rest, amountTestUsdCents: cents, ...overrides } as AuthorizationPayload, GATE_SECRET);
+  }
+
+  beforeEach(() => {
+    issuer = Wallet.generate().classicAddress;
+    supplier = Wallet.generate().classicAddress;
+    usdConfig();
+    ledger.trustLines.set(`${buyer.classicAddress}:${issuer}`, { balance: "10000000", limit: "1000000000", frozenByIssuer: false });
+    ledger.trustLines.set(`${supplier}:${issuer}`, { balance: "0", limit: "1000000000", frozenByIssuer: false });
+  });
+
+  it("pays a TESTUSD escrow with a matching authorization", async () => {
+    const res = await lock();
+    const paid = await makeSigner().finishEscrow({ opId: randomUUID(), authorization: usdAuthFor(res.offerSequence) });
+    expect(paid.result).toBe("tesSUCCESS");
+    expect(ledger.submitted.at(-1)).toMatchObject({ TransactionType: "EscrowFinish", Account: service.classicAddress });
+    const records = JSON.parse(readFileSync(join(dataDir, "escrows.json"), "utf8"));
+    expect(records[`${buyer.classicAddress}:${res.offerSequence}`].status).toBe("finished");
+  });
+
+  it("rejects an XRP-amount authorization for a TESTUSD escrow", async () => {
+    const res = await lock();
+    await expectCode(
+      makeSigner().finishEscrow({ opId: randomUUID(), authorization: authFor(res.offerSequence, { destination: supplier }) }),
+      "escrow_mismatch",
+    );
+  });
+
+  it("rejects an authorization for a different TESTUSD amount", async () => {
+    const res = await lock();
+    await expectCode(
+      makeSigner().finishEscrow({ opId: randomUUID(), authorization: usdAuthFor(res.offerSequence, "4800001") }),
+      "escrow_mismatch",
+    );
+  });
+
+  it.each([
+    ["issuer", (a: Record<string, string>) => ({ ...a, issuer: Wallet.generate().classicAddress })],
+    ["currency", (a: Record<string, string>) => ({ ...a, currency: "USD" })],
+    ["sub-cent value", (a: Record<string, string>) => ({ ...a, value: "48000.001" })],
+    ["exponent value", (a: Record<string, string>) => ({ ...a, value: "4.8e4" })],
+    ["XRP amount", () => "4800000"],
+  ])("rejects when the ledger's %s differs from the record", async (_name, mutate) => {
+    const res = await lock();
+    const key = `${buyer.classicAddress}:${res.offerSequence}`;
+    const entry = ledger.escrows.get(key);
+    if (!entry) throw new Error("escrow missing");
+    ledger.escrows.set(key, { ...entry, Amount: mutate(entry.Amount as unknown as Record<string, string>) as never });
+    await expectCode(
+      makeSigner().finishEscrow({ opId: randomUUID(), authorization: usdAuthFor(res.offerSequence) }),
+      "escrow_mismatch",
+    );
+    expect(ledger.count("EscrowFinish")).toBe(0);
+  });
+
+  it("refunds a TESTUSD escrow after ledger time passes CancelAfter", async () => {
+    const res = await lock();
+    ledger.closeTime = CLOSE + 181;
+    const refunded = await makeSigner().cancelEscrow({ opId: randomUUID(), owner: res.owner, offerSequence: res.offerSequence });
+    expect(refunded.result).toBe("tesSUCCESS");
+    expect(ledger.escrows.has(`${buyer.classicAddress}:${res.offerSequence}`)).toBe(false);
+  });
+
+  it("a paid TESTUSD deal still counts toward the daily cap and frees an open slot", async () => {
+    usdConfig({ maxOpenDeals: 1, dailyCents: 6_000_000n });
+    const res = await lock();
+    await expectCode(lock("100"), "open_deal_limit_reached");
+    await makeSigner().finishEscrow({ opId: randomUUID(), authorization: usdAuthFor(res.offerSequence) });
+    await expectCode(lock("1200001"), "daily_cap_reached");
+    expect((await lock("1200000")).result).toBe("tesSUCCESS");
+  });
+
+  it("an XRP escrow recorded without any asset field still finishes and cancels", async () => {
+    const a = await makeSigner().createEscrow(createReq());
+    const b = await makeSigner().createEscrow(createReq());
+    const records = JSON.parse(readFileSync(join(dataDir, "escrows.json"), "utf8"));
+    for (const r of Object.values(records) as Record<string, unknown>[]) {
+      expect(r).not.toHaveProperty("asset");
+      expect(r).not.toHaveProperty("amountTestUsdCents");
+      expect(r).not.toHaveProperty("lockedAtCloseTime");
+    }
+    const paid = await makeSigner().finishEscrow({ opId: randomUUID(), authorization: authFor(a.offerSequence) });
+    expect(paid.result).toBe("tesSUCCESS");
+    ledger.closeTime = CLOSE + 181;
+    const refunded = await makeSigner().cancelEscrow({ opId: randomUUID(), owner: b.owner, offerSequence: b.offerSequence });
+    expect(refunded.result).toBe("tesSUCCESS");
+  });
+
+  it("health reports the TESTUSD issuer, approved suppliers and limits, and nothing secret", async () => {
+    const health = await makeSigner().health();
+    expect(health.testUsd).toEqual({
+      issuer,
+      currencyHex: "5445535455534400000000000000000000000000",
+      approvedSuppliers: [supplier],
+      limits: { perDealCents: "10000000", dailyCents: "25000000", openDeals: 50 },
+    });
+    const text = JSON.stringify(health);
+    expect(text).not.toContain("o".repeat(40));
+    expect(text).not.toContain(config.preimageKey.toString("hex"));
+    expect(text).not.toMatch(/seed|secret/i);
+  });
+
+  it("health has no TESTUSD section when TESTUSD is off", async () => {
+    config = { ...config, testUsd: null };
+    expect(await makeSigner().health()).not.toHaveProperty("testUsd");
+  });
+});

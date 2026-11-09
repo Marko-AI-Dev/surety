@@ -16,6 +16,7 @@ import {
   verifyAuthorization,
 } from "@surety/contracts";
 import {
+  type EscrowEntry,
   buildEscrowCancel,
   buildEscrowCreate,
   buildEscrowFinish,
@@ -439,8 +440,7 @@ export function createSigner(deps: SignerDeps): Signer {
         // The validated ledger is settlement truth; the local record must agree with it.
         const matches =
           onLedger.Account === owner &&
-          p.amountDrops === record.amountDrops &&
-          p.amountDrops === onLedger.Amount &&
+          amountMatches(record, p, onLedger.Amount) &&
           p.destination === record.destination &&
           p.destination === onLedger.Destination &&
           onLedger.Condition === record.condition &&
@@ -531,8 +531,24 @@ export function createSigner(deps: SignerDeps): Signer {
     );
   }
 
+  // Built from config only: no ledger read, and never the operator secret.
+  async function health(): Promise<HealthResponse> {
+    const base: HealthResponse = { network: "testnet", buyer: buyer.classicAddress, service: service.classicAddress };
+    const usd = config.testUsd;
+    if (!usd) return base;
+    return {
+      ...base,
+      testUsd: {
+        issuer: usd.issuer,
+        currencyHex: TESTUSD_CURRENCY_HEX,
+        approvedSuppliers: [...usd.approvedSuppliers],
+        limits: { perDealCents: usd.maxDealCents.toString(), dailyCents: usd.dailyCents.toString(), openDeals: usd.maxOpenDeals },
+      },
+    };
+  }
+
   return {
-    health: async () => ({ network: "testnet", buyer: buyer.classicAddress, service: service.classicAddress }),
+    health,
     createEscrow,
     finishEscrow,
     cancelEscrow,
@@ -565,4 +581,30 @@ function testUsdExposure(
   for (const r of [...usdRecords, ...usdPending]) if (inWindow(r)) usedDailyCents += cents(r);
   const openDeals = usdRecords.filter((r) => r.status === "locked").length + usdPending.length;
   return { usedDailyCents, openDeals };
+}
+
+// The authorization, the signer's record and the validated ledger must all name the same amount.
+// A record without an asset field is XRP (written before TESTUSD existed) and keeps the original match.
+function amountMatches(
+  record: EscrowRecord,
+  p: { amountDrops?: string; amountTestUsdCents?: string },
+  onLedger: EscrowEntry["Amount"],
+): boolean {
+  if (record.asset === "TESTUSD") {
+    return (
+      p.amountDrops === undefined &&
+      p.amountTestUsdCents !== undefined &&
+      p.amountTestUsdCents === record.amountTestUsdCents &&
+      typeof onLedger === "object" &&
+      onLedger.currency === TESTUSD_CURRENCY_HEX &&
+      onLedger.issuer === record.issuer &&
+      tokenValueToCents(onLedger.value) === record.amountTestUsdCents
+    );
+  }
+  return (
+    p.amountTestUsdCents === undefined &&
+    p.amountDrops !== undefined &&
+    p.amountDrops === record.amountDrops &&
+    p.amountDrops === onLedger
+  );
 }

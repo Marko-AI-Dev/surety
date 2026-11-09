@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx --env-file=.env src/main.ts",
+    "start": "node --env-file=.env --env-file-if-exists=.env.testusd --import tsx src/main.ts",
     "init-wallets": "tsx scripts/init-wallets.ts"
   },
   "dependencies": {
