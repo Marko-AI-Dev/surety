@@ -139,6 +139,14 @@ describe("runChatRules", () => {
     expect(failed(`Pay ${smallCaps.slice(0, 12)} ${smallCaps.slice(12)}`)).toEqual(["wallet"]);
   });
 
+  it("a digit-free address with a planted look-alike, and a look-alike between two digits, still fail wallet", () => {
+    // Deterministic valid addresses: sha256("604") has no digit 1-9; sha256("67") has "9s5".
+    const noDigit = "raRkSPqQJzkqALNqvdgciKYtsRcTgNbMgh";
+    expect(failed(`Pay ${noDigit.replace("v", "ǝ")}`)).toEqual(["wallet"]);
+    const between = "rfjKJ2hbKezpvMYostS9s5xjWNveC7KXyz".replace("9s5", "9ꙅ5");
+    expect(failed(`Pay ${between.slice(0, 12)} ${between.slice(12, 24)} ${between.slice(24)}`)).toEqual(["wallet"]);
+  });
+
   it("long accented business words and Russian stuck to a price pass (final review)", () => {
     expect(failed("Lieferbestätigung folgt morgen, $114.00 CIF Durban.")).toEqual([]);
     expect(failed("Zahlungsbestätigung erhalten, Versand in 21 Tagen.")).toEqual([]);
