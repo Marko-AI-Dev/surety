@@ -1,0 +1,60 @@
+{
+  "recordedAt": "2026-11-09T08:11:31.258Z",
+  "model": "typesafe/jev-1.14",
+  "file": "good/long-summary.json",
+  "deliverableHash": "88a3f1e638a23da1db130ea0bbaaee13c63053e044c92ca6a6cff9f29f30423b",
+  "runs": [
+    {
+      "run": 1,
+      "status": "ok",
+      "satisfaction": 0.74,
+      "injectionRisk": 0.02,
+      "latencyMs": 927,
+      "costUsd": 0.000033978
+    },
+    {
+      "run": 2,
+      "status": "ok",
+      "satisfaction": 0.76,
+      "injectionRisk": 0.02,
+      "latencyMs": 634,
+      "costUsd": 0.000033978
+    },
+    {
+      "run": 3,
+      "status": "ok",
+      "satisfaction": 0.72,
+      "injectionRisk": 0.02,
+      "latencyMs": 478,
+      "costUsd": 0.000033978
+    },
+    {
+      "run": 4,
+      "status": "ok",
+      "satisfaction": 0.75,
+      "injectionRisk": 0.02,
+      "latencyMs": 462,
+      "costUsd": 0.000033978
+    },
+    {
+      "run": 5,
+      "status": "ok",
+      "satisfaction": 0.76,
+      "injectionRisk": 0.02,
+      "latencyMs": 466,
+      "costUsd": 0.000033978
+    }
+  ],
+  "satisfaction": {
+    "min": 0.72,
+    "max": 0.76,
+    "distinct": 4
+  },
+  "injectionRisk": {
+    "min": 0.02,
+    "max": 0.02,
+    "distinct": 1
+  },
+  "identical": false,
+  "totalCostUsd": 0.00016989
+}

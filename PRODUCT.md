@@ -8,61 +8,126 @@ web
 
 ## Stack
 
-React and TypeScript web console (`apps/web`, not yet created) on the existing pnpm workspace: Node packages for the signer, gate and workflow, Supabase Postgres, xrpl.js. Taken from the project's build spec.
+React and TypeScript web app (`apps/web`, not yet created) on the existing pnpm workspace: Node packages for the signer, gate and workflow, Supabase Postgres, xrpl.js. Taken from the project's build spec.
 
 ## Users
 
-Primary: the treasury or operations lead at a company whose AI agents buy and sell work. They set the spending limits the agents cannot change, watch money in flight, and must be able to audit and prove every payout and refund.
+**Primary:** the treasury or operations lead at an importing business, for example a South African company buying solar panels from a supplier in China. They:
+- create deals
+- set the spending limits and approved suppliers that the deal agent can't change
+- watch each deal's documents get checked
+- must be able to prove every payout and refund
 
-Secondary: the business owner, who wants a simple view of what was hired, where the money is, and the receipts.
+**Secondary:** the overseas supplier. It gets one page where it submits its commercial invoice and bill of lading, then sees the payment arrive.
 
-Evaluators: W3NODE judges for Ripple's Agentic Finance track, and real companies in agent payments assessing adoption. Both must see a real use case that is production-grade and auditable.
+**Evaluators:**
+- W3NODE judges for Ripple's Agentic Finance track
+- real companies in trade or payments assessing adoption
+
+Both groups must see a real use case they can test themselves, including trying to break it.
 
 ## Product Purpose
 
-Surety is the referee between AI agents. One agent hires another; the payment waits in native XRP Ledger escrow and is released only when the delivered work passes deterministic rules and an independent AI evaluator (Jev). Otherwise the buyer is refunded when the escrow expires. Success: every job ends paid or refunded with ledger proof, and nothing pays without a validated ledger result.
+Surety is escrow for import purchases.
+- The importer's payment is locked on the XRP Ledger in a test dollar (TESTUSD).
+- It is released to the supplier only when the shipping documents match the purchase order and the accepted quote. The check is called **Surety Verify**: deterministic rules first, then a decision model that returns scores, not text. The decision model is TypeSafe's Jev under the hood. It is never named in the app, and it is credited in the README.
+- Otherwise the importer is refunded at the deadline.
+- A person sets the intent and the budget. The deal agent decides whether to accept the supplier's quote and has the payment locked, within limits set by a person.
+
+Success means every deal ends paid or refunded with ledger proof, and nothing pays without a validated ledger result.
 
 ## Positioning
 
-"The ledger is the vault. Surety is the referee." Native XRPL conditional escrow with no smart contract. Rules come first and are final; Jev can never override a failed rule. It fails closed: an unavailable evaluator means no payment and a refund at expiry. Spending limits are set by a human operator and enforced in an isolated signer the agents cannot reach. Every step is bound to ledger transactions. Nearest existing concept: t54's Agentic Risk Standard, which targets EVM chains and USDC.
+"The ledger is the vault. Surety is the referee."
+- **The incumbent** is the bank letter of credit, which is slow, heavy on paperwork and out of reach for many small importers.
+- **Native XRPL token escrow, with no smart contract.**
+- **Rules come first and are final:** the decision model can never override a failed rule. Never call the decision model deterministic: identical input scored 0.72 to 0.76 across 5 runs.
+- **It fails closed:** if the evaluator is unavailable, nothing pays and the importer is refunded at the deadline.
+- **Limits are set by a person** and enforced in an isolated signer that the agents can't reach.
+- **The nearest agent-payments concept** is t54's Agentic Risk Standard, which targets EVM chains and USDC.
 
 ## Operating Context
 
-A job passes through stations: operator limits, escrow lock (EscrowCreate), delivery (hashed and frozen), rules (six deterministic checks), Jev (satisfaction and injection risk), signer (one-use authorization), settlement (EscrowFinish or EscrowCancel). Job states are guarded and every change is written to an append-only event log. XRPL Testnet only; validated ledger time decides expiry. Demonstrated in a 5-minute pitch with 3 minutes of Q&A at W3NODE (Cape Town, Nov 2026) and a 3-minute video, on a desktop or projector.
+**A deal follows the five-step loop:**
+1. **Intent:** the business user states goods, quantity, maximum price, supplier and deadline.
+2. **Policy:** per-deal cap, daily cap, open-deal limit, approved supplier, and whether the supplier can hold TESTUSD.
+3. **Quote:** the supplier's price, terms and wallet. The deal agent accepts or declines it, and on accept the signer locks the TESTUSD (EscrowCreate).
+4. **Settlement:** the documents are hashed and frozen. Surety Verify runs (rules, then the decision model). Then EscrowFinish with a one-use authorization, or EscrowCancel after the deadline.
+5. **Audit:** the receipt, every station's record, the ledger links and the failure path.
+
+**Records:** deal states are guarded, and every change is written to an append-only event log. Validated ledger time decides the deadline.
+
+**Network:** XRPL Testnet only.
+
+**Demo:** demonstrated in a 5-minute pitch with 3 minutes of Q&A at W3NODE (Cape Town, Nov 2026) and in a 3-minute video, on a desktop or projector. There are three side-by-side panels: Deals (Use), Control room (Control) and Attack lab (Attack). There is also a supplier page, and later a public QR attack page where the audience tries to break a live deal from their phones.
 
 ## Capabilities and Constraints
 
-Built and proven on XRPL Testnet: the isolated signer (three operations only), escrow lock, pay and refund, a restart-safe expiry worker, and the rules plus Jev gate under a versioned policy (policy-v2). Four outcomes ran live: paid, rejected by rules, blocked by Jev for injection, evaluator offline.
+**Built and proven on XRPL Testnet:**
+- the isolated signer, which has three operations only
+- escrow lock, pay and refund in XRP
+- a restart-safe expiry worker
+- the rules plus Jev gate under a versioned policy (policy-v2)
+- four outcomes run live: paid, rejected by rules, blocked by Jev for injection, evaluator offline
+- TESTUSD token escrow (a trial on 9 Nov): exact payout, full refund, and the ledger refusing a wrong key, an early refund and a late release
 
-Planned: buyer and seller agents (Claude Haiku 5.5), operator limits stored in the database behind an operator-only control, a daily cap, an API, and the web console.
+**Planned:**
+- TESTUSD in the signer
+- trade-document rules (purchase order against invoice and bill of lading)
+- a deal agent and a verification agent (Claude Haiku 5.5 via OpenRouter)
+- operator limits and approved suppliers in the database, plus a daily cap
+- an API
+- the web app: business view, supplier page, Control room
 
-Constraints: testnet only with valueless test XRP; any fiat value must be labelled simulated; keys never leave the signer; the seller allowlist is a demo allowlist, not KYC.
+**Constraints:**
+- Testnet only. TESTUSD is a self-issued test dollar with no value.
+- Any rand value must be labelled simulated.
+- Keys never leave the signer.
+- The approved-supplier list is a demo list, not KYC or KYB.
 
 ## Brand Commitments
 
-Name: Surety (working name). Team: "Surety - Marko Solo". Pitch line: "The ledger is the vault. Surety is the referee."
+**Names:**
+- Name: Surety
+- Team: "Surety - Marko Solo"
+- Pitch line: "The ledger is the vault. Surety is the referee."
+- User-facing word: "Deal", never "Job" or "Lot"
 
-Binding constraints Marko volunteered:
+**Binding constraints Marko volunteered:**
 - dark glass, elegant, minimal, high-status
 - auditable: live states, stats and logs over animated workflow metaphors
-- spatial, VR-style navigation: sections sit side by side like headset panels; the panel that moved aside stays visible and clickable to bring back to focus; going deeper into an item moves in depth
+- spatial, VR-style navigation: sections sit side by side like headset panels. The panel that moved aside stays visible and can be clicked to bring it back into focus. Going deeper into an item moves in depth.
 - containers hold everything they show, with no scrolling inside panels
 - smooth, purposeful motion
 
-Rejected so far: the v1 and v2 playgrounds (a linear pipeline, and a railway signal-box metaphor that read as synthetic).
+**Drafts so far:**
+- Rejected: the v1 and v2 playgrounds (a linear pipeline, and a railway signal-box metaphor that read as synthetic).
+- Leaning: the Spatial Desk draft from the console drafts. It isn't locked yet.
 
 ## Evidence on Hand
 
-Real testnet transactions in `evidence/*.json` (spike, restart drill, four outcomes). Jev calibration in `docs/research/05-jev-calibration.md` and `evidence/jev-calibration-*.json`. Live Jev smoke test in `docs/research/03-jev-typesafe-openrouter.md`.
+**Real testnet transactions in `evidence/*.json`:**
+- the spike
+- the restart drill
+- the four outcomes
+- the TESTUSD token escrow trial
 
-Absent, never to be fabricated: customers, pricing, real volumes, testimonials, real-money usage.
+**Jev:** calibration in `docs/research/05-jev-calibration.md` and `evidence/jev-calibration-*.json`.
+
+**Absent, and never to be fabricated:**
+- customers
+- pricing
+- real volumes
+- testimonials
+- real-money usage
+- letter-of-credit cost figures without a cited source
 
 ## Product Principles
 
-1. Proof over promise: every state shown is backed by a ledger transaction or a recorded decision.
-2. Fail closed, visibly: refusals and refunds are as legible as payments.
-3. Limits belong to people: the operator sets them; agents can only read them.
-4. Calm under scrutiny: an auditor or judge can trace any job station by station without asking.
+1. **Proof over promise:** every state shown is backed by a ledger transaction or a recorded decision.
+2. **Fail closed, visibly:** refusals and refunds are as easy to read as payments.
+3. **Limits belong to people:** the operator sets them, and agents can only read them.
+4. **Calm under scrutiny:** an auditor or judge can trace any deal station by station without asking.
 
 ## Accessibility & Inclusion
 

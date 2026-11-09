@@ -29,6 +29,17 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | Decision cutoff 30 s before `CancelAfter` by ledger time: no evaluation, no authorization, no finish call after it | A late approval must refund, not race the expiry |
 | 2026-11-09 | Settlement retries replay the open authorization's operation id first, even after it expires; only a refusal of an expired one mints the next attempt | A finish the signer already submitted is found by its own id, never replaced |
 | 2026-11-09 | Worker `JEV_MODE` is `live` or `fixture`, default live; fixture decisions are labelled `fixture` and the boot line names the mode | Fixtures never pass for live Jev |
+| 2026-11-09 | Showcase scenario is now an import purchase, working like a digital letter of credit: the importer's payment is locked and released only when the invoice and bill of lading match the purchase order. See docs/product-brief.md | Marko wants a real, high-value business use case that judges and companies can test themselves. The engine is reused unchanged |
+| 2026-11-09 | "Deal" replaces "Job" in all user-facing wording | Marko's call; the user is a business buying goods |
+| 2026-11-09 | The primary user is the importer's treasury lead, and the supplier gets its own page | Only the paying side shows an agent spending within limits a person set (the track rule) |
+| 2026-11-09 | Pay in tUSD, a self-issued test dollar, through XRPL token escrow. This replaces "Pay in XRP" for deals | Realistic amounts, and the same trust-line mechanism RLUSD would use. A testnet trial proved the lock, the ledger refusing a wrong key, an early refund and a late release, the exact payout and the full refund |
+| 2026-11-09 | The token is renamed from tUSD to TESTUSD on the ledger, shown in the app as "$48,000 (test)" | TUSD is the ticker of TrueUSD, a real stablecoin |
+| 2026-11-09 | Add a Quote step: the supplier quotes, and the deal agent accepts or declines against the intent and the policy before the lock | The agent, not a person, makes the buying decision (the track rule). Follows the Intent, Policy, Quote, Settlement, Audit loop |
+| 2026-11-09 | Three side-by-side panels: Deals (Use), Control room (Control), Attack lab (Attack), plus a failure mode table | Covers the use, control and attack lenses Marko found on the Agentic Payments Hackathon Toronto page |
+| 2026-11-09 | Signer change approved: TESTUSD amounts, a daily cap and an open-deal limit | It keeps the same three operations and the same isolation |
+| 2026-11-09 | The user-facing name for the gate is "Surety Verify" (rules, then a decision model). The vendor is credited in the README, never claimed as ours, and never called deterministic | Marko's call. A repeat test scored the same input 0.72 to 0.76 across 5 runs |
+| 2026-11-09 | Paperclip is built as a native "Ask Surety" chat that can hire permanent agents with operator-approved budgets. The Paperclip runtime appears in the pitch only, or in a Thursday stretch demo | Same user experience without a second system on stage or AWM-plan billing. Hiring becomes a Control feature |
+| 2026-11-09 | QR audience attack page (tamper with documents, or talk to the agent), with a live feed, built after the core works | The strongest live moment. Needs a public URL, so it depends on the hosting decision |
 
 ## Open questions
 
@@ -48,6 +59,9 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | Jev calibration rerun: 28 labelled deliverables, one live call each | $0.000894 |
 | 2026-11-09 | Outcomes demo: 2 live Jev calls (paid, blocked); the rejected job never called Jev and the offline job hit a dead local endpoint | $0.000064 |
 | 2026-11-09 | Outcomes demo on testnet: 4 creates (12 drops each), 1 finish (423), 3 cancels (12 each); 3 test XRP principal came back, 1 test XRP paid to the seller | 507 drops = 0.000507 test XRP |
+| 2026-11-09 | tUSD token escrow trial on testnet: 4 throwaway faucet wallets, 12 transactions including 3 escrow finishes | Free faucet; under 0.002 test XRP in fees |
+| 2026-11-09 | TESTUSD rerun of the token escrow trial: same 12 transactions, 4 new throwaway wallets | Free faucet; under 0.002 test XRP in fees |
+| 2026-11-09 | Jev repeat test: the same input 5 times | $0.000170 |
 
 ## Coding-agent spend
 
@@ -59,4 +73,4 @@ Claude Code; not metered per task here.
 |---|---|---|
 | 2026-11-08 | Operator picks a display currency; live XRP to ZAR or USD beside drops and invoice amounts | Test XRP has no value, so any rand figure must be labelled simulated. XRPL's PriceOracle amendment is live on testnet, which could make an on-ledger rate source a nice XRPL touch |
 | 2026-11-08 | Hire new specialist agents on request through an agent workforce (Paperclip CEO agent) | After the three core outcomes. Decide what the hired agents run on (not the AWM plan) |
-| 2026-11-08 | Two UI modes: a simple user mode and an operator mode, one large 3D glass pane per section with depth or swipe transitions | Design pass in progress (docs/design/ui-direction.md) |
+| 2026-11-08 | Two UI modes: a simple user mode and an operator mode, one large 3D glass pane per section with depth or swipe transitions | Now three views: the business view, the supplier page and the Control room. The look leans to the Spatial Desk draft, which isn't locked yet |
