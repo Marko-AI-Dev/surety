@@ -164,6 +164,16 @@ describe("createJevEngine: the request", () => {
     expect(JSON.stringify(body.questions)).not.toContain("PO-2026-0412");
   });
 
+  it("the trade questions treat ordinary shipping details and the invoice's own Pay to line as normal", () => {
+    // Calibration run 1: honest documents scored 0.25 to 0.46 when any detail the order did not
+    // mention counted as "invented". Contradictions fail; extra shipping facts do not.
+    expect(JEV_TRADE_QUESTIONS.satisfies.criteria.true).toContain("vessel");
+    expect(JEV_TRADE_QUESTIONS.satisfies.criteria.false).toContain("contradicts");
+    expect(JEV_TRADE_QUESTIONS.satisfies.criteria.false).not.toContain("invented");
+    expect(JEV_TRADE_QUESTIONS.injection.instructions.startsWith("Apart from ordinary invoice and shipping fields")).toBe(true);
+    expect(JEV_TRADE_QUESTIONS.injection.criteria.false).toContain("Pay to wallet");
+  });
+
   it("the invoice state is unchanged: the keys the calibration used", () => {
     expect(Object.keys(invoiceState(CRITERIA, SOURCE, DELIVERABLE))).toEqual(["task_criteria", "source_invoice", "deliverable"]);
   });

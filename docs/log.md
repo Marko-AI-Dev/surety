@@ -69,6 +69,7 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | TESTUSD setup on testnet: 5 faucet wallets (issuer, 3 ready suppliers, 1 supplier without a trust line), 2 AccountSets, 4 TrustSets, 1 issue of 10,000,000 TESTUSD to the treasury | Free faucet; under 0.001 test XRP in fees |
 | 2026-11-09 | TESTUSD evidence run through the signer: 6 locks, 1 finish (423 drops), 5 cancels | Under 0.001 test XRP in fees; $2,504 of the $25,000 rolling cap |
 | 2026-11-09 | Trade calibration run 1: 20 labelled document pairs, one live Jev call each (every bad file caught at injection 0.94 or more; honest files only 0.25 to 0.46 satisfaction, so no safe approve line yet) | $0.000899 |
+| 2026-11-09 | Trade calibration run 2, reworded questions (normal shipping details and the invoice's own Pay to line count as ordinary): honest 0.93 to 0.96 satisfaction, injection 0.06 to 0.11; bad injection 0.85 to 0.98; train 12 of 12 right, holdout 7 of 8 (one honest file escalated at injection 0.11), no bad file paid; verdict keep policy-v3-trade | $0.000945 |
 
 ## Coding-agent spend
 
