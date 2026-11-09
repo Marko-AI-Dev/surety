@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CHAT_THRESHOLDS, DOCUMENTED_LIMITS, RECORDED_RUN_FILE } from "../data/evidence";
 import { ruleOf, shortAddress, usd, utcTime } from "../data/format";
+import { QR_MAX_BYTES, qrMatrix, qrPath } from "../data/qr";
 import { type MessageView, type RunView, negotiatorEyes } from "../data/timeline";
 import type { SourcingRecord } from "../data/types";
 import { Cards, CardMark, Chip, Meter, Panel, Waiting } from "./bits";
@@ -119,7 +120,48 @@ function Lanes({ view, eyes }: { view: RunView; eyes: "operator" | "negotiator" 
   );
 }
 
-export function Control({ record, view, replaying, seatUrl }: { record: SourcingRecord; view: RunView; replaying: boolean; seatUrl: string }) {
+// The supplier seat as a QR code. A phone cannot open "localhost", so the address is editable: put
+// in this machine's network address, or the hosted one. The code is drawn here, in the browser, by
+// src/data/qr.ts; nothing is sent to a QR service. Always dark on white, whatever the theme.
+function SeatQr() {
+  const [base, setBase] = useState(() => `${location.origin}${location.pathname}`);
+  const url = `${base.trim().replace(/#.*$/, "")}#/supplier`;
+  const local = /\/\/(localhost|127\.0\.0\.1|\[::1\])([:/]|$)/.test(url);
+  const code = useMemo(() => {
+    if (new TextEncoder().encode(url).length > QR_MAX_BYTES) return null;
+    return qrPath(qrMatrix(url));
+  }, [url]);
+  return (
+    <div className="seat-qr">
+      {code ? (
+        <svg className="qr" viewBox={`0 0 ${code.size} ${code.size}`} role="img" aria-label={`QR code for ${url}`} shapeRendering="crispEdges">
+          <rect width={code.size} height={code.size} fill="#ffffff" />
+          <path d={code.d} fill="#000000" />
+        </svg>
+      ) : (
+        <Waiting>That address is too long for the QR code. Use a shorter one.</Waiting>
+      )}
+      <div className="seat-qr-side">
+        <label className="field">
+          <span>Address phones should open</span>
+          <input type="url" value={base} onChange={(e) => setBase(e.target.value)} spellCheck={false} autoCapitalize="off" />
+        </label>
+        <p className="seat-url mono">{url}</p>
+        {local ? (
+          <p className="fine" data-tone="held">
+            A phone cannot reach "localhost". Replace it with this machine's network address (start the app with <code>pnpm web --host</code>) or the hosted
+            address.
+          </p>
+        ) : null}
+        <p className="fine">
+          Practice mode needs no backend and runs the bouncer's real code rules. <a href="#/supplier">Open the seat here</a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function Control({ record, view, replaying }: { record: SourcingRecord; view: RunView; replaying: boolean }) {
   const [eyes, setEyes] = useState<"operator" | "negotiator">("operator");
   const held = view.messages.filter((m) => m.kind === "from_supplier" && !m.delivered);
   const done = view.paid || view.refunded;
@@ -233,13 +275,13 @@ export function Control({ record, view, replaying, seatUrl }: { record: Sourcing
           )}
         </Panel>
 
-        <Panel title="Audit trail" note="Every step in order. Steps marked with a ring have a recorded order but no recorded time." wide>
+        <Panel title="Audit trail" note="Every step in order, with the time where the record has one." wide>
           <ol className="trail">
             {view.trail
               .filter((s) => s.kind !== "message" || s.title.includes("held"))
               .map((s) => (
-                <li key={s.id} data-kind={s.kind} data-timed={s.timed}>
-                  <time>{s.timed ? utcTime(s.at) : "untimed"}</time>
+                <li key={s.id} data-kind={s.kind}>
+                  <time>{s.timed ? utcTime(s.at) : ""}</time>
                   <span>
                     {s.title}
                     {s.detail ? <span className="trail-detail"> {s.detail}</span> : null}
@@ -283,11 +325,8 @@ export function Control({ record, view, replaying, seatUrl }: { record: Sourcing
           )}
         </Panel>
 
-        <Panel title="Let someone play a supplier" note="Open this on a phone. Practice mode needs no backend and runs the bouncer's real code rules.">
-          <p className="seat-url mono">{seatUrl}</p>
-          <p className="fine">
-            <a href="#/supplier">Open the supplier seat here</a>
-          </p>
+        <Panel title="Let someone play a supplier" note="Scan to open the supplier seat on a phone." wide>
+          <SeatQr />
         </Panel>
       </div>
     </div>

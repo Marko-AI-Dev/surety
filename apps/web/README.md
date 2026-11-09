@@ -12,12 +12,27 @@ pnpm web:build    # static site in apps/web/dist, deployable anywhere
 
 ## Views
 
-- **Buy** (`#/`): the business user's view. The brief, what the agent team is doing in plain sentences, the committed quotes, the Lead's decision with its reason, Surety Verify and the receipt.
-- **Control room** (`#/control`): the operator's view. The negotiation in one lane per supplier with the bouncer's verdict on every message, held messages in full, and a "Negotiator's eyes" switch that shows exactly what the Negotiator's inbox carried. Then limits, approved suppliers, suggestions, held messages, the audit trail, the run checks and costs.
+- **Buy** (`#/`): the business user's view and the demo's first screen. Under the money rail: the deal in nine steps, the negotiation as one conversation (the same line sent to every supplier is one bubble; a held message shows only that it was held), the quotes, the Lead's decision with its reason, Surety Verify and the receipt. No scores or rule names here; those are in the Control room.
+- **Control room** (`#/control`): the operator's view. The negotiation in one lane per supplier with the bouncer's verdict on every message, held messages in full, and a "Negotiator's eyes" switch that shows exactly what the Negotiator's inbox carried. Then limits, approved suppliers, suggestions, held messages, the audit trail, the run checks, costs, and a QR code for the supplier seat.
 - **Attack lab** (`#/attack`): every recorded attack, the layer that stopped it and the recorded reason, with counters counted from the evidence.
 - **Supplier seat** (`#/supplier`): built for a phone. Three modes: the recorded run from any supplier's side; practice, where the bouncer's real code rules (`packages/gate/src/chat-rules.ts`, imported, not copied) run in the browser with no backend; and live.
 
 The money rail (treasury, XRPL escrow, supplier) stays on screen in the Buy and Control room views.
+
+On a phone the four views are four tabs in one row, and the recorded-run and live switch is hidden: switching to live is a job for the operator's desk.
+
+## The supplier seat's QR code
+
+The Control room draws a QR code for the supplier seat. A phone cannot open `localhost`, so type the address phones should use (this machine's network address after `pnpm web --host`, or the hosted address) and the code follows. It is made in the browser by `src/data/qr.ts` (byte mode, level M, versions 1 to 9), with no dependency and no outside service. The encoder's output was checked once against an independent decoder for every version it supports.
+
+## The inspector's place
+
+A second key for the release is coming: an inspector, separate from the buyer's agents and from the supplier, attests the bill of lading. The API is not built, so the app only leaves room for it:
+
+- `SourcingRecord.inspection` (`src/data/types.ts`) is optional and provisional: `{ state: "pending" | "attested" | "refused", inspector?, blNumber?, note?, at? }`.
+- The Buy view's steps always include "Inspector", between the documents and Surety Verify. For a record without an inspection, such as the recorded run, it is dashed and reads "Second key. Not part of this run".
+- The supplier seat shows an "Inspector's attestation" card after the settlement form, and says the supplier cannot do that step itself.
+- When a record carries an inspection, the timeline gains an `inspected` step and both places show it waiting, attested or refused. This is tested with records made in the tests; nothing about it is in the recorded run.
 
 ## Modes
 
@@ -28,13 +43,13 @@ The money rail (treasury, XRPL escrow, supplier) stays on screen in the Buy and 
 ## Real and reconstructed
 
 - **Real:** every message and its time, every bouncer score and card, the quotes, the Lead's reason, the Verify scores, the amounts, the treasury balances, the ledger indexes and the transaction links. The Attack lab reads the deals and signer evidence files the same way.
-- **Reconstructed order, not time:** the record does not time the invites, the quote commits, the decision, the lock, the documents, Verify or the payout. They are replayed in their true order, a few seconds apart, and each is marked "order recorded, exact time not recorded" (a ring in the audit trail, a hollow tick on the scrubber).
+- **Reconstructed order, not time:** the record does not time the invites, the quote commits, the decision, the lock, the documents, Verify or the payout. They are replayed in their true order, a few seconds apart. The app does not invent a time for them: the replay bar shows the clock for timed steps and "Step 31 of 34" for the rest, and the audit trail leaves their time blank.
 - **From the docs, not the record:** the limits shown in replay ($100,000 per deal, $500,000 per 24 hours, 10 open) are policy v5 from `docs/log.md`. The 12 trade rules are listed as passed because the decision model is asked only when all of them pass; the record keeps the outcome, not each rule.
 
 ## Design
 
-- **A treasury desk, not a crypto dashboard.** Solid surfaces, IBM Plex Sans, large tabular figures for money. No glass, glow or 3D: on a projector they cost legibility and add nothing a judge can check.
+- **A treasury desk, not a crypto dashboard.** A navy bar, white panels on cool grey, light blue for the escrow, IBM Plex Sans, large tabular figures for money. No glass, glow or 3D: on a projector they cost legibility and add nothing a judge can check.
 - **Four colours with fixed meanings.** Blue is money in motion, green is a validated ledger result or a pass, amber is held, red is stopped. Nothing else is coloured.
-- **Dark by default, light through the same tokens.** It follows the system setting and has a switch, because projectors wash out dark screens.
+- **Light by default, dark through the same tokens.** Light holds up on a projector. The "Dark" button in the bar switches, and the choice is remembered on that device.
 - **Motion only where money or a verdict changes:** the balances count, the rail's legs draw, a message appears. Reduced motion turns all of it off.
 - **Same run, different eyes.** The Buy view, the Control room, the Negotiator's eyes and the supplier seat are four readings of one record, which is how the claim "the Negotiator never saw it" becomes something you can look at.

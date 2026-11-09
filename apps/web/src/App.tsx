@@ -10,11 +10,12 @@ import { type SeatMode, Supplier } from "./views/Supplier";
 import { Waiting } from "./views/bits";
 
 type Route = "buy" | "control" | "attack" | "supplier";
-const ROUTES: { id: Route; hash: string; label: string }[] = [
-  { id: "buy", hash: "#/", label: "Buy" },
-  { id: "control", hash: "#/control", label: "Control room" },
-  { id: "attack", hash: "#/attack", label: "Attack lab" },
-  { id: "supplier", hash: "#/supplier", label: "Supplier seat" },
+// `short` is the label on a phone, where the four tabs share one row and never scroll.
+const ROUTES: { id: Route; hash: string; label: string; short: string }[] = [
+  { id: "buy", hash: "#/", label: "Buy", short: "Buy" },
+  { id: "control", hash: "#/control", label: "Control room", short: "Control" },
+  { id: "attack", hash: "#/attack", label: "Attack lab", short: "Attacks" },
+  { id: "supplier", hash: "#/supplier", label: "Supplier seat", short: "Supplier" },
 ];
 
 function parseHash(hash: string): { route: Route; token: string | null } {
@@ -23,7 +24,16 @@ function parseHash(hash: string): { route: Route; token: string | null } {
   return { route, token: new URLSearchParams(query).get("t") };
 }
 
-type Theme = "system" | "light" | "dark";
+// Light is the default whatever the device prefers; dark is a choice, remembered on this device.
+type Theme = "light" | "dark";
+const THEME_KEY = "surety.theme";
+function storedTheme(): Theme {
+  try {
+    return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
 
 export function App() {
   const [{ route }, setLocation] = useState(() => parseHash(location.hash));
@@ -31,7 +41,7 @@ export function App() {
   // bar at once, so it is not left in history, and it is never written to storage.
   const [token, setToken] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("replay");
-  const [theme, setTheme] = useState<Theme>("system");
+  const [theme, setTheme] = useState<Theme>(storedTheme);
   const [seatMode, setSeatMode] = useState<SeatMode>("replay");
   const run = useRun(mode);
 
@@ -54,13 +64,16 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (theme === "system") delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // Private windows can refuse storage; the choice then lasts for this visit.
+    }
   }, [theme]);
 
   const { record, view, replay } = run;
   const current = replay && view ? (view.trail[view.trail.length - 1] ?? null) : null;
-  const seatUrl = `${location.origin}${location.pathname}#/supplier`;
   const seat = route === "supplier";
 
   return (
@@ -69,11 +82,15 @@ export function App() {
         <a className="brand" href="#/">
           Surety
         </a>
-        <p className="testnet">XRPL Testnet. Test dollars with no value.</p>
+        <p className="testnet">
+          <span className="nav-full">XRPL Testnet. Test dollars with no value.</span>
+          <span className="nav-short">Testnet, no real money</span>
+        </p>
         <nav aria-label="Views">
           {ROUTES.map((r) => (
             <a key={r.id} href={r.hash} aria-current={route === r.id ? "page" : undefined}>
-              {r.label}
+              <span className="nav-full">{r.label}</span>
+              <span className="nav-short">{r.short}</span>
             </a>
           ))}
         </nav>
@@ -89,18 +106,17 @@ export function App() {
           <button
             type="button"
             className="btn"
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : t === "dark" ? "system" : "light"))}
-            aria-label={`Theme: ${theme}. Change theme`}
+            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+            aria-pressed={theme === "dark"}
           >
-            {theme === "system" ? "Theme: auto" : theme === "light" ? "Theme: light" : "Theme: dark"}
+            Dark
           </button>
         </div>
       </header>
 
       {mode === "replay" && !seat && route !== "attack" ? (
         <p className="source-banner">
-          Replaying a real testnet run from 9 Nov 2026, 18:50 to 18:56 UTC. Every message, score, amount and transaction is from{" "}
-          <span className="mono">{RECORDED_RUN_FILE}</span>. Nothing on this page is live.
+          Replay of a real XRPL Testnet run, 9 Nov 2026. Every message, amount and transaction comes from <span className="mono">{RECORDED_RUN_FILE}</span>.
         </p>
       ) : null}
       {mode === "live" && run.live ? (
@@ -123,7 +139,7 @@ export function App() {
         ) : !record || !view ? (
           <Waiting>{mode === "live" ? "No sourcing to show yet. When the Lead opens one it appears here." : "Loading the recorded run."}</Waiting>
         ) : route === "control" ? (
-          <Control record={record} view={view} replaying={mode === "replay"} seatUrl={seatUrl} />
+          <Control record={record} view={view} replaying={mode === "replay"} />
         ) : (
           <Business record={record} view={view} replaying={mode === "replay"} />
         )}

@@ -8,6 +8,7 @@ export function ReplayBar({ replay, current }: { replay: ReplayControls; current
   const span = replay.end - replay.start;
   const pct = (at: number) => `${((at - replay.start) / span) * 100}%`;
   const atEnd = replay.t >= replay.end;
+  const done = replay.steps.filter((s) => s.at <= replay.t).length;
   return (
     <footer className="replay" aria-label="Replay controls">
       <div className="replay-buttons">
@@ -36,7 +37,6 @@ export function ReplayBar({ replay, current }: { replay: ReplayControls; current
               key={s.id}
               className="tick"
               data-kind={s.kind === "message" && s.title.includes("held") ? "held" : (TICK_KIND[s.kind] ?? "plain")}
-              data-timed={s.timed}
               style={{ left: pct(s.at) }}
             />
           ))}
@@ -56,11 +56,9 @@ export function ReplayBar({ replay, current }: { replay: ReplayControls; current
       </div>
 
       <p className="replay-now">
-        <span className="clock">{utcTime(replay.t)} UTC</span>
-        <span className="replay-step">
-          {current ? current.title : "The sourcing is about to open"}
-          {current && !current.timed ? <em className="untimed"> Order recorded, exact time not recorded.</em> : null}
-        </span>
+        {/* The clock is shown only for steps the record timed; the rest are in order, with no time to show. */}
+        <span className="clock">{!current || current.timed ? `${utcTime(replay.t)} UTC` : `Step ${done} of ${replay.steps.length}`}</span>
+        <span className="replay-step">{current ? current.title : "The sourcing is about to open"}</span>
       </p>
     </footer>
   );

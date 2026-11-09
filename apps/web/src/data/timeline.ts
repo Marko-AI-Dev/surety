@@ -18,6 +18,7 @@ export type StepKind =
   | "decision"
   | "locked"
   | "documents"
+  | "inspected"
   | "verified"
   | "paid"
   | "refunded";
@@ -36,7 +37,7 @@ export interface Step {
 
 const SECOND = 1000;
 // Spacing, in seconds, for steps the record orders but does not time.
-const GAP = { invite: 2, quote: 4, decision: 12, lock: 10, documents: 8, verify: 7, settle: 7 };
+const GAP = { invite: 2, quote: 4, decision: 12, lock: 10, documents: 8, inspect: 7, verify: 7, settle: 7 };
 
 const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 const nameOf = (r: SourcingRecord, address: string) => {
@@ -169,6 +170,18 @@ export function buildTimeline(r: SourcingRecord): Step[] {
         supplier: accepted.supplier.address,
         title: `${who} confirmed its invoice and shipping details`,
       });
+      if (r.inspection && r.inspection.state !== "pending") {
+        const at = r.inspection.at ? Date.parse(r.inspection.at) : Number.NaN;
+        cursor = Number.isFinite(at) ? Math.max(cursor, at) : cursor + GAP.inspect * SECOND;
+        steps.push({
+          id: "inspected",
+          at: cursor,
+          timed: Number.isFinite(at),
+          kind: "inspected",
+          title: r.inspection.state === "attested" ? "The inspector attested the bill of lading" : "The inspector refused the bill of lading",
+          detail: r.inspection.inspector ?? undefined,
+        });
+      }
       cursor += GAP.verify * SECOND;
       steps.push({
         id: "verified",
@@ -241,6 +254,8 @@ export interface RunView {
   accepted: RecordDeal | null;
   locked: boolean;
   documents: boolean;
+  // "none": this record has no second key. Otherwise where the inspector's attestation stands now.
+  inspection: "none" | "waiting" | "attested" | "refused";
   verified: boolean;
   paid: boolean;
   refunded: boolean;
@@ -316,6 +331,7 @@ export function viewAt(r: SourcingRecord, steps: Step[], t: number): RunView {
     accepted,
     locked,
     documents: has("documents"),
+    inspection: !r.inspection ? "none" : has("inspected") && r.inspection.state !== "pending" ? r.inspection.state : "waiting",
     verified: has("verified"),
     paid,
     refunded,

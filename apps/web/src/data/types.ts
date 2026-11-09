@@ -73,6 +73,18 @@ export interface PolicyView {
   approvedSuppliers: { address: string; name: string; onHold: boolean }[];
 }
 
+// The second key for a release: an inspector, a role separate from the buyer's agents and from the
+// supplier, attests the bill of lading before the payment can be released. The API for it is not
+// built yet, so this shape is provisional and every field is optional. A record without it (such as
+// the recorded run of 9 Nov) was released on the supplier's documents alone.
+export interface Inspection {
+  state: "pending" | "attested" | "refused";
+  inspector?: string | null;
+  blNumber?: string | null;
+  note?: string | null;
+  at?: string | null;
+}
+
 export interface SourcingRecord {
   network: string;
   recordedAt?: string;
@@ -103,6 +115,7 @@ export interface SourcingRecord {
   costUsd?: { bouncer: number; verify: number } | null;
   checks?: Record<string, boolean> | null;
   policy?: PolicyView | null;
+  inspection?: Inspection | null;
   events?: { at: string; actor: string; from: string | null; to: string; reasonCodes: string[] }[] | null;
 }
 

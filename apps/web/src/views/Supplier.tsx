@@ -113,6 +113,22 @@ function ReplaySeat({ record, view }: { record: SourcingRecord; view: RunView })
           </p>
         </section>
       ) : null}
+      {mine && view.locked ? (
+        <section className="seat-card" data-tone={view.inspection === "attested" ? "ok" : view.inspection === "refused" ? "stop" : undefined} data-off={view.inspection === "none"}>
+          <h3>Inspector's attestation</h3>
+          <p className="fine">
+            {view.inspection === "none"
+              ? "Coming: an independent inspector attests your bill of lading before the payment is released. This run was released on your documents alone."
+              : view.inspection === "attested"
+                ? "The inspector attested your bill of lading. That is the second key for the release."
+                : view.inspection === "refused"
+                  ? "The inspector refused your bill of lading. The payment will not be released and returns to the buyer at the deadline."
+                  : view.documents
+                    ? "Waiting for the inspector to attest your bill of lading. You cannot do this step yourself."
+                    : "After you confirm your documents, an independent inspector attests your bill of lading. You cannot do this step yourself."}
+          </p>
+        </section>
+      ) : null}
     </>
   );
 }
