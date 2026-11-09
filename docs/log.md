@@ -40,6 +40,9 @@ Decisions, open questions and spend. Runtime spend (what Surety itself costs per
 | 2026-11-09 | The user-facing name for the gate is "Surety Verify" (rules, then a decision model). The vendor is credited in the README, never claimed as ours, and never called deterministic | Marko's call. A repeat test scored the same input 0.72 to 0.76 across 5 runs |
 | 2026-11-09 | Paperclip is built as a native "Ask Surety" chat that can hire permanent agents with operator-approved budgets. The Paperclip runtime appears in the pitch only, or in a Thursday stretch demo | Same user experience without a second system on stage or AWM-plan billing. Hiring becomes a Control feature |
 | 2026-11-09 | QR audience attack page (tamper with documents, or talk to the agent), with a live feed, built after the core works | The strongest live moment. Needs a public URL, so it depends on the hosting decision |
+| 2026-11-09 | Build with small TESTUSD limits ($2,500 per deal, $25,000 per rolling 24 hours, 5 open deals), and raise them to demo values ($100,000 and $500,000) on Thursday | Marko: keep test values low while building. The amounts cost nothing either way, because TESTUSD is self-issued |
+| 2026-11-09 | Limits change instantly through an operator-only signer operation with its own secret, which the worker and agents never hold, and every change is kept in a history file | Marko chose live changes over restart-to-apply. The demo shows the operator lowering a cap and the agent's next deal being refused. The signer becomes three money operations plus one policy update |
+| 2026-11-09 | In Phase 4b, Surety Verify re-asks the decision model when a score lands next to a threshold and uses the middle of three answers | Jev's scores move a few hundredths between identical calls (OpenRouter and TypeSafe document this). Only borderline cases cost the two extra calls |
 
 ## Open questions
 
