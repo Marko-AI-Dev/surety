@@ -9,7 +9,26 @@ export {
   type JevEngineOptions,
 } from "./jev-engine";
 export { createFixtureEngine, type FixtureScores } from "./fixture-engine";
-export { CURRENT_POLICY, POLICIES, POLICY_V1, POLICY_V2, decide, policyFor, type Decision, type Outcome, type Policy } from "./policy";
+export {
+  CURRENT_POLICY,
+  POLICIES,
+  POLICY_V1,
+  POLICY_V2,
+  decide,
+  policyFor,
+  type Decision,
+  type Outcome,
+  type Policy,
+  type RulesOutcome,
+} from "./policy";
+export {
+  TRADE_RULE_IDS,
+  runTradeRules,
+  type TradeRuleId,
+  type TradeRuleResult,
+  type TradeRulesInput,
+  type TradeRulesReport,
+} from "./trade-rules";
 export { AUTHORIZATION_TTL_MS, mintAuthorization, type MintInput } from "./authorize";
 export {
   formatDocUsd,

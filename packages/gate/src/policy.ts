@@ -1,5 +1,4 @@
 import type { EvaluationResult } from "./engine";
-import type { RulesReport } from "./rules";
 
 // Thresholds live in one frozen, versioned object. A change is a new version, never an edit: every
 // decision records the version it was made under, and a job freezes its version at creation.
@@ -53,9 +52,15 @@ export interface Decision {
 
 const isProbability = (v: number | null): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1;
 
+// Any rule report: the invoice job's and the deal's trade rules share this shape.
+export interface RulesOutcome {
+  passed: boolean;
+  results: readonly { id: string; status: string }[];
+}
+
 // Rules first and final; then the judge's scores against the policy. Nothing but two valid scores
 // inside the approve band can approve.
-export function decide(rules: RulesReport, evaluation: EvaluationResult | null, policy: Policy): Decision {
+export function decide(rules: RulesOutcome, evaluation: EvaluationResult | null, policy: Policy): Decision {
   const failedRules = rules.results.filter((r) => r.status === "fail");
   if (!rules.passed || failedRules.length > 0) {
     if (evaluation !== null) {
