@@ -41,6 +41,8 @@ export {
 export {
   TRADE_RULE_IDS,
   runTradeRules,
+  INSPECTION_RULE_ID,
+  normalizeBlNumber,
   type TradeRuleId,
   type TradeRuleResult,
   type TradeRulesInput,

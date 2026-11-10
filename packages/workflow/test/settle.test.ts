@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { type SignedAuthorization, bindingHash, deliverableHash } from "@surety/contracts";
 import {
   type Job,
+  type InspectionRepo,
   type JobsRepo,
   createMemoryRepo,
   deliverJob,
@@ -18,7 +19,7 @@ const CANCEL_AFTER = CLOSE + WINDOW;
 const CUTOFF = CANCEL_AFTER - 30;
 const T0 = new Date("2026-11-09T10:00:00.000Z");
 
-let repo: JobsRepo;
+let repo: JobsRepo & InspectionRepo;
 let signer: FakeSigner;
 let closeTime: number;
 let now: Date;

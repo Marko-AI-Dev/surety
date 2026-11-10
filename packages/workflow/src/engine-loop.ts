@@ -2,12 +2,13 @@ import type { DecisionEngine, DocumentReader, Policy } from "@surety/gate";
 import { type SignerClient, SignerClientError } from "@surety/signer-client";
 import { evaluateJob } from "./evaluate";
 import { type SweepReport, runExpirySweep } from "./expiry";
+import type { InspectionRepo } from "./inspection-repo";
 import { AuthorizationConflict, type Job, type JobsRepo, TransitionConflict } from "./repo";
 import { settleJob } from "./settle";
 import { TransitionError } from "./states";
 
 export interface EngineDeps {
-  repo: JobsRepo;
+  repo: JobsRepo & Pick<InspectionRepo, "getAttestation">;
   signer: SignerClient;
   engine: DecisionEngine;
   gateSecret: string;
@@ -20,6 +21,8 @@ export interface EngineDeps {
 
 export interface EngineReport {
   evaluated: string[];
+  // Delivered deals still waiting for the inspector's attestation, left DELIVERED and unjudged.
+  awaitingInspection: string[];
   paid: string[];
   pending: string[];
   sweep: SweepReport;
@@ -35,7 +38,7 @@ const lostRace = (e: unknown) =>
 // work. Every step reads its state from the database, so a restarted process carries on.
 export async function runEngineOnce(deps: EngineDeps): Promise<EngineReport> {
   const log = deps.log ?? (() => {});
-  const report: Omit<EngineReport, "sweep"> = { evaluated: [], paid: [], pending: [] };
+  const report: Omit<EngineReport, "sweep"> = { evaluated: [], awaitingInspection: [], paid: [], pending: [] };
 
   const each = async (jobs: Job[], step: (job: Job) => Promise<Job>, onDone: (before: Job, after: Job) => void) => {
     for (const job of jobs) {
@@ -58,6 +61,10 @@ export async function runEngineOnce(deps: EngineDeps): Promise<EngineReport> {
     await deps.repo.listJobsInStates(["DELIVERED", "EVALUATING"]),
     (job) => evaluateJob(deps, job.id),
     (job, after) => {
+      if (after.state === "DELIVERED") {
+        report.awaitingInspection.push(job.id);
+        return;
+      }
       report.evaluated.push(job.id);
       log(`evaluated ${job.ref} (${job.id}): ${after.state}`);
     },

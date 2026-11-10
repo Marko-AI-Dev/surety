@@ -3,6 +3,7 @@ import type { SourcingBrief } from "@surety/contracts";
 import type { DecisionEngine, EvaluationResult } from "@surety/gate";
 import {
   type DealsRepo,
+  type InspectionRepo,
   type JobsRepo,
   NotInvited,
   SourcingClosed,
@@ -49,7 +50,7 @@ function fixedEngine(sat: number, inj: number): DecisionEngine {
   };
 }
 
-let repo: JobsRepo & DealsRepo & SourcingRepo;
+let repo: JobsRepo & DealsRepo & SourcingRepo & InspectionRepo;
 let signer: FakeSigner;
 let deps: SourcingDeps;
 const NAMES: Record<string, string> = { [SUPPLIER]: SUPPLIER_NAME, [SECOND]: "Sunpeak Energy" };
@@ -189,7 +190,16 @@ describe("selection and the lead's decision", () => {
 });
 
 describe("end to end in memory", () => {
-  it("open, invite, chat, commit, select, accept, settle, runEngineOnce, PAID", async () => {
+  it("every job a sourcing deal creates freezes inspection: \"required\"", async () => {
+    const s = await openSourcing(deps, brief());
+    await inviteSupplier(deps, s.id, SUPPLIER);
+    await commitQuote(deps, s.id, SUPPLIER, form(11_400));
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    const { job } = await leadDecision(deps, deal.id, accept, "lead");
+    expect(job?.criteria).toMatchObject({ kind: "trade", inspection: "required" });
+  });
+
+  it("open, invite, chat, commit, select, accept, settle, wait for the inspector, attest, runEngineOnce, PAID", async () => {
     const s = await openSourcing(deps, brief());
     await inviteSupplier(deps, s.id, SUPPLIER);
     await postNegotiatorMessage(deps, s.id, SUPPLIER, "What is your best price for 400 panels?");
@@ -202,7 +212,10 @@ describe("end to end in memory", () => {
     expect(draft.fixed.invoice.totalCents).toBe(4_560_000);
     const delivered = await submitSettlement(deps, deal.id, SUPPLIER, { ...settlement, invoiceNumber: draft.suggested.invoiceNumber });
     expect(delivered.state).toBe("DELIVERED");
-    const report = await runEngineOnce({ repo, signer, engine: fixedEngine(0.95, 0.02), gateSecret: GATE_SECRET, ledgerCloseTime: async () => CLOSE + 10 });
+    const engineDeps = { repo, signer, engine: fixedEngine(0.95, 0.02), gateSecret: GATE_SECRET, ledgerCloseTime: async () => CLOSE + 10 };
+    expect((await runEngineOnce(engineDeps)).awaitingInspection).toEqual([job.id]);
+    await repo.addAttestation({ dealId: deal.id, jobId: job.id, inspector: "Port inspector (demo)", blNumber: "SZXDUR-55120", outcome: "attested", note: "" });
+    const report = await runEngineOnce(engineDeps);
     expect(report.paid).toEqual([job.id]);
     expect((await repo.getJob(job.id))?.state).toBe("PAID");
   });

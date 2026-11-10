@@ -103,6 +103,7 @@ export {
   POLICY_ACTOR,
   SUPPLIER_ACTOR,
   TRADE_CRITERIA,
+  TRADE_CRITERIA_INSPECTED,
   decideQuote,
   openDeal,
   ruleFollowingDecider,

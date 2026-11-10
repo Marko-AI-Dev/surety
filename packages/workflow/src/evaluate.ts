@@ -35,6 +35,7 @@ import {
   TransitionConflict,
   type TransitionEvent,
 } from "./repo";
+import type { Attestation, InspectionRepo } from "./inspection-repo";
 import type { JobState } from "./states";
 import { TransitionError } from "./states";
 
@@ -48,7 +49,8 @@ export const MAX_EVALUATION_RESUMES = 3;
 export const DECISION_CUTOFF_SECONDS = 30;
 
 export interface EvaluateDeps {
-  repo: JobsRepo;
+  // getAttestation reads the inspector's second key for deals that froze inspection: "required".
+  repo: JobsRepo & Pick<InspectionRepo, "getAttestation">;
   engine: DecisionEngine;
   // Validated ledger close time in Ripple seconds. Never the laptop clock.
   ledgerCloseTime: () => Promise<number>;
@@ -71,16 +73,24 @@ function allowedCurrencies(criteria: unknown): string[] {
   return Array.isArray(list) ? list.filter((c): c is string => typeof c === "string") : [];
 }
 
-type TradeTerms = { intent: DealIntent; quote: SupplierQuote };
+type TradeTerms = { intent: DealIntent; quote: SupplierQuote; inspection: "required" | "none" };
 
-// A deal's escrow job freezes { kind: "trade", intent, quote }. Anything else is an invoice job. A
-// trade job whose frozen terms do not parse is held, never judged against guesses.
+// A deal's escrow job freezes { kind: "trade", intent, quote }, plus inspection: "required" for a
+// sourcing deal (Phase 4d). Anything else is an invoice job. A trade job whose frozen terms do not
+// parse, or that names any other inspection value, is held, never judged against guesses.
 function tradeTermsOf(criteria: unknown): TradeTerms | "invalid" | null {
-  const c = criteria as { kind?: unknown; intent?: unknown; quote?: unknown } | null;
+  const c = criteria as { kind?: unknown; intent?: unknown; quote?: unknown; inspection?: unknown } | null;
   if (c?.kind !== "trade") return null;
   const intent = DealIntentSchema.safeParse(c.intent);
   const quote = SupplierQuoteSchema.safeParse(c.quote);
-  return intent.success && quote.success ? { intent: intent.data, quote: quote.data } : "invalid";
+  const inspection = c.inspection === undefined ? "none" : c.inspection === "required" ? "required" : null;
+  return intent.success && quote.success && inspection ? { intent: intent.data, quote: quote.data, inspection } : "invalid";
+}
+
+// What the decision records about the second key: absent for a 4b deal, null when none was found.
+function inspectionRecord(terms: TradeTerms, attestation: Attestation | null) {
+  if (terms.inspection === "none") return {};
+  return { inspection: attestation ? { attestationId: attestation.id, outcome: attestation.outcome, blNumber: attestation.blNumber } : null };
 }
 
 type Ask = Omit<EvaluationInput, "questionSet" | "state">;
@@ -120,23 +130,32 @@ async function judgeTrade(
   engine: DecisionEngine,
   job: Job,
   terms: TradeTerms,
+  attestation: Attestation | null,
   escrow: EscrowRow,
   policy: Policy,
   ask: Ask,
 ): Promise<Judgement> {
-  const input = { intent: terms.intent, quote: terms.quote, documents: job.deliverable, lock: { destination: escrow.destination, amount: escrow.amount } };
+  const input = {
+    intent: terms.intent,
+    quote: terms.quote,
+    documents: job.deliverable,
+    lock: { destination: escrow.destination, amount: escrow.amount },
+    // The inspector's note is display text: only the outcome and the number reach the rules, never Jev.
+    ...(terms.inspection === "required" ? { inspection: { attestation: attestation ? { outcome: attestation.outcome, blNumber: attestation.blNumber } : null } } : {}),
+  };
   const readerInfo = { kind: reader.kind, model: reader.model };
+  const inspected = inspectionRecord(terms, attestation);
   const first = runTradeRules({ ...input, readerFields: null });
   const readable = first.results.every((r) => (r.id === "size" || r.id === "parse" ? r.status === "pass" : true));
   const docs = TradeDocumentsSchema.safeParse(job.deliverable);
   if (!readable || !docs.success) {
-    return { rulesRecord: { passed: first.passed, results: first.results, reader: readerInfo }, evaluation: null, verdict: decide(first, null, policy) };
+    return { rulesRecord: { passed: first.passed, results: first.results, reader: readerInfo, ...inspected }, evaluation: null, verdict: decide(first, null, policy) };
   }
 
   const read = await askReader(reader, docs.data);
   if (read.status === "unavailable") {
     return {
-      rulesRecord: { passed: false, results: [], reader: { ...readerInfo, status: "unavailable", reason: read.reason } },
+      rulesRecord: { passed: false, results: [], reader: { ...readerInfo, status: "unavailable", reason: read.reason }, ...inspected },
       evaluation: null,
       verdict: { outcome: "UNAVAILABLE", reasonCodes: [`reader_${read.reason}`] },
     };
@@ -146,7 +165,7 @@ async function judgeTrade(
   if (rules.passed) {
     evaluation = await askEngine(engine, { ...ask, questionSet: "trade", state: tradeState(job.sourceText, terms.quote, docs.data) });
   }
-  return { rulesRecord: { passed: rules.passed, results: rules.results, reader: readerInfo }, evaluation, verdict: decide(rules, evaluation, policy) };
+  return { rulesRecord: { passed: rules.passed, results: rules.results, reader: readerInfo, ...inspected }, evaluation, verdict: decide(rules, evaluation, policy) };
 }
 
 // An engine is built never to throw; if one does, that is an outage, not a verdict.
@@ -232,6 +251,12 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
   // Read ledger time before claiming the job, so an unreachable ledger leaves it DELIVERED.
   const closeTime = await deps.ledgerCloseTime();
   const cutoff = escrow.cancelAfter - DECISION_CUTOFF_SECONDS;
+  const trade = tradeTermsOf(job.criteria);
+  const needsInspection = trade !== null && trade !== "invalid" && trade.inspection === "required";
+  const attestation = needsInspection ? await repo.getAttestation(job.id) : null;
+  // The second key: a deal that needs the inspector's attestation and has none waits, unjudged and with
+  // no model call, until it arrives. At the cutoff it is held instead, and refunds at the deadline.
+  if (job.state === "DELIVERED" && needsInspection && attestation === null && closeTime < cutoff) return job;
   if (job.state === "DELIVERED") {
     try {
       await repo.transition(job.id, "DELIVERED", "EVALUATING", {
@@ -252,8 +277,7 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
       detail: { closeTime, cutoff, policyVersion: job.policyVersion, ...(resumes > 0 ? { resumes } : {}) },
     });
 
-  if (closeTime >= cutoff) return hold("decision_window_closed");
-  const trade = tradeTermsOf(job.criteria);
+  if (closeTime >= cutoff) return hold(needsInspection && attestation === null ? "inspection_missing" : "decision_window_closed");
   // A deal always judges under the policy it froze at acceptance; deps.policy overrides invoice jobs only.
   const policy = trade ? policyFor(job.policyVersion) : (deps.policy ?? policyFor(job.policyVersion));
   if (!policy) return hold("unknown_policy");
@@ -263,7 +287,7 @@ export async function evaluateJob(deps: EvaluateDeps, jobId: string): Promise<Jo
   const ask = { requestId, deliverableHash, jobSnapshotHash: job.snapshotHash, policyVersion: policy.version, secondsRemaining: cutoff - closeTime };
   const engine = policy.reaskBand ? withReask(deps.engine, policy.reaskBand) : deps.engine;
   const { rulesRecord, evaluation, verdict } = trade
-    ? await judgeTrade(deps.reader ?? parserReader, engine, job, trade, escrow, policy, ask)
+    ? await judgeTrade(deps.reader ?? parserReader, engine, job, trade, attestation, escrow, policy, ask)
     : await judgeInvoice(engine, job, policy, ask);
 
   let decision: Decision;

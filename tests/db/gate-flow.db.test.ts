@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { deliverableHash } from "@surety/contracts";
 import {
   type Job,
+  type InspectionRepo,
   type JobsRepo,
   createPgRepo,
   deliverJob,
@@ -26,7 +27,7 @@ const CLOSE = 800_000_000;
 const AFTER_EXPIRY = CLOSE + WINDOW + 1;
 
 let admin: Sql;
-let repo: JobsRepo;
+let repo: JobsRepo & InspectionRepo;
 let signer: FakeSigner;
 let closeTime: number;
 
@@ -97,7 +98,7 @@ describe("gate flow on Postgres", () => {
       const a = createPgRepo(databaseUrl());
       const b = createPgRepo(databaseUrl());
       try {
-        const judge = (r: JobsRepo) =>
+        const judge = (r: JobsRepo & InspectionRepo) =>
           evaluateJob({ repo: r, engine: demoEngine(), ledgerCloseTime: async () => closeTime }, job.id);
         await Promise.all([judge(a), judge(b)]);
       } finally {

@@ -10,12 +10,14 @@ import { NotInvited, SourcingClosed, type SourcingDeps, SourcingNotFound, Sourci
 // brief (the Policy step) with that supplier's committed quote, and the lead's accept or decline runs
 // through the 4b deal loop, whose checks overrule an accept that breaks the brief or the live policy.
 
-// openDeal and submitQuote take DealDeps, whose decider they never use.
+// openDeal and submitQuote take DealDeps, whose decider they never use. Every sourcing deal needs the
+// inspector's second key before release.
 const dealDeps = (deps: SourcingDeps): DealDeps => ({
   repo: deps.repo,
   signer: deps.signer,
   supplierLine: deps.supplierLine,
   decider: ruleFollowingDecider,
+  inspection: "required",
 });
 
 // The lead's answer, carried into decideQuote as an agent decision.

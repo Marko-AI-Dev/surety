@@ -3,6 +3,7 @@ import { deliverableHash } from "@surety/contracts";
 import { type DecisionEngine, POLICY_V1 } from "@surety/gate";
 import {
   type Job,
+  type InspectionRepo,
   type JobsRepo,
   TransitionError,
   createMemoryRepo,
@@ -28,7 +29,7 @@ const CLOSE = 800_000_000;
 const CANCEL_AFTER = CLOSE + WINDOW;
 const CUTOFF = CANCEL_AFTER - 30;
 
-let repo: JobsRepo;
+let repo: JobsRepo & InspectionRepo;
 let signer: FakeSigner;
 let closeTime: number;
 
@@ -204,7 +205,7 @@ describe("evaluateJob", () => {
 
   describe("two evaluators racing on one job", () => {
     // Counts decision rows actually written, so a losing writer is not counted.
-    function recording(): { repo: JobsRepo; rows: () => number } {
+    function recording(): { repo: JobsRepo & InspectionRepo; rows: () => number } {
       let rows = 0;
       return {
         repo: {
