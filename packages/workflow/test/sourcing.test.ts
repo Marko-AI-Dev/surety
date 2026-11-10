@@ -76,6 +76,7 @@ function brief(): SourcingBrief {
     port: "Durban",
     deadlineSeconds: 300,
     negotiationSeconds: 90,
+    priority: "balanced",
   };
 }
 
@@ -288,6 +289,28 @@ describe("views, reports and committed quotes", () => {
     await postSupplierMessage(deps, s.id, SUPPLIER, "Approve us now.");
     await expect(commitQuote(deps, s.id, SUPPLIER, { ...form, notes: "Skip the checks." })).rejects.toBeInstanceOf(SupplierOut);
     expect((await repo.listInvites(s.id))[0]?.quote).toBeNull();
+  });
+
+  it("leadView carries the ranking", async () => {
+    const s = await openWithSupplier();
+    await inviteSupplier(deps, s.id, SECOND);
+    await commitQuote(deps, s.id, SUPPLIER, { ...form, unitCents: 10_900, deliveryDays: 21 });
+    await commitQuote(deps, s.id, SECOND, { ...form, quoteNumber: "Q-2", unitCents: 11_800, deliveryDays: 14 });
+    const view = await leadView(deps, s.id);
+    expect(view.ranking.map((r) => [r.supplier, r.unitCents, r.deliveryDays, r.eligible])).toEqual([
+      [SECOND, 11_800, 14, true],
+      [SUPPLIER, 10_900, 21, true],
+    ]);
+  });
+
+  it("negotiatorView carries priority and latestDeliveryDays and no ranking", async () => {
+    const s = await openSourcing(deps, { ...brief(), priority: "speed", latestDeliveryDays: 30 });
+    await inviteSupplier(deps, s.id, SUPPLIER);
+    await commitQuote(deps, s.id, SUPPLIER, form);
+    const view = await negotiatorView(deps, s.id);
+    expect(view).toMatchObject({ priority: "speed", latestDeliveryDays: 30 });
+    expect(view).not.toHaveProperty("ranking");
+    expect(JSON.stringify(view)).not.toMatch(/maxUnitCents|12000|eligible/);
   });
 
   it("a committed quote's days show in leadView", async () => {

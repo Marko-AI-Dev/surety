@@ -55,17 +55,21 @@ Opens a sourcing from the buyer's brief.
   "incoterm": "CIF",
   "port": "Durban",
   "deadlineSeconds": 300,
-  "negotiationSeconds": 90
+  "negotiationSeconds": 90,
+  "priority": "balanced",
+  "latestDeliveryDays": 30
 }
 ```
 
 - **Returns:** the sourcing `{ id, ref, state: "OPEN", brief, negotiationEndsAt, ... }`.
 - `deadlineSeconds` is the deal's refund deadline once a quote is accepted, by ledger time. `negotiationSeconds` is how long the chat stays open.
+- `priority` is what the buyer cares about most: `price`, `speed` or `balanced` (the default). `latestDeliveryDays` (optional, 1 to 365) is the slowest delivery the buyer accepts.
 
 ### `GET /sourcing/:id` (lead, view, sourcing, negotiator)
 
-- **For lead and view:** the full view, `{ brief (with maxUnitCents), invites: [{ address, name, status, cards: { yellow, red }, quote, deliveryDays, dealId }], reports: [{ supplier, offer, summary } or { supplier, offer, withheld: true }], suggestions, secondsLeft, state, dealId }`.
-- **For sourcing and negotiator:** `{ goods: { description, quantity, targetUnitCents }, incoterm, port, secondsLeft, invites: [{ address, name, status, committed }] }`, with no maximum and no committed prices.
+- **For lead and view:** the full view, `{ brief (with maxUnitCents), invites: [{ address, name, status, cards: { yellow, red }, quote, deliveryDays, dealId }], ranking: [{ supplier, unitCents, deliveryDays, eligible, why }], reports: [{ supplier, offer, summary } or { supplier, offer, withheld: true }], suggestions, secondsLeft, state, dealId }`.
+- **The ranking** orders committed quotes for the priority: `price` by price then days, `speed` by days then price, `balanced` by price relative to the cheapest plus days relative to the fastest. A quote that is out, above the maximum, without days or slower than `latestDeliveryDays` is ranked last with its reason. The lead may accept another; Surety then records a deal event `off_priority` with the best quote, the chosen one and the lead's reason. It never blocks.
+- **For sourcing and negotiator:** `{ goods: { description, quantity, targetUnitCents }, incoterm, port, priority, latestDeliveryDays, secondsLeft, invites: [{ address, name, status, committed }] }`, with no maximum, no committed prices and no ranking.
 
 ### `GET /suppliers` (lead, sourcing)
 

@@ -1,6 +1,6 @@
 import type postgres from "postgres";
 import type { Row } from "postgres";
-import type { SourcingBrief, SupplierQuote } from "@surety/contracts";
+import { SourcingBriefSchema, type SupplierQuote } from "@surety/contracts";
 import type { SourcingState } from "./sourcing-states";
 import {
   CommittedQuoteConflict,
@@ -20,7 +20,8 @@ function toSourcing(r: Row): Sourcing {
   return {
     id: r.id,
     ref: r.ref,
-    brief: r.brief as SourcingBrief,
+    // Parsed on read, so a brief stored before Phase 4d gains its defaults (priority balanced).
+    brief: SourcingBriefSchema.parse(r.brief),
     state: r.state as SourcingState,
     negotiationEndsAt: iso(r.negotiation_ends_at),
     selectedSupplier: r.selected_supplier ?? null,

@@ -1,4 +1,5 @@
 import type { InspectionRepo } from "./inspection-repo";
+import { type RankedQuote, rankQuotes } from "./sourcing-rank";
 import { z } from "zod";
 import {
   Address,
@@ -394,6 +395,8 @@ export interface LeadView {
   selectedSupplier: string | null;
   dealId: string | null;
   invites: { address: string; name: string; status: "in" | "out"; cards: { yellow: number; red: number }; quote: SupplierQuote | null; deliveryDays: number | null; dealId: string | null }[];
+  // Surety's ranking of the committed quotes for the buyer's priority. Lead and view only.
+  ranking: RankedQuote[];
   reports: ReportItem[];
   suggestions: SupplierSuggestion[];
 }
@@ -431,6 +434,10 @@ export async function leadView(deps: SourcingDeps, sourcingId: string): Promise<
     selectedSupplier: s.selectedSupplier,
     dealId: s.dealId,
     invites,
+    ranking: rankQuotes(
+      s.brief,
+      invites.flatMap((i) => (i.quote ? [{ supplier: i.address, status: i.status, unitCents: i.quote.unitCents, deliveryDays: i.deliveryDays }] : [])),
+    ),
     reports,
     suggestions: await deps.repo.listSuggestions(s.id),
   };
@@ -443,6 +450,9 @@ export interface NegotiatorView {
   goods: { description: string; quantity: number; targetUnitCents: number };
   incoterm: string;
   port: string;
+  // What the buyer cares about, so the negotiator knows what to push for. Never the ranking.
+  priority: SourcingBrief["priority"];
+  latestDeliveryDays: number | null;
   negotiationEndsAt: string;
   secondsLeft: number;
   invites: { address: string; name: string; status: "in" | "out"; committed: boolean }[];
@@ -459,6 +469,8 @@ export async function negotiatorView(deps: SourcingDeps, sourcingId: string): Pr
     goods: { description: s.brief.goods.description, quantity: s.brief.goods.quantity, targetUnitCents: s.brief.goods.targetUnitCents },
     incoterm: s.brief.incoterm,
     port: s.brief.port,
+    priority: s.brief.priority,
+    latestDeliveryDays: s.brief.latestDeliveryDays ?? null,
     negotiationEndsAt: s.negotiationEndsAt,
     secondsLeft: secondsLeft(s, nowOf(deps)),
     invites: (await deps.repo.listInvites(s.id)).map((i) => ({

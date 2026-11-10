@@ -207,6 +207,15 @@ export function createPgRepo(databaseUrl: string): JobsRepo & DealsRepo & Sourci
   }
 
   const dealsRepo: DealsRepo = {
+    async addDealNote(dealId, event) {
+      const [row] = await sql`
+        insert into deal_events (deal_id, from_state, to_state, actor, reason_codes, detail)
+        select id, state, state, ${event.actor}, ${event.reasonCodes}::text[], ${json(event.detail)} from deals where id = ${dealId}
+        returning *`;
+      if (!row) throw new DealTransitionConflict(dealId, "missing", "QUOTE_RECEIVED");
+      return toDealEvent(row);
+    },
+
     async createDeal(intent, state, event) {
       try {
         return await sql.begin(async (tx) => {

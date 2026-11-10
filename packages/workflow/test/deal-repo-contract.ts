@@ -67,6 +67,21 @@ export function describeDealsRepo(name: string, make: () => Promise<JobsRepo & D
       return repo.saveQuote(deal.id, quote, hashOf(quote), checks, quoted);
     };
 
+    it("addDealNote appends an event from and to the current state and changes nothing else", async () => {
+      const deal = await quotedDeal();
+      const before = await repo.getDeal(deal.id);
+      const note = await repo.addDealNote(deal.id, { actor: "surety", reasonCodes: ["off_priority"], detail: { reason: "faster" } });
+      expect(note).toMatchObject({ dealId: deal.id, fromState: "QUOTE_RECEIVED", toState: "QUOTE_RECEIVED", actor: "surety", reasonCodes: ["off_priority"], detail: { reason: "faster" } });
+      expect(await repo.getDeal(deal.id)).toEqual(before);
+      const events = await repo.listDealEvents(deal.id);
+      expect(events.at(-1)).toEqual(note);
+      expect(events).toHaveLength(3);
+    });
+
+    it("addDealNote on a missing deal throws DealTransitionConflict", async () => {
+      await expect(repo.addDealNote("00000000-0000-4000-8000-000000000000", { actor: "surety", reasonCodes: ["x"] })).rejects.toBeInstanceOf(DealTransitionConflict);
+    });
+
     it("createDeal writes the deal and its first event", async () => {
       const intent = newIntent();
       const deal = await repo.createDeal(intent, "AWAITING_QUOTE", opened);

@@ -21,6 +21,7 @@ export const brief: SourcingBrief = {
   port: "Durban",
   deadlineSeconds: 300,
   negotiationSeconds: 90,
+  priority: "balanced",
 };
 
 let n = 0;

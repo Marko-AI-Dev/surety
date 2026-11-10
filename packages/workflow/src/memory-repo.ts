@@ -102,6 +102,13 @@ export function createMemoryRepo(): JobsRepo & DealsRepo & SourcingRepo & Inspec
   }
 
   const dealsRepo: DealsRepo = {
+    async addDealNote(dealId, event) {
+      const deal = deals.get(dealId);
+      if (!deal) throw new DealTransitionConflict(dealId, "missing", "QUOTE_RECEIVED");
+      dealEvent(deal, deal.state, event);
+      return copy(dealEvents[dealEvents.length - 1] as DealEvent);
+    },
+
     async createDeal(intent, state, event) {
       if ([...deals.values()].some((d) => d.ref === intent.poNumber)) throw new DealConflict(intent.poNumber);
       const deal: Deal = {

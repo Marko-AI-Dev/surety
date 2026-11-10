@@ -62,6 +62,7 @@ const brief = (): SourcingBrief => ({
   port: "Durban",
   deadlineSeconds: 300,
   negotiationSeconds: 90,
+  priority: "balanced",
 });
 const form = (unitCents: number) => ({ quoteNumber: "Q-88213", quantity: 400, unitCents, incoterm: "CIF", port: "Durban", deliveryDays: 21, notes: "" });
 const accept = { outcome: "accept", reason: "Cheapest committed quote within the brief." };
@@ -218,5 +219,61 @@ describe("end to end in memory", () => {
     const report = await runEngineOnce(engineDeps);
     expect(report.paid).toEqual([job.id]);
     expect((await repo.getJob(job.id))?.state).toBe("PAID");
+  });
+});
+
+describe("the buyer's priority and the lead's choice", () => {
+  // Brightway $109.00 in 21 days, Sunpeak $118.00 in 14 days.
+  async function twoQuotes(priority: "price" | "speed" | "balanced") {
+    const s = await openSourcing(deps, { ...brief(), priority });
+    await inviteSupplier(deps, s.id, SUPPLIER);
+    await inviteSupplier(deps, s.id, SECOND);
+    await commitQuote(deps, s.id, SUPPLIER, { ...form(10_900), deliveryDays: 21 });
+    await commitQuote(deps, s.id, SECOND, { ...form(11_800), quoteNumber: "Q-2", deliveryDays: 14 });
+    return s;
+  }
+  const notes = async (dealId: string) => (await repo.listDealEvents(dealId)).filter((e) => e.reasonCodes.includes("off_priority"));
+
+  it("accepting the second-ranked quote for speed locks it and records off_priority with both quotes and the lead's reason", async () => {
+    const s = await twoQuotes("speed");
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    const reason = "Brightway is cheaper and 21 days still meets the project date.";
+    const { job } = await leadDecision(deps, deal.id, { outcome: "accept", reason }, "lead");
+    expect(job?.state).toBe("LOCKED");
+    const [note, ...more] = await notes(deal.id);
+    expect(more).toEqual([]);
+    expect(note).toMatchObject({
+      actor: "surety",
+      fromState: "QUOTE_RECEIVED",
+      toState: "QUOTE_RECEIVED",
+      detail: {
+        priority: "speed",
+        best: { supplier: SECOND, unitCents: 11_800, deliveryDays: 14 },
+        chosen: { supplier: SUPPLIER, unitCents: 10_900, deliveryDays: 21 },
+        reason,
+      },
+    });
+  });
+
+  it("accepting the first-ranked quote records no note", async () => {
+    const s = await twoQuotes("price");
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    await leadDecision(deps, deal.id, accept, "lead");
+    expect(await notes(deal.id)).toEqual([]);
+  });
+
+  it("a decline records no note", async () => {
+    const s = await twoQuotes("speed");
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    await leadDecision(deps, deal.id, { outcome: "decline", reason: "Too slow." }, "lead");
+    expect(await notes(deal.id)).toEqual([]);
+  });
+
+  it("a retried accept records the note once", async () => {
+    const s = await twoQuotes("speed");
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    await leadDecision(deps, deal.id, accept, "lead");
+    await leadDecision(deps, deal.id, accept, "lead");
+    expect(await notes(deal.id)).toHaveLength(1);
   });
 });

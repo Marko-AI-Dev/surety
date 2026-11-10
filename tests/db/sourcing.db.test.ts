@@ -75,3 +75,19 @@ describe("delivery days on committed quotes", () => {
     }
   });
 });
+
+describe("the buyer's priority", () => {
+  it("a brief stored before 4d reads back with priority balanced", async () => {
+    await resetTables(admin);
+    const repo = createPgRepo(databaseUrl());
+    try {
+      const s = await repo.createSourcing(newRef(), brief, new Date(Date.now() + 90_000));
+      await admin`update sourcings set brief = brief - 'priority' - 'latestDeliveryDays' where id = ${s.id}`;
+      const [row] = await admin`select brief from sourcings where id = ${s.id}`;
+      expect(row?.brief).not.toHaveProperty("priority");
+      expect((await repo.getSourcing(s.id))?.brief.priority).toBe("balanced");
+    } finally {
+      await repo.close();
+    }
+  });
+});

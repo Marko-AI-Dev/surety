@@ -11,6 +11,10 @@ const unitPrice = centsSchema.min(1);
 const text = z.string().min(1).max(120);
 
 // The maximum stays in Surety's code and the lead's view; the negotiator is only ever given the target.
+// What the buyer cares about most when the lead picks a committed quote (Phase 4d).
+export const PRIORITIES = ["price", "speed", "balanced"] as const;
+export type Priority = (typeof PRIORITIES)[number];
+
 export const SourcingBriefSchema = z
   .object({
     buyer: partySchema,
@@ -24,6 +28,10 @@ export const SourcingBriefSchema = z
     deadlineSeconds: z.number().int().min(60).max(86_400),
     // How long suppliers and the negotiator may chat. Server clock: it moves no money.
     negotiationSeconds: z.number().int().min(30).max(3_600),
+    // Absent in 4c briefs, which read back as balanced.
+    priority: z.enum(PRIORITIES).default("balanced"),
+    // The latest delivery the buyer accepts, in days from acceptance. Optional.
+    latestDeliveryDays: z.number().int().min(1).max(365).optional(),
   })
   .strict();
 
