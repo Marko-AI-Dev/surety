@@ -27,6 +27,14 @@ import {
   QuoteConflict,
 } from "./deal-repo";
 import type { DealState } from "./deal-states";
+import {
+  type Attestation,
+  AttestationConflict,
+  INSPECTABLE_JOB_STATES,
+  InspectionClosed,
+  type InspectionRepo,
+  sameAttestation,
+} from "./inspection-repo";
 import { createMemorySourcingRepo } from "./memory-sourcing-repo";
 import type { SourcingRepo } from "./sourcing-repo";
 import { snapshotHash } from "./snapshot";
@@ -36,7 +44,7 @@ const cancellable: ReadonlySet<JobState> = new Set(CANCELLABLE_STATES);
 
 // Same behaviour as the Postgres repo, for unit tests. Each method runs without awaiting
 // part-way through, so every operation is atomic. Callers get copies, never live rows.
-export function createMemoryRepo(): JobsRepo & DealsRepo & SourcingRepo {
+export function createMemoryRepo(): JobsRepo & DealsRepo & SourcingRepo & InspectionRepo {
   const jobs = new Map<string, Job>();
   const escrows = new Map<string, EscrowRow>();
   const txs = new Map<string, TxRecord>();
@@ -342,5 +350,27 @@ export function createMemoryRepo(): JobsRepo & DealsRepo & SourcingRepo {
     async close() {},
   };
 
-  return { ...jobsRepo, ...dealsRepo, ...createMemorySourcingRepo() };
+  const attestations: Attestation[] = [];
+  const inspectable: ReadonlySet<JobState> = new Set(INSPECTABLE_JOB_STATES);
+  const inspectionRepo: InspectionRepo = {
+    async addAttestation(a) {
+      const existing = attestations.find((x) => x.jobId === a.jobId || x.dealId === a.dealId);
+      if (existing) {
+        if (existing.jobId === a.jobId && existing.dealId === a.dealId && sameAttestation(existing, a)) return copy(existing);
+        throw new AttestationConflict(a.jobId);
+      }
+      const job = jobs.get(a.jobId);
+      if (deals.get(a.dealId)?.jobId !== a.jobId || !job || !inspectable.has(job.state)) throw new InspectionClosed(a.jobId);
+      const row: Attestation = { ...copy(a), id: randomUUID(), createdAt: new Date().toISOString() };
+      attestations.push(row);
+      return copy(row);
+    },
+
+    async getAttestation(jobId) {
+      const row = attestations.find((x) => x.jobId === jobId);
+      return row ? copy(row) : null;
+    },
+  };
+
+  return { ...jobsRepo, ...dealsRepo, ...createMemorySourcingRepo(), ...inspectionRepo };
 }
