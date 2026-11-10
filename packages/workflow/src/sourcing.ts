@@ -1,4 +1,5 @@
 import type { InspectionRepo } from "./inspection-repo";
+import { type Offer, leverageOffers, namesOtherSupplier } from "./leverage";
 import { type RankedQuote, rankQuotes } from "./sourcing-rank";
 import { z } from "zod";
 import {
@@ -228,8 +229,12 @@ export async function postNegotiatorMessage(deps: SourcingDeps, sourcingId: stri
   const text = ChatTextSchema.parse(raw);
   const s = await mustSourcing(deps, sourcingId);
   mustBeOpen(s, nowOf(deps), { timed: true });
-  await mustInvite(deps, s.id, address);
+  const invite = await mustInvite(deps, s.id, address);
   if ((await statusOf(deps, s.id, address)) === "out") throw new SupplierOut(s.id, address);
+  // Leverage stays anonymous: a message naming another invited supplier is refused, never stored.
+  const others = (await deps.repo.listInvites(s.id)).filter((i) => i.address !== address);
+  const allowed = [s.brief.goods.description, s.brief.port, invite.name];
+  if (namesOtherSupplier(text, others, allowed) !== null) throw new SourcingRefused("a message must not name another supplier");
   return deps.repo.addMessage({
     sourcingId: s.id,
     supplier: address,
@@ -456,12 +461,16 @@ export interface NegotiatorView {
   negotiationEndsAt: string;
   secondsLeft: number;
   invites: { address: string; name: string; status: "in" | "out"; committed: boolean }[];
+  // Competing offers to use as leverage, anonymised in what the negotiator says. Nothing in them comes
+  // from the maximum.
+  offers: Offer[];
 }
 
 // The negotiator's view carries the target price only: never the maximum, never committed prices.
 export async function negotiatorView(deps: SourcingDeps, sourcingId: string): Promise<NegotiatorView> {
   const s = await mustSourcing(deps, sourcingId);
   const messages = await deps.repo.listMessages(s.id);
+  const invites = await deps.repo.listInvites(s.id);
   return {
     id: s.id,
     ref: s.ref,
@@ -473,11 +482,12 @@ export async function negotiatorView(deps: SourcingDeps, sourcingId: string): Pr
     latestDeliveryDays: s.brief.latestDeliveryDays ?? null,
     negotiationEndsAt: s.negotiationEndsAt,
     secondsLeft: secondsLeft(s, nowOf(deps)),
-    invites: (await deps.repo.listInvites(s.id)).map((i) => ({
+    invites: invites.map((i) => ({
       address: i.address,
       name: i.name,
       status: supplierStatus(messages.filter((m) => m.supplier === i.address)),
       committed: i.quote !== null,
     })),
+    offers: leverageOffers(messages, invites),
   };
 }

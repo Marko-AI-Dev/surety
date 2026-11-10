@@ -7,6 +7,7 @@ import {
   type JobsRepo,
   NotInvited,
   CommittedQuoteConflict,
+  SourcingRefused,
   QuoteConflict,
   SourcingClosed,
   type SourcingDeps,
@@ -234,6 +235,38 @@ describe("views, reports and committed quotes", () => {
     }
     expect(view).toContain("targetUnitCents");
     expect(JSON.parse(view).invites[0]).toMatchObject({ address: SUPPLIER, status: "in", committed: true });
+  });
+
+  it("negotiatorView JSON contains neither maxUnitCents nor 12000 with offers present", async () => {
+    const s = await openSourcing(deps, { ...brief(), priority: "price", latestDeliveryDays: 30 });
+    await inviteSupplier(deps, s.id, SUPPLIER);
+    await inviteSupplier(deps, s.id, SECOND);
+    await reportOffer(deps, s.id, { supplier: SECOND, unitCents: 12_600, quantity: 400, deliveryDays: 14, summary: "Opening price." });
+    await commitQuote(deps, s.id, SUPPLIER, { ...form, unitCents: 11_300 });
+    const view = await negotiatorView(deps, s.id);
+    expect(view.offers.map((o) => [o.supplier, o.unitCents, o.deliveryDays, o.source])).toEqual([
+      [SUPPLIER, 11_300, 21, "committed"],
+      [SECOND, 12_600, 14, "reported"],
+    ]);
+    const text = JSON.stringify(view);
+    expect(text).not.toContain("maxUnitCents");
+    expect(text).not.toContain("12000");
+  });
+
+  it("a message to Brightway naming Sunpeak is refused and stored nowhere", async () => {
+    const s = await openWithSupplier();
+    await inviteSupplier(deps, s.id, SECOND);
+    const before = (await repo.listMessages(s.id)).length;
+    await expect(postNegotiatorMessage(deps, s.id, SUPPLIER, "Sunpeak offered $114.00, can you beat it?")).rejects.toThrow(/must not name another supplier/);
+    await expect(postNegotiatorMessage(deps, s.id, SUPPLIER, `The wallet ${SECOND} quoted less.`)).rejects.toBeInstanceOf(SourcingRefused);
+    expect((await repo.listMessages(s.id)).length).toBe(before);
+  });
+
+  it('"another approved supplier offered $114.00 with 14 days" is delivered', async () => {
+    const s = await openWithSupplier();
+    await inviteSupplier(deps, s.id, SECOND);
+    const sent = await postNegotiatorMessage(deps, s.id, SUPPLIER, "Another approved supplier offered $114.00 with 14 days delivery. Can Brightway beat that?");
+    expect(sent).toMatchObject({ kind: "to_supplier", verdict: "deliver" });
   });
 
   it("leadView shows the brief with its maximum, committed quotes and card counts", async () => {

@@ -68,3 +68,35 @@ describe("the inspector's key stays with a person", () => {
     }
   });
 });
+
+describe("negotiation with leverage (Phase 4d)", () => {
+  const negotiator = files["negotiator.md"] ?? "";
+  const lead = files["lead.md"] ?? "";
+
+  it("the negotiator is told to use anonymised competing offers from offers", () => {
+    expect(negotiator).toMatch(/another approved supplier/i);
+    expect(negotiator).toMatch(/`offers`/);
+    expect(negotiator).toMatch(/never name/i);
+    expect(negotiator).toMatch(/never invent/i);
+  });
+
+  it("the negotiator is told never to quote a held message", () => {
+    expect(negotiator).toMatch(/never (quote|repeat)[^.]*withheld/i);
+  });
+
+  it("the negotiator reads the buyer's priority", () => {
+    expect(negotiator).toMatch(/`priority`/);
+    expect(negotiator).toMatch(/speed/);
+  });
+
+  it("the lead is told to follow the ranking or give its reason", () => {
+    expect(lead).toMatch(/`ranking`/);
+    expect(lead).toMatch(/reason/);
+    expect(lead).toMatch(/priority/);
+  });
+
+  it("the API skill shows the brief's priority and latest delivery days", () => {
+    expect(files["surety-api.md"]).toMatch(/"priority"/);
+    expect(files["surety-api.md"]).toMatch(/"latestDeliveryDays"/);
+  });
+});

@@ -141,6 +141,27 @@ describe("the Surety API", () => {
     expect((await call("GET", `/sourcing/${id}`, TOKENS.lead)).json.brief.goods.maxUnitCents).toBe(12_000);
   });
 
+  it("every response to the negotiator token lacks maxUnitCents and its value, with offers and priority present", async () => {
+    const opened = await call("POST", "/sourcing", TOKENS.lead, { ...brief(), priority: "speed", latestDeliveryDays: 30 });
+    const id = opened.json.id as string;
+    await call("POST", `/sourcing/${id}/invites`, TOKENS.sourcing, { address: SUPPLIER });
+    await call("POST", `/sourcing/${id}/invites`, TOKENS.sourcing, { address: SECOND });
+    await call("POST", `/sourcing/${id}/reports`, TOKENS.negotiator, { supplier: SECOND, unitCents: 12_600, quantity: 400, deliveryDays: 14, summary: "Opening." });
+    await call("POST", `/supplier/sourcing/${id}/quote`, SUPPLIER_TOKENS[SUPPLIER], quoteForm);
+    const view = await call("GET", `/sourcing/${id}`, TOKENS.negotiator);
+    expect(view.json).toMatchObject({ priority: "speed", latestDeliveryDays: 30 });
+    expect(view.json.offers).toHaveLength(2);
+    const responses = [view, await call("GET", `/sourcing/${id}/inbox`, TOKENS.negotiator), await call("GET", `/sourcing/${id}`, TOKENS.sourcing)];
+    for (const r of responses) {
+      expect(r.status).toBe(200);
+      expect(r.text).not.toContain("maxUnitCents");
+      expect(r.text).not.toContain("12000");
+      expect(r.text).not.toContain("ranking");
+    }
+    const naming = await call("POST", `/sourcing/${id}/messages`, TOKENS.negotiator, { supplier: SUPPLIER, text: "Sunpeak offered less." });
+    expect(naming).toMatchObject({ status: 400, json: { error: "refused" } });
+  });
+
   it("supplier B reading supplier A's thread, quote or deal gets 404", async () => {
     const id = await openWithSupplier();
     const b = SUPPLIER_TOKENS[SECOND];

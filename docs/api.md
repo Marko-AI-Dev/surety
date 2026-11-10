@@ -69,7 +69,7 @@ Opens a sourcing from the buyer's brief.
 
 - **For lead and view:** the full view, `{ brief (with maxUnitCents), invites: [{ address, name, status, cards: { yellow, red }, quote, deliveryDays, dealId }], ranking: [{ supplier, unitCents, deliveryDays, eligible, why }], reports: [{ supplier, offer, summary } or { supplier, offer, withheld: true }], suggestions, secondsLeft, state, dealId }`.
 - **The ranking** orders committed quotes for the priority: `price` by price then days, `speed` by days then price, `balanced` by price relative to the cheapest plus days relative to the fastest. A quote that is out, above the maximum, without days or slower than `latestDeliveryDays` is ranked last with its reason. The lead may accept another; Surety then records a deal event `off_priority` with the best quote, the chosen one and the lead's reason. It never blocks.
-- **For sourcing and negotiator:** `{ goods: { description, quantity, targetUnitCents }, incoterm, port, priority, latestDeliveryDays, secondsLeft, invites: [{ address, name, status, committed }] }`, with no maximum, no committed prices and no ranking.
+- **For sourcing and negotiator:** `{ goods: { description, quantity, targetUnitCents }, incoterm, port, priority, latestDeliveryDays, secondsLeft, invites: [{ address, name, status, committed }], offers: [{ supplier, unitCents, deliveryDays, source, at }] }`, with no maximum and no ranking. `offers` holds each supplier's committed quote, or else its latest report whose summary was delivered: the competing offers the negotiator may cite, anonymised. A withheld report, a held message or an out supplier never appears, and nothing in it is derived from the maximum.
 
 ### `GET /suppliers` (lead, sourcing)
 
@@ -96,6 +96,7 @@ The negotiator's messages and every delivered supplier message, oldest first:
 ### `POST /sourcing/:id/messages` (negotiator)
 
 - **Body:** `{ "supplier": "<wallet>", "text": "..." }`, up to 1000 characters.
+- A message that names another invited supplier (its wallet, or a distinctive word of its name) is refused with `400 refused` and stored nowhere, so leverage stays anonymous.
 
 ### `POST /sourcing/:id/reports` (negotiator)
 

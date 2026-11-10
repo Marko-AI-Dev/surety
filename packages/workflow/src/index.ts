@@ -91,6 +91,7 @@ export {
 } from "./inspection-repo";
 export { InspectionNotFound, attest, inspectionOf, inspectorQueue, type InspectorItem } from "./inspection";
 export { rankQuotes, type RankableOffer, type RankedQuote } from "./sourcing-rank";
+export { leverageOffers, namesOtherSupplier, type Offer } from "./leverage";
 export { answerDecider, leadDecision, selectSupplier, settlementDraftFor, submitSettlement } from "./sourcing-deal";
 export { createMemoryRepo } from "./memory-repo";
 export { createPgRepo } from "./pg-repo";
