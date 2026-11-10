@@ -84,3 +84,27 @@ describe("namesOtherSupplier: leverage stays anonymous", () => {
     expect(namesOtherSupplier("Ltd terms apply", [{ address: SUNPEAK, name: "Sun Co Ltd" }], allowed)).toBeNull();
   });
 });
+
+describe("namesOtherSupplier resists obfuscation (security review, 10 Nov)", () => {
+  const others = [{ address: SUNPEAK, name: "Sunpeak Energy Ltd" }];
+  const allowed = ["Monocrystalline solar panel 550 W", "Durban", "Shenzhen Brightway Solar Co., Ltd"];
+
+  it("zero-width characters, spacing, hyphens and combining marks inside the name are still caught", () => {
+    for (const text of ["Sun\u200Bpeak offered less", "S u n p e a k offered less", "Sun-peak offered less", "Su\u0301npeak offered less"]) {
+      expect(namesOtherSupplier(text, others, allowed), text).toBe("sunpeak");
+    }
+  });
+
+  it("Cyrillic and Greek look-alike letters are folded before matching", () => {
+    expect(namesOtherSupplier("Sunp\u0435\u0430k offered less", others, allowed)).toBe("sunpeak");
+  });
+
+  it("an address split by spaces or zero-width characters is still caught", () => {
+    const split = `${SUNPEAK.slice(0, 10)} ${SUNPEAK.slice(10, 20)}\u200B${SUNPEAK.slice(20)}`;
+    expect(namesOtherSupplier(`Wallet ${split} quoted less`, others, allowed)).toBe(SUNPEAK);
+  });
+
+  it("the recipient's own name and the order's words still pass", () => {
+    expect(namesOtherSupplier("Can Shenzhen Brightway beat $114.00 with 14 days to Durban?", others, allowed)).toBeNull();
+  });
+});

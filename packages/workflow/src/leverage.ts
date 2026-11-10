@@ -1,4 +1,5 @@
 import type { OfferReport } from "@surety/contracts";
+import { foldText } from "@surety/gate";
 import type { Invite, SourcingMessage } from "./sourcing-repo";
 // A cycle with sourcing.ts, safe because supplierStatus is only called at run time.
 import { supplierStatus } from "./sourcing";
@@ -34,19 +35,23 @@ export function leverageOffers(messages: SourcingMessage[], invites: Invite[]): 
 }
 
 const STOP_WORDS = new Set(["limited", "trading", "energy", "company", "solar"]);
-const wordsOf = (text: string) => text.normalize("NFKC").toLowerCase().match(/\p{L}+/gu) ?? [];
+// Folded (NFKC, no format characters, look-alikes to Latin), accents stripped, lower case.
+const plain = (text: string) => foldText(text).normalize("NFD").replace(/\p{Mn}/gu, "").toLowerCase();
+const wordsOf = (text: string) => plain(text).match(/\p{L}+/gu) ?? [];
 
 // The first address or distinctive name word of another supplier that the text names, or null. Name
 // words are 6 letters or more, minus common company words and any word in `allowed` (the goods, the
 // port, the recipient's own name).
+// The text is searched with everything but letters and digits removed, so spacing, hyphens or
+// zero-width characters inside a name or a wallet don't hide it.
 export function namesOtherSupplier(text: string, others: { address: string; name: string }[], allowed: string[]): string | null {
-  const folded = text.normalize("NFKC");
-  const said = new Set(wordsOf(text));
+  const compactAddress = foldText(text).replace(/[^\p{L}\p{N}]/gu, "");
+  const compactLetters = plain(text).replace(/[^\p{L}]/gu, "");
   const free = new Set(allowed.flatMap(wordsOf));
   for (const o of others) {
-    if (folded.includes(o.address)) return o.address;
+    if (compactAddress.includes(o.address)) return o.address;
     for (const w of wordsOf(o.name)) {
-      if (w.length >= 6 && !STOP_WORDS.has(w) && !free.has(w) && said.has(w)) return w;
+      if (w.length >= 6 && !STOP_WORDS.has(w) && !free.has(w) && compactLetters.includes(w)) return w;
     }
   }
   return null;

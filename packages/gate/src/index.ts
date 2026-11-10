@@ -51,6 +51,7 @@ export {
 export {
   CHAT_RULE_IDS,
   RED_CARD_RULES,
+  foldText,
   runChatRules,
   stripLinks,
   type ChatRuleId,

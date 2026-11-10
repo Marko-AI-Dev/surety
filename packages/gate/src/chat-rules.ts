@@ -49,6 +49,9 @@ const FORMAT_CHARS = /\p{Cf}/gu;
 const unicodeClean = (text: string) => text.normalize("NFKC").replace(FORMAT_CHARS, "");
 const normalize = (text: string) => [...unicodeClean(text)].map((c) => CONFUSABLES[c] ?? c).join("");
 
+// NFKC, format characters removed and look-alike letters folded to Latin: the form the checks read.
+export const foldText = normalize;
+
 const RIPPLE_ALPHABET = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz";
 const NOT_BASE58 = /[^1-9A-HJ-NP-Za-km-z]/g;
 const sha256 = (b: Buffer) => createHash("sha256").update(b).digest();
