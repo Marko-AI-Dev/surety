@@ -8,6 +8,8 @@ export interface ApiTokens {
   sourcing: string;
   negotiator: string;
   view: string;
+  // The inspector is a person holding the second key, never an agent.
+  inspector: string;
 }
 
 export interface ApiConfig {
@@ -20,6 +22,8 @@ export interface ApiConfig {
   openRouterKey: string;
   directoryFile: string;
   tokens: ApiTokens;
+  // Shown as the attesting inspector on every attestation.
+  inspectorName: string;
   // Supplier wallet address to its token.
   supplierTokens: Record<string, string>;
 }
@@ -44,6 +48,7 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
     sourcing: token("API_TOKEN_SOURCING"),
     negotiator: token("API_TOKEN_NEGOTIATOR"),
     view: token("API_TOKEN_VIEW"),
+    inspector: token("API_TOKEN_INSPECTOR"),
   };
 
   let supplierTokens: Record<string, string> = {};
@@ -79,6 +84,7 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
     openRouterKey: need("OPENROUTER_API_KEY"),
     directoryFile: env.SUPPLIER_DIRECTORY ?? "fixtures/sourcing/directory.json",
     tokens,
+    inspectorName: env.API_INSPECTOR_NAME || "Port inspector (demo)",
     supplierTokens,
   };
   if (problems.length > 0) throw new Error(`API config: ${problems.join("; ")}`);

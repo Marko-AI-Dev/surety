@@ -12,13 +12,15 @@ Every request except `GET /health` sends `Authorization: Bearer <token>`. Each t
 | `sourcing` | The sourcing agent | `API_TOKEN_SOURCING` |
 | `negotiator` | The negotiator | `API_TOKEN_NEGOTIATOR` |
 | `view` | The UI and the operator, read-only | `API_TOKEN_VIEW` |
+| `inspector` | A person holding the second key, never an agent | `API_TOKEN_INSPECTOR` |
 | `supplier` | One supplier wallet per token | `API_SUPPLIER_TOKENS` (JSON: address to token) |
 
-`pnpm api:tokens` writes all of them to `.env.api`, which is gitignored and never printed.
+`pnpm api:tokens` writes all of them to `.env.api`, which is gitignored and never printed. `pnpm api:tokens --add-missing` appends only the role tokens a file lacks (the inspector's, from Phase 4d) and leaves every other line, so no agent's token changes.
 
 - **The negotiator never sees the maximum price.** No response to its token contains it.
 - **A supplier sees only its own thread, quote and deals.** Anything else answers `404`, the same as a missing resource.
 - **Chat moves no money.** Only a committed quote, the lead's decision and the signer's checks lead to a lock.
+- **A sourcing deal pays only on the inspector's second key.** Surety Verify releases it only when the inspector's attestation is `attested` and its B/L number matches the supplier's documents. The inspector token is never given to an agent, and no response to it contains the B/L number the supplier submitted.
 
 ## Errors
 
@@ -32,8 +34,8 @@ Every error is `{ "error": "<code>", "message": "<text>" }`.
 | 403 | `forbidden` | The token's role may not use this route |
 | 403 | `supplier_out` | The supplier has one red card or two yellow cards in this sourcing |
 | 404 | `not_found` | No such resource, or one that belongs to another supplier |
-| 409 | `closed` | The sourcing is no longer open, or its negotiation time is over |
-| 409 | `conflict` | A different quote is already committed, the supplier already has a deal, the sourcing is claimed by another deal, or the deal isn't in a state for this |
+| 409 | `closed` | The sourcing is no longer open, or its negotiation time is over, or the deal can no longer take an attestation |
+| 409 | `conflict` | A different quote or attestation is already recorded, the supplier already has a deal, the sourcing is claimed by another deal, or the deal isn't in a state for this |
 | 500 | `internal_error` | Anything else; no detail is returned |
 
 ## Money and ids
@@ -115,11 +117,27 @@ The lead's accept or decline, with a reason.
 
 ### `GET /deals/:id` (lead, view)
 
-`{ deal, events, job: { id, ref, state, amount, sellerAddress }, decision }`.
+`{ deal, events, job: { id, ref, state, amount, sellerAddress }, decision, inspection }`. `inspection` is `null` for a deal that needs no inspector, `{ state: "pending" }` until the inspector answers, then `{ state: "attested" | "refused", inspector, blNumber, note, at }`.
 
 ### `GET /operator/quarantine` (view)
 
 The 50 most recent held messages across sourcings, with their cards and bouncer scores.
+
+## The inspector's routes (inspector token)
+
+The inspector is a person, for example at the port of loading, holding the second key. A sourcing deal is paid only after the inspector reads the bill of lading number off the shipment and attests it. These routes are not in the agents' instructions.
+
+### `GET /inspector/deals`
+
+Funded sourcing deals still waiting for an answer: `[{ dealId, poNumber, goods, quantity, incoterm, port, supplierName, jobState }]`. It never shows the B/L number, prices or wallets, so the inspector's reading is independent of the supplier's.
+
+### `POST /inspector/deals/:id/attestation`
+
+Body `{ blNumber, outcome: "attested" | "refused", note }` (B/L number 1 to 120 characters, note at most 280). Returns the inspection `{ state, inspector, blNumber, note, at }`. One answer per deal and no corrections: the same answer again returns it, a different one is `409 conflict`. Once the deal is being judged or has ended it is `409 closed`. A deal that isn't a funded sourcing deal is `404`. The note is display text only and never reaches a model.
+
+Surety Verify then decides: a matching `attested` number lets the deal be judged and paid; a refusal or a different number fails the rule `attested` and the deal refunds at the deadline. With no answer by the decision cutoff (30 seconds before the deadline, by ledger time) the deal is held and refunds.
+
+From the terminal: `pnpm inspector:attest` lists the queue; `pnpm inspector:attest <dealId> <blNumber> attested "400 cartons counted, seal intact"` answers.
 
 ## The supplier's routes (supplier token)
 

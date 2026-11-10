@@ -50,3 +50,21 @@ describe("the buyer team's Paperclip instructions", () => {
     }
   });
 });
+
+describe("the inspector's key stays with a person", () => {
+  it("neither paperclip-team.ts, the supplier agents nor any instruction file mentions API_TOKEN_INSPECTOR or an /inspector route", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const agentCode = [
+      "scripts/paperclip-team.ts",
+      ...readdirSync(resolve(root, "services/supplier-agents/src")).map((f) => `services/supplier-agents/src/${f}`),
+    ];
+    const sources: [string, string][] = [
+      ...agentCode.map((f): [string, string] => [f, readFileSync(resolve(root, f), "utf8")]),
+      ...Object.entries(files),
+    ];
+    expect(sources.length).toBeGreaterThanOrEqual(9);
+    for (const [name, text] of sources) {
+      expect(text, name).not.toMatch(/API_TOKEN_INSPECTOR|\/inspector\b|inspector:attest/);
+    }
+  });
+});

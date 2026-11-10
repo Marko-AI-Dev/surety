@@ -89,6 +89,7 @@ export {
   type InspectionRepo,
   type NewAttestation,
 } from "./inspection-repo";
+export { InspectionNotFound, attest, inspectionOf, inspectorQueue, type InspectorItem } from "./inspection";
 export { answerDecider, leadDecision, selectSupplier, settlementDraftFor, submitSettlement } from "./sourcing-deal";
 export { createMemoryRepo } from "./memory-repo";
 export { createPgRepo } from "./pg-repo";

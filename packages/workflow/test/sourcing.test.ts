@@ -3,6 +3,7 @@ import type { SourcingBrief } from "@surety/contracts";
 import type { DecisionEngine, EvaluationResult } from "@surety/gate";
 import {
   type DealsRepo,
+  type InspectionRepo,
   type JobsRepo,
   NotInvited,
   QuoteConflict,
@@ -59,7 +60,7 @@ function bouncer(override?: (text: string) => Answer | undefined) {
   return engine;
 }
 
-let repo: JobsRepo & DealsRepo & SourcingRepo;
+let repo: JobsRepo & DealsRepo & SourcingRepo & InspectionRepo;
 let signer: FakeSigner;
 let clock: Date;
 let deps: SourcingDeps;

@@ -1,3 +1,4 @@
+import type { InspectionRepo } from "./inspection-repo";
 import { z } from "zod";
 import {
   Address,
@@ -26,7 +27,7 @@ import { CommittedQuoteConflict, type Invite, type Sourcing, type SourcingMessag
 // Chat is never binding and never moves money.
 
 export interface SourcingDeps {
-  repo: JobsRepo & DealsRepo & SourcingRepo;
+  repo: JobsRepo & DealsRepo & SourcingRepo & InspectionRepo;
   signer: SignerClient;
   // The supplier's TESTUSD trust line from the ledger (read-only), used when a deal opens.
   supplierLine: (address: string) => Promise<SupplierLine | null>;
