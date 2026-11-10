@@ -36,7 +36,7 @@ describe("nextMove", () => {
   it("everyone commits with 15 s left", () => {
     for (const p of [PERSONAS.brightway, PERSONAS.sunpeak]) {
       const r = nextMove(p, { ...fresh, priceCents: p.openingUnitCents }, [ask("Price?"), said("x")], 15);
-      expect(r?.move).toEqual({ commit: { quoteNumber: expect.stringMatching(/^Q-[A-Z0-9-]+$/), quantity: 400, unitCents: p.openingUnitCents, incoterm: "CIF", port: "Durban", notes: "" } });
+      expect(r?.move).toEqual({ commit: { quoteNumber: expect.stringMatching(/^Q-[A-Z0-9-]+$/), quantity: 400, unitCents: p.openingUnitCents, incoterm: "CIF", port: "Durban", deliveryDays: p.deliveryDays, notes: "" } });
       expect(r?.state.committed).toBe(true);
     }
     expect(nextMove(PERSONAS.brightway, { ...fresh, committed: true }, [ask("Price?")], 10)).toBeNull();

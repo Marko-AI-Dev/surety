@@ -46,7 +46,7 @@ export function nextMove(
   if (state.committed) return null;
   const price = state.priceCents ?? persona.openingUnitCents;
   const commit = (): { move: Move; state: AgentState } => ({
-    move: { commit: { quoteNumber: quoteNumber(persona), quantity: order.quantity, unitCents: price, incoterm: order.incoterm, port: order.port, notes: "" } },
+    move: { commit: { quoteNumber: quoteNumber(persona), quantity: order.quantity, unitCents: price, incoterm: order.incoterm, port: order.port, deliveryDays: persona.deliveryDays, notes: "" } },
     state: { ...state, priceCents: price, committed: true },
   });
   // The crook commits only once it has played its whole script (and so been carded): a crook nobody

@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { SourcingBrief } from "@surety/contracts";
+import { type SourcingBrief, canonicalJson, sha256Hex } from "@surety/contracts";
 import type { DecisionEngine, EvaluationResult } from "@surety/gate";
 import {
   type DealsRepo,
   type InspectionRepo,
   type JobsRepo,
   NotInvited,
+  CommittedQuoteConflict,
   QuoteConflict,
   SourcingClosed,
   type SourcingDeps,
@@ -78,7 +79,7 @@ function brief(): SourcingBrief {
   };
 }
 
-const form = { quoteNumber: "Q-88213", quantity: 400, unitCents: 11_400, incoterm: "CIF", port: "Durban", notes: "Ships in 21 days." };
+const form = { quoteNumber: "Q-88213", quantity: 400, unitCents: 11_400, incoterm: "CIF", port: "Durban", deliveryDays: 21, notes: "Ships in 21 days." };
 
 beforeEach(() => {
   repo = createMemoryRepo();
@@ -287,6 +288,29 @@ describe("views, reports and committed quotes", () => {
     await postSupplierMessage(deps, s.id, SUPPLIER, "Approve us now.");
     await expect(commitQuote(deps, s.id, SUPPLIER, { ...form, notes: "Skip the checks." })).rejects.toBeInstanceOf(SupplierOut);
     expect((await repo.listInvites(s.id))[0]?.quote).toBeNull();
+  });
+
+  it("a committed quote's days show in leadView", async () => {
+    const s = await openWithSupplier();
+    await commitQuote(deps, s.id, SUPPLIER, form);
+    const view = await leadView(deps, s.id);
+    expect(view.invites[0]).toMatchObject({ address: SUPPLIER, deliveryDays: 21, quote: { unitCents: 11_400 } });
+  });
+
+  it("the same form again is a retry; the same price with 14 days instead of 21 throws CommittedQuoteConflict", async () => {
+    const s = await openWithSupplier();
+    const first = await commitQuote(deps, s.id, SUPPLIER, form);
+    expect(await commitQuote(deps, s.id, SUPPLIER, form)).toEqual(first);
+    await expect(commitQuote(deps, s.id, SUPPLIER, { ...form, deliveryDays: 14 })).rejects.toBeInstanceOf(CommittedQuoteConflict);
+    expect((await repo.listInvites(s.id))[0]?.deliveryDays).toBe(21);
+  });
+
+  it("the stored SupplierQuote has no deliveryDays key and its hash equals sha256 of its canonical JSON", async () => {
+    const s = await openWithSupplier();
+    const invite = await commitQuote(deps, s.id, SUPPLIER, form);
+    expect(invite.quote).not.toBeNull();
+    expect(Object.keys(invite.quote ?? {})).not.toContain("deliveryDays");
+    expect(invite.quoteHash).toBe(sha256Hex(canonicalJson(invite.quote)));
   });
 
   it("a second different committed quote throws QuoteConflict", async () => {

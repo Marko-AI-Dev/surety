@@ -325,7 +325,13 @@ export async function commitQuote(deps: SourcingDeps, sourcingId: string, addres
   // second time, so one sentence can never earn two cards; different terms are a conflict.
   if (invite.quote) {
     const q = invite.quote;
-    const same = q.quoteNumber === form.quoteNumber && q.quantity === form.quantity && q.unitCents === form.unitCents && q.incoterm === form.incoterm && q.port === form.port;
+    const same =
+      q.quoteNumber === form.quoteNumber &&
+      q.quantity === form.quantity &&
+      q.unitCents === form.unitCents &&
+      q.incoterm === form.incoterm &&
+      q.port === form.port &&
+      invite.deliveryDays === form.deliveryDays;
     if (same) return invite;
     throw new CommittedQuoteConflict(s.id, address);
   }
@@ -370,7 +376,8 @@ export async function commitQuote(deps: SourcingDeps, sourcingId: string, addres
     port: form.port,
     notes,
   });
-  return deps.repo.commitQuote(s.id, address, quote, sha256Hex(canonicalJson(quote)));
+  // The delivery days ride beside the quote: the deal's SupplierQuote and its hash are exactly 4b's.
+  return deps.repo.commitQuote(s.id, address, quote, sha256Hex(canonicalJson(quote)), form.deliveryDays);
 }
 
 export type ReportItem =
@@ -386,7 +393,7 @@ export interface LeadView {
   secondsLeft: number;
   selectedSupplier: string | null;
   dealId: string | null;
-  invites: { address: string; name: string; status: "in" | "out"; cards: { yellow: number; red: number }; quote: SupplierQuote | null; dealId: string | null }[];
+  invites: { address: string; name: string; status: "in" | "out"; cards: { yellow: number; red: number }; quote: SupplierQuote | null; deliveryDays: number | null; dealId: string | null }[];
   reports: ReportItem[];
   suggestions: SupplierSuggestion[];
 }
@@ -401,6 +408,7 @@ export async function leadView(deps: SourcingDeps, sourcingId: string): Promise<
     status: supplierStatus(of(i.address)),
     cards: cardsOf(of(i.address)),
     quote: i.quote,
+    deliveryDays: i.deliveryDays,
     dealId: i.dealId,
   }));
   // The offer's facts only: its summary reaches the lead through the screened deliveredBody, or not at all.

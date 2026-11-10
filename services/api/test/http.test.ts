@@ -82,7 +82,7 @@ const brief = () => ({
   deadlineSeconds: 300,
   negotiationSeconds: 90,
 });
-const quoteForm = { quoteNumber: "Q-88213", quantity: 400, unitCents: 11_400, incoterm: "CIF", port: "Durban", notes: "" };
+const quoteForm = { quoteNumber: "Q-88213", quantity: 400, unitCents: 11_400, incoterm: "CIF", port: "Durban", deliveryDays: 21, notes: "" };
 
 async function openWithSupplier() {
   const opened = await call("POST", "/sourcing", TOKENS.lead, brief());
@@ -189,6 +189,19 @@ describe("the Surety API", () => {
       remarks: draft.json.suggested.remarks,
     });
     expect(settled.json).toMatchObject({ state: "DELIVERED" });
+  });
+
+  it("GET /supplier/sourcing shows a supplier its own committed price and days, never another's", async () => {
+    const id = await openWithSupplier();
+    await call("POST", `/sourcing/${id}/invites`, TOKENS.sourcing, { address: SECOND });
+    const a = SUPPLIER_TOKENS[SUPPLIER];
+    const b = SUPPLIER_TOKENS[SECOND];
+    expect((await call("GET", "/supplier/sourcing", a)).json[0]).toMatchObject({ committed: false, committedQuote: null });
+    await call("POST", `/supplier/sourcing/${id}/quote`, a, quoteForm);
+    expect((await call("GET", "/supplier/sourcing", a)).json[0]).toMatchObject({ committed: true, committedQuote: { unitCents: 11_400, deliveryDays: 21 } });
+    const other = await call("GET", "/supplier/sourcing", b);
+    expect(other.json[0]).toMatchObject({ committed: false, committedQuote: null });
+    expect(other.text).not.toContain("11400");
   });
 
   it("settlement before the payment locks is refused, not an internal error", async () => {

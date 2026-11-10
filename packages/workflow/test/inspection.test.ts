@@ -56,7 +56,7 @@ const brief = (): SourcingBrief => ({
   deadlineSeconds: 300,
   negotiationSeconds: 90,
 });
-const form = { quoteNumber: "Q-88213", quantity: 400, unitCents: 11_400, incoterm: "CIF", port: "Durban", notes: "" };
+const form = { quoteNumber: "Q-88213", quantity: 400, unitCents: 11_400, incoterm: "CIF", port: "Durban", deliveryDays: 21, notes: "" };
 const settlement = {
   invoiceNumber: "INV-88213",
   blNumber: "SZXDUR-55120",

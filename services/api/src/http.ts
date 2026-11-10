@@ -219,6 +219,8 @@ export function createApiServer(
             port: s.brief.port,
             negotiationEndsAt: s.negotiationEndsAt,
             committed: i.quote !== null,
+            // Its own committed price and days only.
+            committedQuote: i.quote ? { unitCents: i.quote.unitCents, deliveryDays: i.deliveryDays } : null,
             dealId: i.dealId,
           });
         }

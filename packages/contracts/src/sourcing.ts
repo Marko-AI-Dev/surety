@@ -40,6 +40,8 @@ export const QuoteFormSchema = z
     unitCents: unitPrice,
     incoterm: z.enum(INCOTERMS),
     port: portSchema,
+    // Days from acceptance to delivery at the port. Kept beside the deal's quote, not inside it.
+    deliveryDays: z.number().int().min(1).max(365),
     notes: z.string().max(280),
   })
   .strict();

@@ -64,7 +64,7 @@ Opens a sourcing from the buyer's brief.
 
 ### `GET /sourcing/:id` (lead, view, sourcing, negotiator)
 
-- **For lead and view:** the full view, `{ brief (with maxUnitCents), invites: [{ address, name, status, cards: { yellow, red }, quote, dealId }], reports: [{ supplier, offer, summary } or { supplier, offer, withheld: true }], suggestions, secondsLeft, state, dealId }`.
+- **For lead and view:** the full view, `{ brief (with maxUnitCents), invites: [{ address, name, status, cards: { yellow, red }, quote, deliveryDays, dealId }], reports: [{ supplier, offer, summary } or { supplier, offer, withheld: true }], suggestions, secondsLeft, state, dealId }`.
 - **For sourcing and negotiator:** `{ goods: { description, quantity, targetUnitCents }, incoterm, port, secondsLeft, invites: [{ address, name, status, committed }] }`, with no maximum and no committed prices.
 
 ### `GET /suppliers` (lead, sourcing)
@@ -143,7 +143,7 @@ From the terminal: `pnpm inspector:attest` lists the queue; `pnpm inspector:atte
 
 ### `GET /supplier/sourcing`
 
-The sourcings this supplier is invited to: `[{ sourcingId, ref, state, goods, quantity, incoterm, port, negotiationEndsAt, committed, dealId }]`.
+The sourcings this supplier is invited to: `[{ sourcingId, ref, state, goods, quantity, incoterm, port, negotiationEndsAt, committed, committedQuote, dealId }]`. `committedQuote` is this supplier's own `{ unitCents, deliveryDays }` once committed, otherwise `null`.
 
 ### `GET /supplier/sourcing/:id/thread`
 
@@ -162,7 +162,7 @@ This supplier's conversation: `[{ kind, text, delivered?, card?, at }]`. It show
 
 The binding quote form.
 
-- **Body:** `{ "quoteNumber": "Q-88213", "quantity": 400, "unitCents": 11400, "incoterm": "CIF", "port": "Durban", "notes": "..." }`.
+- **Body:** `{ "quoteNumber": "Q-88213", "quantity": 400, "unitCents": 11400, "incoterm": "CIF", "port": "Durban", "deliveryDays": 21, "notes": "..." }`. `deliveryDays` (1 to 365) is required. It is stored beside the quote, so the deal's quote and its hash are unchanged; the same price with different days is a `409 conflict`.
 - **What Surety fills in:** the wallet is the supplier's approved one and the total is computed. Notes are screened like a message.
 
 ### `GET /supplier/deals`
