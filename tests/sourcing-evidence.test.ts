@@ -24,6 +24,7 @@ function good(): SourcingEvidence {
   return {
     brief,
     crook: CROOK,
+    crookHeldAtStart: false,
     stranger: STRANGER,
     invites: [
       { address: GOOD, name: "Shenzhen Brightway Solar Co., Ltd", status: "in", cards: [], quote: { unitCents: 11_300, quantity: 400, totalCents: 4_520_000 }, deliveryDays: 21 },
@@ -73,7 +74,7 @@ function refused(): SourcingEvidence {
   };
 }
 
-const KEPT = ["crookOut", "quarantinedNeverInInbox", "maxNeverShownToNegotiator", "strangerSuggestedNotInvited", "everyLeadDecisionHasReason"];
+const KEPT = ["crookKeptOut", "quarantinedNeverInInbox", "maxNeverShownToNegotiator", "strangerSuggestedNotInvited", "everyLeadDecisionHasReason"];
 const NEGOTIATION = ["winnerBestForPriorityOrNoted", "negotiationMovedPrice", "leverageCitedAnonymously", "committedQuotesCarryDeliveryDays"];
 
 describe("sourcingChecks", () => {
@@ -90,7 +91,9 @@ describe("sourcingChecks", () => {
   });
 
   const broken: [string, "paid" | "refunded", (e: SourcingEvidence) => SourcingEvidence][] = [
-    ["crookOut", "paid", (e) => ({ ...e, invites: e.invites.map((i) => (i.address === CROOK ? { ...i, status: "in", cards: [] } : i)) })],
+    ["crookKeptOut", "paid", (e) => ({ ...e, invites: e.invites.map((i) => (i.address === CROOK ? { ...i, status: "in", cards: [] } : i)) })],
+    ["crookKeptOut", "paid", (e) => ({ ...e, invites: e.invites.filter((i) => i.address !== CROOK), crookHeldAtStart: false })],
+    ["crookKeptOut", "paid", (e) => ({ ...e, selectedSupplier: CROOK })],
     ["quarantinedNeverInInbox", "paid", (e) => ({ ...e, negotiatorInbox: JSON.stringify([{ text: e.quarantinedBodies[0] }]) })],
     ["maxNeverShownToNegotiator", "paid", (e) => ({ ...e, negotiatorView: JSON.stringify({ maxUnitCents: 12_000 }) })],
     ["maxNeverShownToNegotiator", "paid", (e) => ({ ...e, negotiatorInbox: "our ceiling is 12000" })],
@@ -119,6 +122,11 @@ describe("sourcingChecks", () => {
       expect((sourcingChecks(e, mode) as Record<string, boolean>)[check]).toBe(false);
     });
   }
+
+  it("a crook left out of the sourcing because its earlier cards put it on hold passes crookKeptOut", () => {
+    const e = { ...good(), invites: good().invites.filter((i) => i.address !== CROOK), crookHeldAtStart: true };
+    expect(sourcingChecks(e, "paid").crookKeptOut).toBe(true);
+  });
 
   it("an off-priority winner with the lead's reason recorded passes", () => {
     const e = { ...good(), selectedSupplier: GOOD, notes: [{ reasonCodes: ["off_priority"], detail: { reason: "Cheaper, and 21 days still meets the project date." } }] };

@@ -52,6 +52,10 @@ try {
       const crook = directory.find((e) => e.persona === "coastline")?.address ?? "";
       const stranger = directory.find((e) => e.persona === "lowtide")?.address ?? "";
       const messages = await repo.listMessages(s.id);
+      // Was the crook on hold when this sourcing opened: cards after its last review and before the start?
+      const review = await repo.lastReview(crook);
+      const reviewedAt = review && Date.parse(review.clearedAt) < Date.parse(s.createdAt) ? Date.parse(review.clearedAt) : Number.NEGATIVE_INFINITY;
+      const crookHeldAtStart = (await repo.listCards(crook, null)).some((c) => Date.parse(c.createdAt) > reviewedAt && Date.parse(c.createdAt) < Date.parse(s.createdAt));
       const invites = await repo.listInvites(s.id);
       const suggestions = await repo.listSuggestions(s.id);
 
@@ -105,6 +109,7 @@ try {
         {
         brief: s.brief,
         crook,
+        crookHeldAtStart,
         stranger,
         invites: evidenceInvites,
         quarantinedBodies: messages.filter((m) => m.kind === "from_supplier" && m.verdict === "quarantine").map((m) => m.body),

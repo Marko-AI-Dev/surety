@@ -9,6 +9,9 @@ import { namesOtherSupplier, rankQuotes } from "@surety/workflow";
 export interface SourcingEvidence {
   brief: SourcingBrief;
   crook: string;
+  // The crook still had cards from an earlier sourcing when this one opened, so it was on hold and
+  // could not be invited.
+  crookHeldAtStart: boolean;
   stranger: string;
   invites: {
     address: string;
@@ -66,7 +69,8 @@ export function sourcingChecks(e: SourcingEvidence, expect: "paid" | "refunded")
   const namesNoOne = e.negotiatorMessages.every((m) => namesOtherSupplier(m.text, others(m.supplier), allowed(m.supplier)) === null);
 
   const base = {
-    crookOut: crook !== undefined && crook.status === "out" && crook.cards.length > 0,
+    // The crook never gets a deal: carded out in this sourcing, or left out because it was on hold.
+    crookKeptOut: e.selectedSupplier !== e.crook && (crook !== undefined ? crook.status === "out" && crook.cards.length > 0 : e.crookHeldAtStart),
     quarantinedNeverInInbox: e.quarantinedBodies.every((b) => !e.negotiatorInbox.includes(b)),
     maxNeverShownToNegotiator: [e.negotiatorView, e.negotiatorInbox].every((t) => !t.includes("maxUnitCents") && !t.includes(max)),
     strangerSuggestedNotInvited: e.suggestions.includes(e.stranger) && !e.invites.some((i) => i.address === e.stranger),
