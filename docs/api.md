@@ -15,7 +15,7 @@ Every request except `GET /health` sends `Authorization: Bearer <token>`. Each t
 | `inspector` | A person holding the second key, never an agent | `API_TOKEN_INSPECTOR` |
 | `supplier` | One supplier wallet per token | `API_SUPPLIER_TOKENS` (JSON: address to token) |
 
-`pnpm api:tokens` writes all of them to `.env.api`, which is gitignored and never printed. `pnpm api:tokens --add-missing` appends only the role tokens a file lacks (the inspector's, from Phase 4d) and leaves every other line, so no agent's token changes.
+`pnpm api:tokens` writes all of them to `.env.api`, which is gitignored and never printed. `pnpm api:tokens --add-missing` appends only the role tokens a file lacks (the inspector's, from Phase 4d) and leaves every other line, so no agent's token changes. Both also write `.env.suppliers` with the supplier tokens only: the supplier agents load that file, never `.env.api`, so no agent process holds a role token.
 
 - **The negotiator never sees the maximum price.** No response to its token contains it.
 - **A supplier sees only its own thread, quote and deals.** Anything else answers `404`, the same as a missing resource.

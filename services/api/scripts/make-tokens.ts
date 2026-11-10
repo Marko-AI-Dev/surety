@@ -3,6 +3,8 @@
 // supplier directory (fixtures/sourcing/directory.json). Never prints a token; refuses to replace
 // .env.api without --force. --add-missing keeps every existing line and appends only the role tokens
 // that are missing (for example the inspector's, added in Phase 4d), so no agent's token changes.
+// Every run also writes .env.suppliers with the supplier tokens only: the supplier agents load that
+// file, never .env.api, so their process holds no role token (the inspector's included).
 // Run: pnpm api:tokens [--force | --add-missing] [--suppliers rA,rB]
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -35,9 +37,21 @@ export function addMissingTokens(existing: string, token: () => string): { text:
   return { text: base + added.map((key) => `${key}=${token()}\n`).join(""), added };
 }
 
+// The supplier agents' env file: API_SUPPLIER_TOKENS copied from .env.api, and nothing else.
+export function renderSupplierEnv(apiEnv: string): string {
+  const suppliers = parseEnv(apiEnv).API_SUPPLIER_TOKENS;
+  if (!suppliers) throw new Error(".env.api has no API_SUPPLIER_TOKENS");
+  return ["# Surety supplier agent tokens, copied from .env.api by pnpm api:tokens; never commit or print.", `API_SUPPLIER_TOKENS=${suppliers}`, ""].join("\n");
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
   const root = resolve(import.meta.dirname, "../../..");
   const out = resolve(root, ".env.api");
+  const suppliersOut = resolve(root, ".env.suppliers");
+  const writeSuppliers = () => {
+    writeFileSync(suppliersOut, renderSupplierEnv(readFileSync(out, "utf8")), { mode: 0o600 });
+    console.log("Wrote .env.suppliers: supplier tokens only (values not shown).");
+  };
   const fresh = () => randomBytes(48).toString("base64url");
   if (process.argv.includes("--add-missing")) {
     if (!existsSync(out)) {
@@ -47,6 +61,7 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
     const { text, added } = addMissingTokens(readFileSync(out, "utf8"), fresh);
     if (added.length > 0) writeFileSync(out, text, { mode: 0o600 });
     console.log(added.length > 0 ? `Added to .env.api: ${added.join(", ")} (values not shown).` : ".env.api already has every role token.");
+    writeSuppliers();
     process.exit(0);
   }
   if (existsSync(out) && !process.argv.includes("--force")) {
@@ -63,4 +78,5 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
         : [];
   writeFileSync(out, renderApiEnv(addresses, fresh), { mode: 0o600 });
   console.log(`Wrote .env.api: ${ROLE_TOKEN_KEYS.length} role tokens and ${addresses.length} supplier tokens (values not shown).`);
+  writeSuppliers();
 }

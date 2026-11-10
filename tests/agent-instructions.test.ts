@@ -100,3 +100,19 @@ describe("negotiation with leverage (Phase 4d)", () => {
     expect(files["surety-api.md"]).toMatch(/"latestDeliveryDays"/);
   });
 });
+
+describe("no agent process is started with role tokens (final review, 10 Nov)", () => {
+  it("the supplier agents load .env.suppliers, never .env.api", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const pkg = JSON.parse(readFileSync(resolve(root, "services/supplier-agents/package.json"), "utf8")) as { scripts: Record<string, string> };
+    for (const [name, script] of Object.entries(pkg.scripts)) expect(script, name).not.toMatch(/\.env\.api/);
+    expect(pkg.scripts.start).toMatch(/--env-file=\.\.\/\.\.\/\.env\.suppliers/);
+  });
+
+  it("the inspector's terminal stand-in loads only .env.api, not the services' .env", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as { scripts: Record<string, string> };
+    expect(pkg.scripts["inspector:attest"]).toMatch(/--env-file=\.env\.api/);
+    expect(pkg.scripts["inspector:attest"]).not.toMatch(/--env-file=\.env(\s|$)/);
+  });
+});

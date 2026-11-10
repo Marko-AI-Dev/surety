@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --env-file=../../.env --env-file=../../.env.api --import tsx src/main.ts"
+    "start": "node --env-file=../../.env --env-file=../../.env.suppliers --import tsx src/main.ts"
   },
   "dependencies": {
     "@surety/contracts": "workspace:*"

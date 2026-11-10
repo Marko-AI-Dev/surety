@@ -95,7 +95,7 @@ A sourcing deal now pays only when two independent parties agree: the supplier's
 
 **Run B, the inspector refuses** ([evidence](evidence/sourcing-2026-11-10T17-33-34-735Z.json)). Brief as above with priority price. The bouncer carded Coastline out (yellow, then red). Brightway came down to $111 in 21 days and was first for price; $44,400 locked: [B2AAE2DE…](https://testnet.xrpl.org/transactions/B2AAE2DE6C58B8E8FE49BE08E34382F111FDB3AF9C905CE419DCD239EEB963C3). The inspector refused ("Seal broken, 380 cartons counted"). Surety Verify failed rule `attested` with no model call, and the escrow was cancelled at the ledger deadline: [E1FCDE43…](https://testnet.xrpl.org/transactions/E1FCDE43237E76B535EB97D33159A5804AEF6584616D40B58B871CEB4DC519A1). The treasury ended exactly where it started.
 
-**The inspector never answers** ([evidence](evidence/sourcing-2026-11-10T17-02-35-960Z.json)). In an earlier run nobody attested: the delivered deal waited unjudged, was held at the decision cutoff (`inspection_missing`) and refunded: [C1CCD8EA…](https://testnet.xrpl.org/transactions/C1CCD8EAE8A1A91AAF27167B5158FF2A134BBBB87AC8CF50FCDECBDFC4ED55E8).
+**The inspector never answers** ([evidence](evidence/sourcing-2026-11-10T17-02-35-960Z.json)). In an earlier run nobody attested: the delivered deal waited unjudged, was held at the decision cutoff (`inspection_missing`) and refunded. Its evidence was gathered with the refusal checks, so three read false by design: `refusedAttestationRefunded` (the reason is `inspection_missing`, not a refusal), and `negotiationMovedPrice` and `strangerSuggestedNotInvited` (a 120-second window and a brief without the stranger, both fixed for runs A and B). Refund: [C1CCD8EA…](https://testnet.xrpl.org/transactions/C1CCD8EAE8A1A91AAF27167B5158FF2A134BBBB87AC8CF50FCDECBDFC4ED55E8).
 
 All 12 checks pass for run A and all 11 for run B. Decision-model cost across the four runs of the day: $0.0015.
 
@@ -152,7 +152,7 @@ pnpm supplier:clear <wallet> "<note>"       # the operator clears a supplier's c
 pnpm evidence:sourcing <sourcingId> --before <cents> --expect paid|refunded   # gathers a run into evidence/ and checks it
 
 # The inspector's second key (Phase 4d)
-pnpm api:tokens --add-missing               # adds the inspector's token to .env.api without changing the others
+pnpm api:tokens --add-missing               # adds the inspector's token to .env.api without changing the others, and writes .env.suppliers
 pnpm inspector:attest                       # the inspector's queue (no B/L numbers shown)
 pnpm inspector:attest <dealId> <blNumber> attested "400 cartons counted, seal intact"   # or refused
 ```

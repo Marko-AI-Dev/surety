@@ -1,7 +1,7 @@
 import { parseEnv } from "node:util";
 import { describe, expect, it } from "vitest";
 import { loadApiConfig } from "../src/config";
-import { addMissingTokens, renderApiEnv } from "../scripts/make-tokens";
+import { addMissingTokens, renderApiEnv, renderSupplierEnv } from "../scripts/make-tokens";
 
 const SUPPLIER = "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U";
 const SECOND = "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY";
@@ -48,5 +48,21 @@ describe("renderApiEnv", () => {
 
   it("refuses an address that isn't an XRPL address", () => {
     expect(() => renderApiEnv(["not-an-address"], () => "t".repeat(40))).toThrow(/address/);
+  });
+});
+
+describe("the supplier agents' own env file (final review, 10 Nov)", () => {
+  it("renderSupplierEnv carries API_SUPPLIER_TOKENS only, with the same value, and no role token", () => {
+    let n = 0;
+    const api = renderApiEnv([SUPPLIER, SECOND], () => `token-${++n}-${"x".repeat(40)}`);
+    const text = renderSupplierEnv(api);
+    const env = parseEnv(text);
+    expect(Object.keys(env)).toEqual(["API_SUPPLIER_TOKENS"]);
+    expect(env.API_SUPPLIER_TOKENS).toBe(parseEnv(api).API_SUPPLIER_TOKENS);
+    expect(text).not.toMatch(/API_TOKEN_/);
+  });
+
+  it("renderSupplierEnv refuses an .env.api without supplier tokens", () => {
+    expect(() => renderSupplierEnv("API_TOKEN_LEAD=" + "a".repeat(48) + "\n")).toThrow(/API_SUPPLIER_TOKENS/);
   });
 });
