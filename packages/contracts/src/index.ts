@@ -48,16 +48,29 @@ export {
   LeadDecisionSchema,
   MESSAGE_MAX_CHARS,
   OfferReportSchema,
+  PRIORITIES,
   QuoteFormSchema,
   SettlementFormSchema,
   SourcingBriefSchema,
   type Card,
   type LeadDecision,
   type OfferReport,
+  type Priority,
   type QuoteForm,
   type SettlementForm,
   type SourcingBrief,
 } from "./sourcing";
+export {
+  ATTESTATION_OUTCOMES,
+  AttestationFormSchema,
+  BL_NUMBER_MAX_CHARS,
+  INSPECTION_NOTE_MAX_CHARS,
+  INSPECTION_STATES,
+  type AttestationForm,
+  type AttestationOutcome,
+  type Inspection,
+  type InspectionState,
+} from "./inspection";
 export { MAX_CLOCK_SKEW_MS, SIG_HEADER, TS_HEADER, signRequest, verifyRequest } from "./transport";
 export {
   CancelEscrowRequestSchema,

@@ -40,3 +40,16 @@ Times are from the issue being created (assigned) to each request reaching the p
 - **Locking the agents down:** Bubblewrap is installed (`/usr/bin/bwrap`), so the CLI engine supports `networkScope: "allowlist"` with `networkAllowlist` (only the Surety API host and the Codex provider) and `filesystemScope: "workspace"`. Task 11 should try this, so the agents can't reach any other site even if told to. If it breaks the ChatGPT sign-in, record which host it needs.
 - **Instructions:** `adapterConfig.instructionsFilePath` points at a markdown file that is prepended to every run, which is where `agents/paperclip/*.md` go.
 - **Housekeeping:** the probe agent and issues KAR-1 to KAR-8 can stay or be archived; they hold no secrets.
+
+## Sandbox: the agents cannot see the keys (9 Nov, after the external review)
+
+An external review (Fable 5.2) pointed out that the agents run with a shell inside WSL, which mounts the Windows drive holding the repo and its secret files. Tested with a harmless canary file placed next to those files (no secret was ever involved):
+
+| Test | Agent config | Result |
+|---|---|---|
+| 1 | CLI engine, no filesystem scope | The agent printed the canary word: it could read the Windows drive, so it could have read the keys |
+| 2 | `filesystemScope: "workspace"` | The sandbox failed to start: Paperclip's Bubblewrap setup binds `/bin`, `/sbin`, `/lib` and `/lib64` after symlinking them to `usr/*`, which fails on merged-`/usr` Ubuntu. Failed closed |
+| 3 | plus `filesystemSandboxCommand` pointing at `agents/paperclip/bwrap-merged-usr.sh` (drops those four redundant binds) | The sandbox started; Codex got `401` because the ChatGPT sign-in file sits outside the sandbox |
+| 4 | plus `filesystemExtraPaths: ["/home/marko/.codex/auth.json"]` (read-only) | `cat: /mnt/c/Users/Marko/HACKATHON/.sandbox-canary: No such file or directory`. The agent ran on the subscription, used Paperclip and reported back, but cannot see the Windows drive |
+
+The Lead, Sourcing and Negotiator agents now run with the test-4 settings (`pnpm paperclip:team` installs the wrapper and applies them). They see only their own working folder, read-only system paths and the sign-in file; network stays on so they can reach Paperclip, ChatGPT and the Surety API. The keys and secrets are invisible to them. The remaining boundary to make physical is the signer on a separate device.

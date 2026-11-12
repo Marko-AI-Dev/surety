@@ -3,9 +3,12 @@ import http from "node:http";
 import { ZodError, z } from "zod";
 import { Address } from "@surety/contracts";
 import {
+  AttestationConflict,
   DealConflict,
   DealTransitionConflict,
   DeliverableConflict,
+  InspectionClosed,
+  InspectionNotFound,
   InviteConflict,
   NotInvited,
   QuoteConflict,
@@ -17,7 +20,10 @@ import {
   SupplierOut,
   TransitionConflict,
   TransitionError,
+  attest,
   commitQuote,
+  inspectionOf,
+  inspectorQueue,
   inviteSupplier,
   leadDecision,
   leadView,
@@ -35,16 +41,18 @@ import {
   supplierThread,
 } from "@surety/workflow";
 import type { ApiTokens } from "./config";
+import { sourcingList, sourcingRecord } from "./record";
 
 // The Surety API: the only door for the buyer's agents, the supplier agents and the UI. One bearer
 // token per role and one per supplier, so a token names exactly one caller, and each route lists the
 // roles it serves. The negotiator's routes never carry the maximum price. Other suppliers' threads,
-// quotes and deals answer 404, exactly like a missing one.
+// quotes and deals answer 404, exactly like a missing one. The inspector (a person, the second key)
+// sees only its queue and its own answers, never the B/L number a supplier submitted.
 
 const MAX_BODY_BYTES = 16 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type Role = "lead" | "sourcing" | "negotiator" | "view" | "supplier";
+export type Role = "lead" | "sourcing" | "negotiator" | "view" | "inspector" | "supplier";
 interface Caller {
   role: Role;
   supplier?: string;
@@ -80,11 +88,12 @@ function statusOf(e: unknown): [number, string, string] {
   if (e instanceof HttpError) return [e.status, e.code, e.message];
   if (e instanceof ZodError) return [400, "bad_request", e.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; ")];
   if (e instanceof SourcingRefused) return [400, "refused", e.message];
-  if (e instanceof NotInvited || e instanceof SourcingNotFound) return [404, "not_found", "no such resource"];
+  if (e instanceof NotInvited || e instanceof SourcingNotFound || e instanceof InspectionNotFound) return [404, "not_found", "no such resource"];
   if (e instanceof SupplierOut) return [403, "supplier_out", e.message];
-  if (e instanceof SourcingClosed) return [409, "closed", e.message];
+  if (e instanceof SourcingClosed || e instanceof InspectionClosed) return [409, "closed", e.message];
   if (
     e instanceof QuoteConflict ||
+    e instanceof AttestationConflict ||
     e instanceof InviteConflict ||
     e instanceof SourcingConflict ||
     e instanceof DealConflict ||
@@ -100,7 +109,7 @@ function statusOf(e: unknown): [number, string, string] {
 
 export function createApiServer(
   deps: SourcingDeps,
-  config: { tokens: ApiTokens; supplierTokens: Record<string, string> },
+  config: { tokens: ApiTokens; supplierTokens: Record<string, string>; inspectorName?: string },
   opts: { log?: (line: string) => void } = {},
 ): http.Server {
   // Tokens are compared as SHA-256 digests with timingSafeEqual: equal length, constant time.
@@ -124,6 +133,9 @@ export function createApiServer(
 
   const routes: Route[] = [
     { method: "POST", pattern: /^\/sourcing$/, roles: ["lead"], handle: ({ body }) => openSourcing(deps, body) },
+    { method: "GET", pattern: /^\/sourcing$/, roles: ["lead", "view"], handle: () => sourcingList(deps, 20) },
+    // The operator's full record of a sourcing, held messages and the maximum included: view only.
+    { method: "GET", pattern: /^\/sourcing\/([^/]+)\/record$/, roles: ["view"], handle: ({ id }) => sourcingRecord(deps, id) },
     {
       method: "GET",
       pattern: /^\/sourcing\/([^/]+)$/,
@@ -179,10 +191,18 @@ export function createApiServer(
           events: await deps.repo.listDealEvents(deal.id),
           job: job && { id: job.id, ref: job.ref, state: job.state, amount: job.amount, sellerAddress: job.sellerAddress },
           decision: job ? await deps.repo.latestDecision(job.id) : null,
+          inspection: await inspectionOf(deps, deal.id),
         };
       },
     },
     { method: "GET", pattern: /^\/operator\/quarantine$/, roles: ["view"], handle: () => deps.repo.listQuarantined(50) },
+    { method: "GET", pattern: /^\/inspector\/deals$/, roles: ["inspector"], handle: () => inspectorQueue(deps) },
+    {
+      method: "POST",
+      pattern: /^\/inspector\/deals\/([^/]+)\/attestation$/,
+      roles: ["inspector"],
+      handle: ({ id, body }) => attest(deps, id, body, config.inspectorName ?? "Port inspector (demo)"),
+    },
     {
       method: "GET",
       pattern: /^\/supplier\/sourcing$/,
@@ -203,6 +223,8 @@ export function createApiServer(
             port: s.brief.port,
             negotiationEndsAt: s.negotiationEndsAt,
             committed: i.quote !== null,
+            // Its own committed price and days only.
+            committedQuote: i.quote ? { unitCents: i.quote.unitCents, deliveryDays: i.deliveryDays } : null,
             dealId: i.dealId,
           });
         }

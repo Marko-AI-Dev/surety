@@ -14,10 +14,12 @@ Open a sourcing from the buyer's brief (the numbers come from your task):
 
 ```bash
 curl -s -X POST "$SURETY_API_URL/sourcing" -H "Authorization: Bearer $SURETY_API_TOKEN" -H "content-type: application/json" \
-  -d '{"buyer":{"name":"<buyer name>","address":"<treasury wallet>"},"goods":{"description":"<goods>","quantity":<n>,"targetUnitCents":<target>,"maxUnitCents":<maximum>},"incoterm":"CIF","port":"<port>","deadlineSeconds":<seconds>,"negotiationSeconds":<seconds>}'
+  -d '{"buyer":{"name":"<buyer name>","address":"<treasury wallet>"},"goods":{"description":"<goods>","quantity":<n>,"targetUnitCents":<target>,"maxUnitCents":<maximum>},"incoterm":"CIF","port":"<port>","deadlineSeconds":<seconds>,"negotiationSeconds":<seconds>,"priority":"<price|speed|balanced>","latestDeliveryDays":<days>}'
 ```
 
-See the sourcing, the committed quotes, the negotiator's reports and any suggestions:
+Leave out `latestDeliveryDays` if the brief gives none; `priority` defaults to `balanced`.
+
+See the sourcing, the committed quotes with their delivery days, Surety's `ranking` for the buyer's priority, the negotiator's reports and any suggestions:
 
 ```bash
 curl -s -X GET "$SURETY_API_URL/sourcing/$SOURCING_ID" -H "Authorization: Bearer $SURETY_API_TOKEN"
@@ -57,6 +59,8 @@ curl -s -X POST "$SURETY_API_URL/sourcing/$SOURCING_ID/suggestions" -H "Authoriz
 ```
 
 ## Negotiator
+
+`GET /sourcing/<id>` shows you the buyer's `priority`, `latestDeliveryDays` and `offers`: each supplier's latest reported price or committed quote, with delivery days. A message that names another invited supplier is refused with `400 refused`.
 
 ```bash
 curl -s -X GET "$SURETY_API_URL/sourcing/$SOURCING_ID" -H "Authorization: Bearer $SURETY_API_TOKEN"

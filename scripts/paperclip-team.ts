@@ -14,6 +14,13 @@ const COMPANY = "a5420cfe-19a3-4b7d-99a2-8e7999c2e9f8"; // Karoo Solar Imports (
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE = "/mnt/c/Users/Marko/HACKATHON/agents/paperclip";
 
+// The agents run inside Paperclip's workspace sandbox (Bubblewrap): they see only their own working
+// folder, read-only system paths and the ChatGPT sign-in file, never the Windows drive that holds the
+// repo and its secrets. The wrapper fixes Paperclip's sandbox on merged-/usr Ubuntu
+// (docs/research/07-paperclip-test.md). Proven with a canary file: readable before, "No such file" after.
+const SANDBOX_WRAPPER = "/home/marko/surety-demo/bin/bwrap-merged-usr";
+const CODEX_SIGN_IN = "/home/marko/.codex/auth.json";
+
 const wsl = (script: string, input?: string) =>
   execFileSync("wsl", ["-d", "Ubuntu", "-e", "bash", "-lc", script], { input, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
 const json = <T>(text: string): T => JSON.parse(text) as T;
@@ -31,6 +38,8 @@ const ROLES = [
   { key: "negotiator", name: "Negotiator", role: "general", title: "Negotiator", file: "negotiator.md", token: env.API_TOKEN_NEGOTIATOR },
 ] as const;
 
+wsl(`mkdir -p /home/marko/surety-demo/bin && cp ${SOURCE}/bwrap-merged-usr.sh ${SANDBOX_WRAPPER} && chmod +x ${SANDBOX_WRAPPER}`);
+
 const secrets = listOf<{ id: string; name: string }>(json(wsl(`paperclipai secrets list -C ${COMPANY} --json`)));
 const agents = listOf<{ id: string; name: string }>(json(wsl(`paperclipai agent list -C ${COMPANY} --json`)));
 
@@ -40,7 +49,7 @@ for (const r of ROLES) {
   const name = `SURETY_TOKEN_${r.key.toUpperCase()}`;
   const existing = secrets.find((s) => s.name === name);
   const out = existing
-    ? wsl(`read -r V; export V; paperclipai secrets rotate ${existing.id} -C ${COMPANY} --value-env V --json`, `${r.token}\n`)
+    ? wsl(`read -r V; export V; paperclipai secrets rotate ${existing.id} --value-env V --json`, `${r.token}\n`)
     : wsl(`read -r V; export V; paperclipai secrets create -C ${COMPANY} --name ${name} --key ${name} --value-env V --json`, `${r.token}\n`);
   secretIds[r.key] = existing?.id ?? json<{ id: string }>(out).id;
   console.log(`secret ${name}: ${existing ? "rotated" : "created"} (${secretIds[r.key]})`);
@@ -60,6 +69,9 @@ for (const r of ROLES) {
       cwd,
       modelReasoningEffort: "low",
       instructionsFilePath: `${cwd}/${r.file}`,
+      filesystemScope: "workspace",
+      filesystemSandboxCommand: SANDBOX_WRAPPER,
+      filesystemExtraPaths: [CODEX_SIGN_IN],
       env: { SURETY_API_URL: apiUrl, SURETY_API_TOKEN: { type: "secret_ref", secretId: secretIds[r.key] } },
     },
     ...(r.key !== "lead" && leadId ? { reportsTo: leadId } : {}),

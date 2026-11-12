@@ -43,3 +43,51 @@ describe("sourcing schema", () => {
     }
   });
 });
+
+describe("delivery days on committed quotes", () => {
+  it("a 4c invite with a quote and no delivery days reads back with deliveryDays null", async () => {
+    await resetTables(admin);
+    const repo = createPgRepo(databaseUrl());
+    try {
+      const s = await repo.createSourcing(newRef(), brief, new Date(Date.now() + 90_000));
+      await repo.addInvite(s.id, { address: SUPPLIER, name: "Brightway" });
+      await admin`update sourcing_suppliers set quote = ${admin.json({ quoteNumber: "Q-1" })}, quote_hash = ${"c".repeat(64)} where sourcing_id = ${s.id}`;
+      const [invite] = await repo.listInvites(s.id);
+      expect(invite?.quoteHash).toBe("c".repeat(64));
+      expect(invite?.deliveryDays).toBeNull();
+    } finally {
+      await repo.close();
+    }
+  });
+
+  it("delivery days without a quote, or outside 1 to 365, are refused by the table", async () => {
+    await resetTables(admin);
+    const repo = createPgRepo(databaseUrl());
+    try {
+      const s = await repo.createSourcing(newRef(), brief, new Date(Date.now() + 90_000));
+      await repo.addInvite(s.id, { address: SUPPLIER, name: "Brightway" });
+      await expect(admin`update sourcing_suppliers set delivery_days = 21 where sourcing_id = ${s.id}`).rejects.toThrow();
+      await expect(
+        admin`update sourcing_suppliers set quote = ${admin.json({ quoteNumber: "Q-1" })}, quote_hash = ${"c".repeat(64)}, delivery_days = 0 where sourcing_id = ${s.id}`,
+      ).rejects.toThrow();
+    } finally {
+      await repo.close();
+    }
+  });
+});
+
+describe("the buyer's priority", () => {
+  it("a brief stored before 4d reads back with priority balanced", async () => {
+    await resetTables(admin);
+    const repo = createPgRepo(databaseUrl());
+    try {
+      const s = await repo.createSourcing(newRef(), brief, new Date(Date.now() + 90_000));
+      await admin`update sourcings set brief = brief - 'priority' - 'latestDeliveryDays' where id = ${s.id}`;
+      const [row] = await admin`select brief from sourcings where id = ${s.id}`;
+      expect(row?.brief).not.toHaveProperty("priority");
+      expect((await repo.getSourcing(s.id))?.brief.priority).toBe("balanced");
+    } finally {
+      await repo.close();
+    }
+  });
+});

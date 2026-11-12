@@ -1,0 +1,781 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Surety Console Drafts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Archivo:wdth,wght@62..125,400..700&family=Red+Hat+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one viewport, no page scroll. Header and section rail on top, a perspective stage holding four
+   section panels on a lateral arc (VR-style), and a depth layer for one job's station record. */
+:root {
+  color-scheme: dark;
+  --glide: cubic-bezier(.19, 1, .22, 1);
+  --ease: cubic-bezier(.16, 1, .3, 1);
+}
+:root[data-world="vault"] {
+  --ground: #0f0b0e;
+  --ambient: radial-gradient(1200px 700px at 50% -12%, rgba(255, 236, 206, .085), transparent 62%), radial-gradient(900px 620px at 50% 120%, rgba(118, 64, 92, .12), transparent 62%);
+  --light: rgba(255, 236, 206, .12);
+  --case: rgba(255, 246, 232, .035);
+  --case-edge: rgba(255, 240, 220, .15);
+  --case-lip: rgba(255, 248, 236, .2);
+  --well: rgba(0, 0, 0, .22);
+  --ink: #efe7da; --ink-2: #bdb1a0; --ink-3: #958978;
+  --rule: rgba(239, 231, 218, .12);
+  --accent: #cfa75e; --accent-ink: #1a1408;
+  --ok: #d9cdb8; --bad: #d4826f; --refund: #a3b9d8; --held: #cfa75e;
+  --display: "Marcellus", "Hanken Grotesk", Georgia, serif;
+  --sans: "Hanken Grotesk", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --radius: 14px; --blur: 18px;
+}
+:root[data-world="catalogue"] {
+  --ground: #0b0b0b;
+  --ambient: linear-gradient(transparent, transparent);
+  --light: rgba(255, 255, 255, 0);
+  --case: rgba(14, 14, 14, .97);
+  --case-edge: rgba(255, 255, 255, .2);
+  --case-lip: rgba(255, 255, 255, .07);
+  --well: rgba(255, 255, 255, .03);
+  --ink: #f1f1ec; --ink-2: #ababa5; --ink-3: #87877f;
+  --rule: rgba(255, 255, 255, .16);
+  --accent: #f1f1ec; --accent-ink: #0b0b0b;
+  --ok: #8fd3a6; --bad: #e3907e; --refund: #8fb3e2; --held: #e7c45d;
+  --display: "Archivo", system-ui, sans-serif;
+  --sans: "Archivo", system-ui, sans-serif;
+  --mono: "Red Hat Mono", ui-monospace, Consolas, monospace;
+  --radius: 3px; --blur: 4px;
+}
+:root[data-world="spatial"] {
+  --ground: #0c141b;
+  --ambient: radial-gradient(900px 620px at 12% 18%, rgba(62, 140, 170, .34), transparent 62%), radial-gradient(820px 620px at 88% 26%, rgba(118, 92, 192, .26), transparent 62%), radial-gradient(1100px 720px at 50% 115%, rgba(38, 122, 108, .3), transparent 62%);
+  --light: rgba(255, 255, 255, 0);
+  --case: rgba(255, 255, 255, .085);
+  --case-edge: rgba(255, 255, 255, .18);
+  --case-lip: rgba(255, 255, 255, .3);
+  --well: rgba(255, 255, 255, .06);
+  --ink: #ffffff; --ink-2: rgba(255, 255, 255, .78); --ink-3: rgba(255, 255, 255, .62);
+  --rule: rgba(255, 255, 255, .12);
+  --accent: #8ee6c8; --accent-ink: #06261c;
+  --ok: #8ee6c8; --bad: #ff9d8a; --refund: #9cc2ff; --held: #ffd27a;
+  --display: "Manrope", system-ui, sans-serif;
+  --sans: "Manrope", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --radius: 30px; --blur: 40px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden;
+  background: var(--ambient), var(--ground);
+  background-color: var(--ground);
+  color: var(--ink);
+  font: 15px/1.45 var(--sans);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-font-smoothing: antialiased;
+  caret-color: var(--accent);
+  transition: background-color .6s var(--ease);
+}
+::selection { background: var(--accent); color: var(--accent-ink); }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+button { font: inherit; color: inherit; }
+a { color: var(--ink); text-decoration-color: var(--ink-3); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--accent); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.app {
+  height: 100%; max-width: 1500px; margin: 0 auto; display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto; gap: 10px;
+  padding-block: max(12px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-bottom, 0px));
+}
+
+/* Top bar */
+.bar { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; min-width: 0; }
+.seal { width: 28px; height: 28px; flex: none; }
+.seal circle { fill: none; stroke: var(--accent); stroke-width: 1.3; }
+.seal path { fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.brand b { font: 500 20px/1 var(--display); letter-spacing: .02em; }
+:root[data-world="catalogue"] .brand b { font-stretch: 112%; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; font-size: 15px; }
+.worlds { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; border: 1px solid var(--rule); background: var(--well); }
+.worlds button { border: 0; background: none; cursor: pointer; padding: 7px 14px; border-radius: 999px; font-size: 13px; color: var(--ink-2); white-space: nowrap; transition: color .2s, background .2s; }
+.worlds button:hover { color: var(--ink); }
+.worlds button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.motion { border: 1px solid var(--rule); background: none; cursor: pointer; border-radius: 999px; padding: 7px 13px; font-size: 13px; color: var(--ink-2); display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; }
+.motion i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.motion[aria-pressed="true"] i { background: var(--accent); }
+
+.dirnote { display: flex; gap: 14px; align-items: baseline; min-width: 0; color: var(--ink-2); font-size: 13px; }
+.dirnote p { margin: 0; min-width: 0; }
+.dirnote b { color: var(--ink); font-weight: 600; }
+.dirnote details { flex: none; position: relative; }
+.dirnote summary { cursor: pointer; color: var(--ink-3); list-style: none; white-space: nowrap; }
+.dirnote summary::-webkit-details-marker { display: none; }
+.dirnote details[open] summary { color: var(--accent); }
+.borrow { position: absolute; right: 0; top: 24px; z-index: 40; width: min(460px, 86vw); padding: 14px 16px; border-radius: 12px; background: var(--ground); border: 1px solid var(--case-edge); box-shadow: 0 24px 48px -20px rgba(0, 0, 0, .8); font-size: 12.5px; color: var(--ink-2); }
+.borrow ul { margin: 6px 0 0; padding-left: 16px; display: grid; gap: 4px; }
+
+/* Section rail */
+.sections { display: flex; gap: 2px; justify-self: center; padding: 4px; border-radius: 999px; border: 1px solid var(--rule); background: var(--well); }
+.sections button { border: 0; background: none; cursor: pointer; padding: 8px 18px; border-radius: 999px; font-size: 13.5px; color: var(--ink-2); white-space: nowrap; transition: color .2s, background .2s; }
+.sections button:hover { color: var(--ink); }
+.sections button[aria-current="true"] { color: var(--ink); background: rgba(255, 255, 255, .08); box-shadow: inset 0 1px 0 var(--case-lip); }
+:root[data-world="catalogue"] .sections { border-radius: 2px; }
+:root[data-world="catalogue"] .sections button { border-radius: 2px; text-transform: uppercase; letter-spacing: .12em; font-size: 11.5px; font-stretch: 112%; }
+:root[data-world="spatial"] .app { grid-template-rows: auto auto minmax(0, 1fr) auto auto; }
+:root[data-world="spatial"] .sections { grid-row: 4; backdrop-filter: blur(30px) saturate(1.5); background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .16); }
+:root[data-world="spatial"] .stage { grid-row: 3; }
+
+/* Stage: lateral arc of panels, each with its own perspective so backdrop blur keeps working */
+.stage { position: relative; min-height: 0; overflow: clip; }
+.panel {
+  position: absolute; top: 4px; bottom: 6px; left: 8%; right: 8%;
+  display: flex; flex-direction: column; min-height: 0;
+  border-radius: var(--radius); border: 1px solid var(--case-edge);
+  background: radial-gradient(72% 46% at 50% -10%, var(--light), transparent 72%), var(--case);
+  box-shadow: inset 0 1px 0 var(--case-lip), 0 44px 80px -44px rgba(0, 0, 0, .85), 0 18px 30px -22px rgba(0, 0, 0, .6);
+  backdrop-filter: blur(var(--blur)) saturate(1.2); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+  transform: perspective(1700px) translate3d(calc(var(--d, 0) * 74%), 0, calc(var(--ad, 0) * -340px)) rotateY(calc(var(--d, 0) * -27deg));
+  transition: transform 1s var(--glide), opacity .7s var(--ease), filter .7s var(--ease);
+  will-change: transform;
+}
+.panel[data-pos="near"] { opacity: .5; filter: saturate(.6) brightness(.85); cursor: pointer; }
+.panel[data-pos="near"]:hover { opacity: .72; }
+.panel[data-pos="far"] { opacity: .16; cursor: pointer; }
+.panel[data-pos="gone"] { opacity: 0; pointer-events: none; }
+.panel[data-pos="0"] { z-index: 3; }
+.panel .fwd { position: absolute; inset: auto 0 18px; margin: 0 auto; width: max-content; padding: 6px 12px; border-radius: 999px; font-size: 12px; background: var(--ground); border: 1px solid var(--case-edge); color: var(--ink); opacity: 0; transition: opacity .3s; pointer-events: none; }
+.panel[data-pos="near"]:hover .fwd { opacity: 1; }
+:root[data-world="catalogue"] .panel { box-shadow: 0 30px 60px -40px rgba(0, 0, 0, .9); }
+.phead { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 20px 26px 12px; flex: none; }
+.phead h2 { margin: 0; font: 400 26px/1.15 var(--display); letter-spacing: .005em; text-wrap: balance; }
+.phead .aside { color: var(--ink-3); font-size: 12.5px; white-space: nowrap; }
+:root[data-world="catalogue"] .phead h2 { font-weight: 600; font-stretch: 75%; font-size: 30px; letter-spacing: -.01em; text-transform: uppercase; }
+:root[data-world="spatial"] .phead h2 { font-weight: 600; font-size: 24px; letter-spacing: -.015em; }
+.pbody { flex: 1; min-height: 0; padding: 4px 26px 22px; overflow: hidden; }
+
+/* Overview composition, one per world */
+.ov { height: 100%; display: grid; gap: 18px; min-height: 0; }
+:root[data-world="vault"] .ov { grid-template: "reg reg" auto "lots feed" minmax(0, 1fr) / minmax(0, 1fr) minmax(250px, 29%); }
+:root[data-world="spatial"] .ov { grid-template: "reg reg" auto "lots feed" minmax(0, 1fr) / minmax(0, 1fr) minmax(260px, 30%); }
+:root[data-world="catalogue"] .ov { grid-template: "idx plot tot" minmax(0, 1fr) "idx feed tot" auto / minmax(280px, 31%) minmax(0, 1fr) minmax(170px, 16%); gap: 0 26px; }
+.register { grid-area: reg; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+:root[data-world="catalogue"] .register { grid-area: tot; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 20px; }
+.lots { grid-area: lots; }
+:root[data-world="catalogue"] .lots { grid-area: idx; }
+.ridge { grid-area: plot; display: none; min-height: 0; }
+:root[data-world="catalogue"] .ridge { display: block; }
+.feed { grid-area: feed; }
+
+/* Register (totals) */
+.reg { display: grid; gap: 2px; padding: 4px 18px 14px 0; min-width: 0; }
+.reg + .reg { padding-left: 18px; border-left: 1px solid var(--rule); }
+.reg .rl { font: 400 12px/1.3 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
+.reg .rv { font: 500 28px/1.15 var(--sans); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.reg .rv small { font-size: 15px; color: var(--ink-2); margin-left: 4px; font-weight: 400; }
+.reg .rs { font-size: 12.5px; color: var(--ink-3); }
+.reg.is-held .rv { color: var(--held); }
+:root[data-world="vault"] .register { border-bottom: 1px solid var(--rule); }
+:root[data-world="catalogue"] .reg, :root[data-world="catalogue"] .reg + .reg { padding: 0 0 16px; border-left: 0; border-bottom: 1px solid var(--rule); }
+:root[data-world="catalogue"] .reg .rl { font: 600 10.5px/1.3 var(--sans); font-stretch: 112%; letter-spacing: .16em; }
+:root[data-world="catalogue"] .reg .rv { font: 600 44px/1 var(--sans); font-stretch: 62%; letter-spacing: -.02em; }
+:root[data-world="spatial"] .register { gap: 12px; }
+:root[data-world="spatial"] .reg, :root[data-world="spatial"] .reg + .reg { padding: 14px 18px; border: 0; border-radius: 22px; background: rgba(255, 255, 255, .07); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16); }
+:root[data-world="spatial"] .reg .rl { font: 600 12.5px/1.3 var(--sans); letter-spacing: 0; text-transform: none; }
+:root[data-world="spatial"] .reg .rv { font-weight: 700; }
+
+/* Job lists */
+.list { position: relative; list-style: none; margin: 0; padding: 0; overflow: hidden; min-height: 0; height: 100%; }
+.lot { display: grid; align-items: center; gap: 2px 16px; padding: 11px 6px; border-top: 1px solid var(--rule); cursor: pointer; border-radius: 6px; transition: background .2s; }
+.lot:first-child { border-top: 0; }
+.lot:hover, .lot:focus-visible { background: rgba(255, 255, 255, .04); }
+:root[data-world="vault"] .lot, :root[data-world="spatial"] .lot { grid-template: "no title marks state" auto "no sub tx tx" auto / 72px minmax(0, 1fr) auto 112px; }
+:root[data-world="catalogue"] .lot { grid-template: "no code title" auto "no code sub" auto / 64px 10px minmax(0, 1fr); padding: 9px 4px; border-radius: 0; }
+.l-no { grid-area: no; font: 400 13px/1.2 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+:root[data-world="catalogue"] .l-no { font: 500 13px/1 var(--mono); letter-spacing: 0; color: var(--ink); }
+:root[data-world="spatial"] .l-no { font: 600 12.5px/1 var(--sans); letter-spacing: 0; text-transform: none; color: var(--ink-3); }
+.l-title { grid-area: title; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.l-sub { grid-area: sub; color: var(--ink-3); font-size: 12.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.l-tx { grid-area: tx; justify-self: end; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.l-code { grid-area: code; display: none; width: 10px; height: 100%; min-height: 30px; }
+:root[data-world="catalogue"] .l-code { display: block; }
+:root[data-world="catalogue"] .lot .l-marks, :root[data-world="catalogue"] .lot .l-state, :root[data-world="catalogue"] .lot .l-tx { display: none; }
+.l-code[data-out="paid"] { background: var(--ok); }
+.l-code[data-out="refunded"] { background: var(--refund); }
+.l-code[data-out="live"] { background: var(--held); }
+
+/* Station marks: seven stations, in order */
+.marks { grid-area: marks; display: flex; align-items: center; gap: 9px; position: relative; padding: 0 2px; }
+.marks::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--rule); }
+.marks i { position: relative; width: 7px; height: 7px; flex: none; background: var(--ground); border: 1px solid var(--ink-3); transform: rotate(45deg); transition: background .3s, border-color .3s, box-shadow .3s; }
+.marks i[data-s="ok"] { background: var(--ok); border-color: var(--ok); }
+.marks i[data-s="bad"] { background: var(--ground); border-color: var(--bad); }
+.marks i[data-s="bad"]::after { content: ""; position: absolute; left: -3px; right: -3px; top: 2px; height: 1px; background: var(--bad); transform: rotate(90deg); }
+.marks i[data-s="skip"] { opacity: .35; }
+.marks i[data-s="refund"] { background: var(--refund); border-color: var(--refund); }
+.marks i[data-s="held"] { border-style: dashed; }
+.marks i[data-s="now"] { background: var(--held); border-color: var(--held); box-shadow: 0 0 0 4px rgba(207, 167, 94, .18); animation: breathe 1.8s ease-in-out infinite; }
+:root[data-world="spatial"] .marks i { border-radius: 50%; transform: none; }
+:root[data-world="spatial"] .marks i[data-s="bad"]::after { display: none; }
+@keyframes breathe { 50% { box-shadow: 0 0 0 7px rgba(207, 167, 94, .05); } }
+
+/* Outcome stamps: outcomes are stamped, never erased */
+.stamp { grid-area: state; justify-self: end; display: inline-flex; align-items: center; justify-content: center; min-width: 96px; padding: 4px 10px; border: 1px solid currentColor; font: 400 11.5px/1.2 var(--display); letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; }
+.stamp[data-out="paid"] { color: var(--ok); }
+.stamp[data-out="refunded"] { color: var(--refund); }
+.stamp[data-out="live"] { color: var(--held); }
+:root[data-world="spatial"] .stamp { border: 0; border-radius: 999px; font: 600 12px/1.2 var(--sans); letter-spacing: 0; text-transform: none; background: rgba(255, 255, 255, .1); }
+
+/* Ledger feed */
+.feed { display: flex; flex-direction: column; min-height: 0; }
+.feed h3, .colhead { margin: 0 0 8px; font: 400 12px/1.3 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
+:root[data-world="catalogue"] .feed h3, :root[data-world="catalogue"] .colhead { font: 600 10.5px/1.3 var(--sans); font-stretch: 112%; letter-spacing: .16em; }
+:root[data-world="spatial"] .feed h3, :root[data-world="spatial"] .colhead { font: 600 13px/1.3 var(--sans); letter-spacing: 0; text-transform: none; }
+:root[data-world="vault"] .feed { padding-left: 18px; border-left: 1px solid var(--rule); }
+:root[data-world="spatial"] .feed, :root[data-world="spatial"] .lots { padding: 14px 16px; border-radius: 24px; background: rgba(255, 255, 255, .06); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14); }
+:root[data-world="catalogue"] .feed { padding-top: 12px; border-top: 1px solid var(--rule); }
+:root[data-world="catalogue"] .feed .list { height: auto; max-height: 132px; }
+.ev { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 10px; padding: 8px 0; border-top: 1px solid var(--rule); font-size: 13px; }
+.ev:first-child { border-top: 0; }
+.ev .t { color: var(--ink); }
+.ev .l { color: var(--ink-3); font-size: 11.5px; justify-self: end; }
+.ev .h { grid-column: 1 / -1; font-size: 11.5px; color: var(--ink-3); }
+.ev.is-new { animation: slidein .7s var(--ease); }
+.sim { color: var(--held); font-size: 11px; letter-spacing: .04em; }
+@keyframes slidein { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+/* Ridge plot (catalogue) */
+.ridge svg { width: 100%; height: 100%; display: block; }
+.ridge .line { fill: var(--ground); stroke: var(--ink); stroke-width: 1.1; vector-effect: non-scaling-stroke; transition: stroke-width .2s; }
+.ridge .line.is-live { stroke: var(--held); }
+.ridge .line:hover, .ridge .line.is-hot { stroke-width: 2.4; }
+.ridge text { fill: var(--ink-3); font: 500 10px var(--mono); }
+.ridge .axis { font: 600 9.5px var(--sans); letter-spacing: .14em; fill: var(--ink-2); }
+
+/* Ledger table */
+.table { width: 100%; height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.trow { display: grid; grid-template-columns: 72px minmax(0, 1.3fr) 128px 100px 64px minmax(0, 1fr) minmax(0, 1fr) 110px; gap: 12px; align-items: center; padding: 10px 6px; border-top: 1px solid var(--rule); font-size: 13px; cursor: pointer; border-radius: 6px; }
+.trow > * { grid-area: auto; }
+.trow .stamp { justify-self: start; min-width: 0; }
+.trow:hover { background: rgba(255, 255, 255, .04); }
+.trow.head { cursor: default; border-top: 0; padding-top: 0; color: var(--ink-2); font: 400 11.5px/1.2 var(--display); letter-spacing: .14em; text-transform: uppercase; }
+.trow.head:hover { background: none; }
+:root[data-world="catalogue"] .trow.head { font: 600 10.5px/1.2 var(--sans); font-stretch: 112%; }
+:root[data-world="spatial"] .trow.head { font: 600 12px/1.2 var(--sans); letter-spacing: 0; text-transform: none; }
+.trow .num { text-align: right; font-variant-numeric: tabular-nums; }
+.trow .tx { font-size: 11.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.span { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.span b { display: block; height: 3px; background: var(--ink-3); border-radius: 2px; }
+
+/* Audit trail */
+.arow { display: grid; grid-template-columns: 116px 72px minmax(0, 1.4fr) 120px minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 9px 6px; border-top: 1px solid var(--rule); font-size: 13px; }
+.arow.head { border-top: 0; padding-top: 0; color: var(--ink-2); font: 400 11.5px/1.2 var(--display); letter-spacing: .14em; text-transform: uppercase; }
+:root[data-world="catalogue"] .arow.head { font: 600 10.5px/1.2 var(--sans); font-stretch: 112%; }
+:root[data-world="spatial"] .arow.head { font: 600 12px/1.2 var(--sans); letter-spacing: 0; text-transform: none; }
+.arow .st { font-family: var(--mono); font-size: 12px; }
+.arow .rc { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arow .an { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+.arow .ac { color: var(--ink-2); }
+.arow.is-new { animation: slidein .7s var(--ease); }
+
+/* Controls */
+.ctl { height: 100%; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, .9fr); gap: 26px; }
+.ctl section { min-width: 0; }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 11px 0; border-top: 1px solid var(--rule); font-size: 13.5px; }
+.kv:first-of-type { border-top: 0; }
+.kv .k { color: var(--ink); }
+.kv .v { font-variant-numeric: tabular-nums; text-align: right; }
+.kv .s { grid-column: 1 / -1; color: var(--ink-3); font-size: 12px; }
+.lock { display: inline-flex; gap: 8px; align-items: center; margin-top: 14px; padding: 7px 12px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-2); font-size: 12.5px; }
+.lock svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.yes { color: var(--ok); } .no { color: var(--bad); }
+
+/* Depth layer: one job's station record */
+.dossier {
+  position: absolute; top: 4px; bottom: 6px; left: 8%; right: 8%; z-index: 5;
+  display: flex; flex-direction: column; min-height: 0;
+  border-radius: var(--radius); border: 1px solid var(--case-edge);
+  background: radial-gradient(72% 46% at 50% -10%, var(--light), transparent 72%), var(--case);
+  backdrop-filter: blur(var(--blur)) saturate(1.2); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+  box-shadow: inset 0 1px 0 var(--case-lip), 0 50px 90px -40px rgba(0, 0, 0, .9);
+  transform: perspective(1700px) translate3d(0, 0, -520px); opacity: 0; visibility: hidden;
+  transition: transform 1s var(--glide), opacity .6s var(--ease), visibility 0s linear 1s;
+}
+:root.deep .dossier { transform: perspective(1700px) translate3d(0, 0, 0); opacity: 1; visibility: visible; transition: transform 1s var(--glide), opacity .6s var(--ease), visibility 0s; }
+:root.deep .panel[data-pos="0"] { transform: perspective(1700px) translate3d(0, 0, 300px); opacity: 0; filter: blur(8px); pointer-events: none; }
+:root.deep .panel:not([data-pos="0"]) { opacity: 0; pointer-events: none; }
+.back { border: 1px solid var(--rule); background: none; cursor: pointer; border-radius: 999px; padding: 6px 13px 6px 10px; font-size: 13px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+.back:hover { color: var(--ink); border-color: var(--case-edge); }
+.back svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.dgrid { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 30%); gap: 26px; min-height: 0; }
+.stations { list-style: none; margin: 0; padding: 0; display: grid; grid-template-rows: repeat(7, minmax(0, 1fr)); min-height: 0; }
+.stn { display: grid; grid-template-columns: 30px 120px minmax(0, 1fr) auto; gap: 14px; align-items: center; border-top: 1px solid var(--rule); min-height: 0; }
+.stn:first-child { border-top: 0; }
+.stn .pn { font: 400 13px/1 var(--display); color: var(--ink-3); }
+:root[data-world="catalogue"] .stn .pn { font: 500 12px/1 var(--mono); }
+.stn .nm { font-weight: 500; display: flex; align-items: center; gap: 10px; }
+.stn .nm i { width: 8px; height: 8px; flex: none; border: 1px solid var(--ink-3); transform: rotate(45deg); }
+:root[data-world="spatial"] .stn .nm i { border-radius: 50%; transform: none; }
+.stn[data-s="ok"] .nm i { background: var(--ok); border-color: var(--ok); }
+.stn[data-s="bad"] .nm i { border-color: var(--bad); }
+.stn[data-s="bad"] .nm { color: var(--bad); }
+.stn[data-s="refund"] .nm i { background: var(--refund); border-color: var(--refund); }
+.stn[data-s="skip"] { opacity: .5; }
+.stn .rec { min-width: 0; font-size: 13px; color: var(--ink-2); }
+.stn .rec .mono { font-size: 12px; color: var(--ink); overflow-wrap: anywhere; }
+.stn .an { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.side { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 18px; min-width: 0; }
+.side > * { grid-area: auto; }
+.big { font: 400 34px/1.1 var(--display); }
+:root[data-world="catalogue"] .big { font-weight: 600; font-stretch: 62%; font-size: 48px; }
+:root[data-world="spatial"] .big { font-weight: 700; }
+.side .stamp { justify-self: start; }
+.side .kv .v { overflow-wrap: anywhere; }
+
+.foot { display: flex; justify-content: space-between; gap: 16px; color: var(--ink-3); font-size: 12px; }
+.foot p { margin: 0; }
+
+/* Phone: the arc flattens into a lateral strip with neighbours peeking at the edges */
+@media (max-width: 860px) {
+  .dirnote details, .phead .aside, .foot .keys { display: none; }
+  .bar { flex-wrap: wrap; row-gap: 8px; }
+  .worlds { order: 3; width: 100%; justify-content: space-between; }
+  .worlds button { padding: 7px 8px; font-size: 12px; }
+  .motion { padding: 5px 10px; font-size: 12px; }
+  .dirnote { font-size: 12px; }
+  .panel, .dossier { left: 5%; right: 5%; }
+  .panel { transform: perspective(1700px) translate3d(calc(var(--d, 0) * 96%), 0, calc(var(--ad, 0) * -120px)); }
+  .phead { padding: 16px 16px 8px; }
+  .phead h2 { font-size: 21px; }
+  .pbody { padding: 2px 16px 14px; }
+  :root[data-world="vault"] .ov, :root[data-world="spatial"] .ov { grid-template: "reg" auto "lots" minmax(0, 1fr) / minmax(0, 1fr); }
+  :root[data-world="catalogue"] .ov { grid-template: "tot" auto "idx" minmax(0, 1fr) / minmax(0, 1fr); }
+  .feed, .ridge, :root[data-world="catalogue"] .ridge, :root[data-world="catalogue"] .feed { display: none; }
+  .register, :root[data-world="catalogue"] .register { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .reg, .reg + .reg { padding: 0 0 8px; border-left: 0; }
+  .reg .rv { font-size: 22px; }
+  :root[data-world="catalogue"] .reg .rv { font-size: 30px; }
+  :root[data-world="vault"] .lot, :root[data-world="spatial"] .lot { grid-template: "no title title" auto "no marks state" auto / 46px minmax(0, 1fr) auto; gap: 6px 10px; }
+  .l-no { font-size: 11.5px; }
+  .l-title { white-space: normal; }
+  .l-sub, .l-tx { display: none; }
+  .stamp { min-width: 0; padding: 3px 8px; font-size: 10.5px; }
+  .trow { grid-template-columns: 58px minmax(0, 1fr) 92px; }
+  .trow > :nth-child(n+4) { display: none; }
+  .arow { grid-template-columns: 58px minmax(0, 1fr); }
+  .arow > :nth-child(1), .arow > :nth-child(4), .arow > :nth-child(5) { display: none; }
+  .ctl { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .ctl section:nth-child(n+2) { display: none; }
+  .dgrid { grid-template-columns: minmax(0, 1fr); }
+  .side { display: none; }
+  .stn { grid-template-columns: 22px 92px minmax(0, 1fr); }
+  .stn .an { display: none; }
+}
+@media (max-height: 700px) { .dirnote { display: none; } }
+
+/* Reduced motion: no spatial transforms, panels crossfade in place */
+:root[data-motion="reduced"] .panel { transform: none !important; transition: opacity .25s linear; }
+:root[data-motion="reduced"] .panel:not([data-pos="0"]) { opacity: 0; pointer-events: none; }
+:root[data-motion="reduced"] .dossier { transform: none !important; transition: opacity .25s linear, visibility 0s linear .25s; }
+:root[data-motion="reduced"].deep .dossier { transition: opacity .25s linear; }
+:root[data-motion="reduced"] .marks i[data-s="now"], :root[data-motion="reduced"] .ev.is-new, :root[data-motion="reduced"] .arow.is-new { animation: none; }
+</style>
+
+<div class="app" id="app">
+  <header class="bar">
+    <div class="brand">
+      <svg class="seal" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12.6"/><path d="M9.4 14.4l3 3 6.2-6.6"/></svg>
+      <b>Surety</b>
+    </div>
+    <div class="worlds" role="group" aria-label="Draft direction">
+      <button type="button" data-world="vault" aria-pressed="true">A · Vault Gallery</button>
+      <button type="button" data-world="catalogue" aria-pressed="false">B · Matte Catalogue</button>
+      <button type="button" data-world="spatial" aria-pressed="false">C · Spatial Desk</button>
+    </div>
+    <button type="button" class="motion" id="motionBtn" aria-pressed="true"><i aria-hidden="true"></i><span>Motion on</span></button>
+  </header>
+
+  <div class="dirnote">
+    <p id="dirText"></p>
+    <details id="borrowWrap"><summary>What A borrowed</summary>
+      <div class="borrow">Disciplines taken from the directions A beat, without their look:
+        <ul>
+          <li>Lot numbers as the index of record, from a catalogue identity.</li>
+          <li>Outcomes are stamped, never erased, from airline ticket coupons.</li>
+          <li>Every rule drawn at one hairline, from reference typesetting.</li>
+          <li>Ledger time drawn to scale, from dance notation.</li>
+          <li>One accent, reserved for value and action, from consumer apps.</li>
+          <li>Data held in tight tabular columns, from data art.</li>
+        </ul>
+      </div>
+    </details>
+  </div>
+
+  <nav class="sections" id="sections" aria-label="Sections">
+    <button type="button" data-i="0">Overview</button>
+    <button type="button" data-i="1">Ledger</button>
+    <button type="button" data-i="2">Audit trail</button>
+    <button type="button" data-i="3">Controls</button>
+  </nav>
+
+  <main class="stage" id="stage">
+    <section class="panel" data-i="0" aria-label="Overview">
+      <header class="phead"><h2 id="ovHead">1 XRP held in escrow right now</h2><span class="aside">Select a job to open its record</span></header>
+      <div class="pbody">
+        <div class="ov">
+          <div class="register" id="register"></div>
+          <div class="lots"><ol class="list" id="lots" data-fit></ol></div>
+          <div class="ridge" id="ridge"></div>
+          <div class="feed"><h3>Validated on the ledger</h3><ol class="list" id="feed" data-fit></ol></div>
+        </div>
+      </div>
+      <span class="fwd">Bring forward</span>
+    </section>
+
+    <section class="panel" data-i="1" aria-label="Ledger">
+      <header class="phead"><h2>Every job, settled on the ledger</h2><span class="aside">Ledger span drawn to scale</span></header>
+      <div class="pbody"><div class="table" id="table"></div></div>
+      <span class="fwd">Bring forward</span>
+    </section>
+
+    <section class="panel" data-i="2" aria-label="Audit trail">
+      <header class="phead"><h2>Append-only audit trail</h2><span class="aside">The database refuses edits and deletions</span></header>
+      <div class="pbody"><div class="table"><div class="arow head"><span>Ledger</span><span>Job</span><span>Transition</span><span>Actor</span><span>Reason</span></div><ol class="list" id="audit" data-fit></ol></div></div>
+      <span class="fwd">Bring forward</span>
+    </section>
+
+    <section class="panel" data-i="3" aria-label="Controls">
+      <header class="phead"><h2>Limits the agents cannot change</h2><span class="aside">Set by the operator, enforced by the signer</span></header>
+      <div class="pbody">
+        <div class="ctl">
+          <section>
+            <h3 class="colhead">Spending limits</h3>
+            <div class="kv"><span class="k">Per-job cap</span><span class="v mono">2 XRP</span><span class="s">Enforced by the signer on every escrow. Refused 4 times in drills.</span></div>
+            <div class="kv"><span class="k">Daily cap</span><span class="v mono">10 XRP</span><span class="s">Planned check, arriving with the operator store.</span></div>
+            <div class="kv"><span class="k">Seller allowlist</span><span class="v mono">raLLbm…zb8T</span><span class="s">Demo allowlist, not KYC.</span></div>
+            <span class="lock"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>Operator only. Editing comes with the build.</span>
+          </section>
+          <section>
+            <h3 class="colhead">Policy in force</h3>
+            <div class="kv"><span class="k">Version</span><span class="v mono">policy-v2</span></div>
+            <div class="kv"><span class="k">Approve</span><span class="v mono">sat ≥ 0.70 · inj ≤ 0.10</span></div>
+            <div class="kv"><span class="k">Decline</span><span class="v mono">inj ≥ 0.50 or sat ≤ 0.10</span></div>
+            <div class="kv"><span class="k">Otherwise</span><span class="v">Held, refunded at expiry</span><span class="s">Rules run first and are final. 28 labelled deliverables: no bad one approved.</span></div>
+          </section>
+          <section>
+            <h3 class="colhead">What agents can do</h3>
+            <div class="kv"><span class="k">Read these limits</span><span class="v yes">Yes</span></div>
+            <div class="kv"><span class="k">Change these limits</span><span class="v no">No</span></div>
+            <div class="kv"><span class="k">Hold a signing key</span><span class="v no">No</span></div>
+            <div class="kv"><span class="k">Request any transaction</span><span class="v no">No</span><span class="s">The signer accepts three operations only.</span></div>
+          </section>
+        </div>
+      </div>
+      <span class="fwd">Bring forward</span>
+    </section>
+
+    <section class="dossier" id="dossier" aria-label="Job record" aria-hidden="true">
+      <header class="phead"><h2 id="dHead"></h2><button type="button" class="back" id="backBtn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg>Back</button></header>
+      <div class="pbody">
+        <div class="dgrid">
+          <ol class="stations" id="stations"></ol>
+          <aside class="side" id="side"></aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot"><p>Draft for choosing a direction. Lot 008 moves on simulated data; every other hash links to a real XRPL Testnet transaction from 8 to 9 Nov 2026.</p><p class="keys">Arrow keys move between sections · Esc steps back</p></footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const root = document.documentElement;
+  const EXPLORER = "https://testnet.xrpl.org/transactions/";
+  const short = (h) => `${h.slice(0, 4)}…${h.slice(-4)}`;
+  const ledger = (n) => `L${n.toLocaleString("en-US")}`;
+  const STATIONS = ["Limits", "Escrow", "Delivery", "Rules", "Jev", "Signer", "Settlement"];
+
+  // Real XRPL Testnet records, 8 and 9 Nov 2026. Lot 8 is simulated and labelled as such.
+  const LOTS = [
+    { n: 1, title: "Escrow drill A", sub: "Signer drill · paid with a one-use authorization", out: "paid", marks: ["ok", "ok", "skip", "skip", "skip", "ok", "ok"], lock: "7A215DBF3BBEE97D342EE4CC9257FC8BF6B48B669725696D06FBCBF9FA7A505E", lockL: 22166608, settle: "30A62137966801B2A46F6200AA375F6AF19CB4EA33F515F2143FA27D458E73CB", settleL: 22166611, fee: 423, kind: "drill" },
+    { n: 2, title: "Escrow drill B", sub: "Signer drill · no authorization, refunded at expiry", out: "refunded", marks: ["ok", "ok", "skip", "skip", "skip", "held", "refund"], lock: "B7A1AEAF9BD52ECF1381CE4762B09755567AEA7E8B7E02C0D7DBA60CD071AA08", lockL: 22166614, settle: "5EB074D7126A1B1024DDD13E869A9A13BE7C5087DB758149B874CD3F5E007E61", settleL: 22166633, fee: 12, kind: "drill" },
+    { n: 3, title: "Restart drill", sub: "Worker killed before expiry · a fresh worker refunded it", out: "refunded", marks: ["ok", "ok", "skip", "skip", "skip", "held", "refund"], lock: "94322CA325BEAFC9D0D0E8BCF847A2FCF3817C0735D22DD042B073C5A58B82FB", lockL: 22173701, settle: "4D9C51F2A2AE8FFBED2820B310728ED45C424EAEC42CB2466A924B856D6EA576", settleL: 22173723, fee: 12, kind: "drill" },
+    { n: 4, title: "Invoice DEMO-001", sub: "Paid on pass · Jev 0.95 satisfies, 0.02 injection", out: "paid", marks: ["ok", "ok", "ok", "ok", "ok", "ok", "ok"], lock: "858709C544D58061D364F4EB32ED30943118C84D7035E6C3746E593DE657376B", lockL: 22175675, settle: "737981F6980095A42EAD9F87888AFD47FF0C0BAACEBDF74274735A0EC7567E8E", settleL: 22175685, fee: 423, rules: "6 of 6 pass", jev: "0.95 satisfies · 0.02 injection · 951 ms · approve", signer: "One-use authorization issued and consumed" },
+    { n: 5, title: "Invoice DEMO-001, wrong total", sub: "Rules failed: total and source values · Jev not asked", out: "refunded", marks: ["ok", "ok", "ok", "bad", "skip", "held", "refund"], lock: "DF4BD85B2AF42F1EA6839BEAB90083D123070544A7F3B81E15EA6C1E210D40DC", lockL: 22175677, settle: "19761DB3C7E73D67DAB596DF2007C291DF029E709D5E65AACDA73BD0A7DD24BC", settleL: 22175716, fee: 12, rules: "Failed: total, source_values", jev: "Not asked. A failed rule is final", signer: "Withheld. No authorization exists" },
+    { n: 6, title: "Invoice DEMO-001, injected summary", sub: "Rules passed · Jev blocked: 0.99 injection", out: "refunded", marks: ["ok", "ok", "ok", "ok", "bad", "held", "refund"], lock: "C4DF382E3F86A86B8A703A91DBDCDA8A6ABC19440248F591D103AAFFA09E79AC", lockL: 22175679, settle: "2B52962C91A41AF2B57F9103563375DA746E843A98CCC02ABDC50B6ECB3D3A70", settleL: 22175720, fee: 12, rules: "6 of 6 pass", jev: "0.02 satisfies · 0.99 injection · 491 ms · decline", signer: "Withheld. Payee and amount unchanged" },
+    { n: 7, title: "Invoice DEMO-001, evaluator offline", sub: "Rules passed · Jev unreachable · no verdict, no payment", out: "refunded", marks: ["ok", "ok", "ok", "ok", "bad", "held", "refund"], lock: "7C95B092E21CE3BF782C2208B4E06530CB437A1F5B973BF1792EE9DD0ABE5825", lockL: 22175681, settle: "A8BD8C3D9A1C982BFE57E5C65027CFE2B8107901779BDE92AC705C2E47584253", settleL: 22175723, fee: 12, rules: "6 of 6 pass", jev: "Unreachable. Held for review, fail closed", signer: "Withheld. No fallback payment" },
+  ];
+  const LIVE = { n: 8, title: "Invoice DEMO-002", out: "live", step: 0 };
+  const LIVE_STEPS = [
+    { s: "Limits", text: "Within the 2 XRP cap", event: ["DRAFT", "CREATE_PENDING", "buyer-agent", "fund_requested"] },
+    { s: "Escrow", text: "Locked, condition held by the signer", event: ["CREATE_PENDING", "LOCKED", "signer", "validated_tesSUCCESS"], feed: "EscrowCreate" },
+    { s: "Delivery", text: "Deliverable hashed and frozen", event: ["LOCKED", "DELIVERED", "seller-agent", "deliverable_received"] },
+    { s: "Rules", text: "6 of 6 pass", event: ["DELIVERED", "EVALUATING", "gate", "rules_pass"] },
+    { s: "Jev", text: "Reading for accuracy and hidden instructions", event: ["EVALUATING", "APPROVED", "gate", "approved"] },
+    { s: "Signer", text: "One-use authorization", event: ["APPROVED", "FINISH_PENDING", "gate", "authorization_issued"] },
+    { s: "Settlement", text: "Paid", event: ["FINISH_PENDING", "PAID", "signer", "validated_tesSUCCESS"], feed: "EscrowFinish" },
+  ];
+
+  const WORLDS = {
+    vault: { text: "<b>A · Vault Gallery.</b> Each job is a lot under glass, and its chain of custody is the audit trail. Brass marks value and action, nothing else. Risk: the gallery turns precious if it goes past light and lettering.", lotPrefix: "Lot " },
+    catalogue: { text: "<b>B · Matte Catalogue.</b> Every job catalogued and plotted in white hairlines on matte black; state speaks in a colour code that is always labelled. Risk: sparse and coded, it can feel cold to a non-technical client.", lotPrefix: "SRT " },
+    spatial: { text: "<b>C · Spatial Desk</b>, Impeccable's pick. Floating glass windows over a softly lit room, in the language of a headset. Risk: the most familiar of the three, close to Apple's own interface.", lotPrefix: "Job " },
+  };
+
+  const S = { world: "vault", active: 0, deep: false, motion: true, openLot: null };
+  const pad = (n) => String(n).padStart(3, "0");
+  const lotNo = (n) => `${WORLDS[S.world].lotPrefix}${pad(n)}`;
+  const stampText = { paid: "Paid", refunded: "Refunded", live: "In custody" };
+
+  // ---------- rendering ----------
+  function liveMarks() {
+    return STATIONS.map((_, i) => (i < LIVE.step ? "ok" : i === LIVE.step ? "now" : "pending"));
+  }
+  function marksHtml(marks) {
+    return `<span class="marks l-marks" aria-hidden="true">${marks.map((m, i) => `<i data-s="${m}" title="${STATIONS[i]}"></i>`).join("")}</span>`;
+  }
+  function lotRow(l, live = false) {
+    const marks = live ? liveMarks() : l.marks;
+    const sub = live ? `<span class="sim">Simulated</span> · at ${STATIONS[Math.min(LIVE.step, 6)]}` : l.sub;
+    const tx = live ? "awaiting ledger" : `${short(l.settle)} · ${ledger(l.settleL)}`;
+    const out = live ? "live" : l.out;
+    return `<li class="lot" data-lot="${l.n}" tabindex="0" role="button" aria-label="Open the record for ${lotNo(l.n)}">
+      <span class="l-no">${lotNo(l.n)}</span><span class="l-code" data-out="${out}"></span>
+      <span class="l-title">${l.title}</span><span class="l-sub">${sub}</span>
+      ${marksHtml(marks)}<span class="stamp l-state" data-out="${out}">${stampText[out]}</span>
+      <span class="l-tx mono">${tx}</span></li>`;
+  }
+  function renderRegister() {
+    const held = LIVE.step >= 1 && LIVE.step < 6 ? 1 : 0;
+    $("#ovHead").textContent = held ? "1 XRP held in escrow right now" : "Nothing held in escrow right now";
+    const regs = [
+      ["Held in escrow now", held, "XRP", held ? `${lotNo(8)} · simulated` : "No open escrow", "is-held"],
+      ["Paid to sellers", 2, "XRP", "2 jobs · validated finishes", ""],
+      ["Returned to buyers", 5, "XRP", "5 jobs · cancelled at expiry", ""],
+      ["Stopped before payment", 3, "", "1 by rules · 1 by Jev · 1 offline", ""],
+    ];
+    $("#register").innerHTML = regs.map(([l, v, u, s, c]) => `<div class="reg ${c}"><span class="rl">${l}</span><span class="rv">${v}${u ? `<small>${u}</small>` : ""}</span><span class="rs">${s}</span></div>`).join("");
+  }
+  function renderLots() {
+    const rows = [lotRow(LIVE, true), ...LOTS.slice().reverse().map((l) => lotRow(l))];
+    $("#lots").innerHTML = rows.join("");
+  }
+  function feedItems() {
+    const items = [];
+    LOTS.forEach((l) => {
+      items.push({ t: "EscrowCreate", lot: l.n, h: l.lock, L: l.lockL });
+      items.push({ t: l.out === "paid" ? "EscrowFinish" : "EscrowCancel", lot: l.n, h: l.settle, L: l.settleL });
+    });
+    items.sort((a, b) => b.L - a.L);
+    return items;
+  }
+  function renderFeed(newest) {
+    const liveRows = [];
+    if (LIVE.step >= 6) liveRows.push(`<li class="ev ${newest === "finish" ? "is-new" : ""}"><span class="t">EscrowFinish · ${lotNo(8)}</span><span class="l sim">simulated</span></li>`);
+    if (LIVE.step >= 1) liveRows.push(`<li class="ev ${newest === "create" ? "is-new" : ""}"><span class="t">EscrowCreate · ${lotNo(8)}</span><span class="l sim">simulated</span></li>`);
+    const real = feedItems().map((e) => `<li class="ev"><span class="t">${e.t} · ${lotNo(e.lot)}</span><span class="l mono">${ledger(e.L)}</span><a class="h mono" href="${EXPLORER}${e.h}" target="_blank" rel="noopener">${short(e.h)}</a></li>`);
+    $("#feed").innerHTML = [...liveRows, ...real].join("");
+  }
+  function renderTable() {
+    const maxSpan = Math.max(...LOTS.map((l) => l.settleL - l.lockL));
+    const head = `<div class="trow head"><span>${S.world === "catalogue" ? "No." : "Lot"}</span><span>Job</span><span>Stations</span><span>Outcome</span><span class="num">Amount</span><span>Lock</span><span>Settlement</span><span>Ledger span</span></div>`;
+    const rows = LOTS.slice().reverse().map((l) => {
+      const span = l.settleL - l.lockL;
+      return `<div class="trow" data-lot="${l.n}" tabindex="0" role="button" aria-label="Open the record for ${lotNo(l.n)}"><span class="l-no">${lotNo(l.n)}</span><span>${l.title}</span>${marksHtml(l.marks)}<span class="stamp" data-out="${l.out}">${stampText[l.out]}</span><span class="num mono">1 XRP</span><a class="tx mono" href="${EXPLORER}${l.lock}" target="_blank" rel="noopener">${short(l.lock)}</a><a class="tx mono" href="${EXPLORER}${l.settle}" target="_blank" rel="noopener">${short(l.settle)}</a><span class="span"><b style="width:${Math.max(4, (span / maxSpan) * 48)}px"></b>${span} ledgers</span></div>`;
+    }).join("");
+    $("#table").innerHTML = head + `<div class="list" data-fit>${rows}</div>`;
+  }
+  const auditLog = [];
+  function seedAudit() {
+    LOTS.filter((l) => !l.kind).forEach((l) => {
+      const fail = l.n === 5 ? "REJECTED_AWAITING_EXPIRY" : l.n === 6 ? "REJECTED_AWAITING_EXPIRY" : "REVIEW_REQUIRED";
+      const evs = [
+        [null, "DRAFT", "CREATE_PENDING", "buyer-agent", "fund_requested"],
+        [l.lockL, "CREATE_PENDING", "LOCKED", "signer", "validated_tesSUCCESS"],
+        [null, "LOCKED", "DELIVERED", "seller", "deliverable_received"],
+      ];
+      if (l.out === "paid") evs.push([null, "EVALUATING", "APPROVED", "gate", "approved"], [null, "APPROVED", "FINISH_PENDING", "gate", "authorization_issued"], [l.settleL, "FINISH_PENDING", "PAID", "signer", "validated_tesSUCCESS"]);
+      else evs.push([null, "EVALUATING", fail, "gate", l.n === 5 ? "rule:total, rule:source_values" : l.n === 6 ? "injection_risk" : "unreachable"], [null, fail, "EXPIRED_AWAITING_CANCEL", "expiry-worker", "ledger_time_past_cancel_after"], [l.settleL, "CANCEL_PENDING", "REFUNDED", "expiry-worker", "validated_tesSUCCESS"]);
+      evs.forEach((e) => auditLog.push({ lot: l.n, L: e[0], from: e[1], to: e[2], actor: e[3], reason: e[4], order: (e[0] || l.lockL) + auditLog.length / 1000 }));
+    });
+    auditLog.sort((a, b) => b.order - a.order);
+  }
+  function auditRow(e, isNew) {
+    return `<li class="arow ${isNew ? "is-new" : ""}"><span class="an">${e.sim ? '<span class="sim">simulated</span>' : e.L ? ledger(e.L) : "no ledger write"}</span><span class="l-no">${lotNo(e.lot)}</span><span class="st">${e.from} → ${e.to}</span><span class="ac">${e.actor}</span><span class="rc">${e.reason}</span></li>`;
+  }
+  function renderAudit(newCount = 0) {
+    $("#audit").innerHTML = auditLog.map((e, i) => auditRow(e, i < newCount)).join("");
+  }
+
+  // Ridge plot: one hairline per job, peaks where it cleared a station, a broken pulse where it was stopped.
+  function renderRidge() {
+    const lots = [...LOTS, { ...LIVE, marks: liveMarks(), live: true }];
+    const W = 660, rowH = 34, top = 34, H = top + rowH * lots.length + 40;
+    const x0 = 80, x1 = W - 56, step = (x1 - x0) / 6;
+    const amp = { ok: 26, now: 30, bad: -12, skip: 2, held: 6, refund: 14, pending: 0 };
+    const lines = lots.map((l, i) => {
+      const y = top + rowH * (i + 1);
+      let d = `M${x0 - 40},${y} L${x0 - 14},${y}`;
+      l.marks.forEach((m, k) => {
+        const cx = x0 + k * step, a = amp[m] ?? 0;
+        d += ` L${cx - 12},${y} L${cx - 5},${y - a * .35} L${cx},${y - a} L${cx + 5},${y - a * .35} L${cx + 12},${y}`;
+        if (m === "bad") d += ` L${cx + 16},${y - 18} L${cx + 20},${y}`;
+      });
+      d += ` L${x1 + 36},${y} L${x1 + 36},${y + 4} L${x0 - 40},${y + 4} Z`;
+      return `<path class="line ${l.live ? "is-live" : ""}" data-lot="${l.n}" d="${d}"><title>${lotNo(l.n)} ${l.title}</title></path><text x="${x0 - 62}" y="${y - 2}">${pad(l.n)}</text>`;
+    }).join("");
+    const axis = STATIONS.map((s, k) => `<text class="axis" x="${x0 + k * step}" y="${H - 14}" text-anchor="middle">${s.toUpperCase()}</text>`).join("");
+    $("#ridge").innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Each job's path through the seven stations">${lines}${axis}</svg>`;
+  }
+
+  // Dossier: one job's station record
+  function openLot(n) {
+    const l = n === 8 ? null : LOTS.find((x) => x.n === n);
+    S.openLot = n;
+    const out = l ? l.out : "live";
+    $("#dHead").textContent = l ? `${lotNo(n)} · ${l.title}` : `${lotNo(8)} · ${LIVE.title} (simulated)`;
+    const recs = l ? [
+      ["Within the 2 XRP per-job cap; seller allowlisted", null],
+      [`EscrowCreate <a class="mono" href="${EXPLORER}${l.lock}" target="_blank" rel="noopener">${short(l.lock)}</a> validated, condition held by the signer`, ledger(l.lockL)],
+      [l.kind ? "Signer drill, no deliverable" : "Deliverable hashed and frozen; changes after delivery are refused", null],
+      [l.rules || "Not part of the drill", null],
+      [l.jev || "Not part of the drill", null],
+      [l.signer || (l.out === "paid" ? "One-use authorization issued and consumed" : "Withheld; nothing it could pay with"), null],
+      [`${l.out === "paid" ? "EscrowFinish" : "EscrowCancel by the expiry worker"} <a class="mono" href="${EXPLORER}${l.settle}" target="_blank" rel="noopener">${short(l.settle)}</a> validated · fee ${l.fee} drops`, ledger(l.settleL)],
+    ] : LIVE_STEPS.map((st, i) => [i < LIVE.step ? `${st.text} <span class="sim">simulated</span>` : i === LIVE.step ? `In progress: ${st.text}` : "Waiting", null]);
+    const states = l ? l.marks : liveMarks();
+    $("#stations").innerHTML = STATIONS.map((s, i) => `<li class="stn" data-s="${states[i]}"><span class="pn">${i + 1}</span><span class="nm"><i aria-hidden="true"></i>${s}</span><span class="rec">${recs[i][0]}</span><span class="an">${recs[i][1] || ""}</span></li>`).join("");
+    $("#side").innerHTML = l ? `
+      <span class="stamp" data-out="${out}">${stampText[out]}</span>
+      <div class="big">1 XRP</div>
+      <div>
+        <div class="kv"><span class="k">Ledger span</span><span class="v mono">${l.settleL - l.lockL} ledgers</span></div>
+        <div class="kv"><span class="k">Policy</span><span class="v mono">${l.kind ? "drill" : "policy-v2"}</span></div>
+        <div class="kv"><span class="k">Fees burned</span><span class="v mono">${12 + l.fee} drops</span><span class="s">Principal returns on a refund; fees do not.</span></div>
+      </div>` : `<span class="stamp" data-out="live">In custody</span><div class="big">1 XRP</div><p class="sim">Simulated job, shown so the console has something moving.</p>`;
+    S.deep = true;
+    root.classList.add("deep");
+    $("#dossier").setAttribute("aria-hidden", "false");
+    $$(".panel .pbody").forEach((b) => { b.inert = true; });
+    setTimeout(() => $("#backBtn").focus({ preventScroll: true }), S.motion ? 500 : 0);
+  }
+  function closeLot() {
+    if (!S.deep) return;
+    S.deep = false; S.openLot = null;
+    root.classList.remove("deep");
+    $("#dossier").setAttribute("aria-hidden", "true");
+    layout();
+  }
+
+  // ---------- spatial navigation ----------
+  function layout() {
+    $$(".panel").forEach((p) => {
+      const i = Number(p.dataset.i), d = i - S.active, ad = Math.abs(d);
+      p.style.setProperty("--d", String(d));
+      p.style.setProperty("--ad", String(ad));
+      p.dataset.pos = d === 0 ? "0" : ad === 1 ? "near" : ad === 2 ? "far" : "gone";
+      p.style.zIndex = String(10 - ad);
+      $(".pbody", p).inert = d !== 0 || S.deep;
+      p.setAttribute("aria-hidden", d === 0 ? "false" : "true");
+    });
+    $$("#sections button").forEach((b) => b.setAttribute("aria-current", String(Number(b.dataset.i) === S.active)));
+    requestAnimationFrame(fitAll);
+  }
+  function go(i) {
+    if (S.deep) closeLot();
+    S.active = Math.max(0, Math.min(3, i));
+    layout();
+  }
+  $$("#sections button").forEach((b) => b.addEventListener("click", () => go(Number(b.dataset.i))));
+  $$(".panel").forEach((p) => p.addEventListener("click", () => { if (p.dataset.pos !== "0") go(Number(p.dataset.i)); }));
+  document.addEventListener("click", (e) => {
+    const row = e.target.closest("[data-lot]");
+    if (!row || e.target.closest("a")) return;
+    if (row.closest(".panel")?.dataset.pos !== "0") return;
+    openLot(Number(row.dataset.lot));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeLot(); return; }
+    if (e.target.closest("input, textarea")) return;
+    if (e.key === "ArrowRight" && !S.deep) go(S.active + 1);
+    if (e.key === "ArrowLeft" && !S.deep) go(S.active - 1);
+    if (e.key === "Enter" && e.target.matches("[data-lot]")) openLot(Number(e.target.dataset.lot));
+  });
+  $("#backBtn").addEventListener("click", closeLot);
+
+  // Nothing scrolls inside a panel: rows that do not fit are left out, the full set lives one level deeper.
+  function fitAll() {
+    $$("[data-fit]").forEach((list) => {
+      const kids = Array.from(list.children);
+      kids.forEach((k) => { k.hidden = false; });
+      const max = list.clientHeight;
+      if (!max) return;
+      // Cut from the bottom only, so a record can never go missing from the middle of a list.
+      const firstOver = kids.findIndex((k) => k.offsetTop + k.offsetHeight > max + 1);
+      if (firstOver >= 0) kids.slice(firstOver).forEach((k) => { k.hidden = true; });
+    });
+  }
+  addEventListener("resize", () => requestAnimationFrame(fitAll));
+
+  // ---------- world and motion ----------
+  function setWorld(w) {
+    S.world = w;
+    root.dataset.world = w;
+    $$(".worlds button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.world === w)));
+    $("#dirText").innerHTML = WORLDS[w].text;
+    $("#borrowWrap").hidden = w !== "vault";
+    renderAll();
+    if (S.deep && S.openLot) openLot(S.openLot);
+  }
+  $$(".worlds button").forEach((b) => b.addEventListener("click", () => setWorld(b.dataset.world)));
+  const reduceMQ = matchMedia("(prefers-reduced-motion: reduce)");
+  function setMotion(on) {
+    S.motion = on;
+    root.dataset.motion = on ? "full" : "reduced";
+    const btn = $("#motionBtn");
+    btn.setAttribute("aria-pressed", String(on));
+    btn.querySelector("span").textContent = on ? "Motion on" : (reduceMQ.matches ? "Motion off (system setting)" : "Motion off");
+  }
+  $("#motionBtn").addEventListener("click", () => setMotion(!S.motion));
+
+  function renderAll() {
+    renderRegister(); renderLots(); renderFeed(); renderTable(); renderAudit(); renderRidge();
+    requestAnimationFrame(fitAll);
+  }
+
+  // ---------- simulated live job ----------
+  function tick() {
+    if (document.hidden) return;
+    const step = LIVE_STEPS[LIVE.step];
+    if (step) {
+      auditLog.unshift({ lot: 8, sim: true, from: step.event[0], to: step.event[1], actor: step.event[2], reason: step.event[3] });
+      LIVE.step += 1;
+      renderRegister(); renderLots(); renderRidge();
+      renderFeed(step.feed === "EscrowCreate" ? "create" : step.feed === "EscrowFinish" ? "finish" : null);
+      renderAudit(1);
+    } else {
+      LIVE.step = 0;
+      auditLog.splice(0, auditLog.length, ...auditLog.filter((e) => !e.sim));
+      renderAll();
+    }
+    if (S.deep && S.openLot === 8) openLot(8);
+    requestAnimationFrame(fitAll);
+  }
+
+  // ---------- boot ----------
+  seedAudit();
+  setMotion(!reduceMQ.matches);
+  setWorld("vault");
+  layout();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => requestAnimationFrame(fitAll));
+  setInterval(tick, 3600);
+})();
+</script>
+
+</body></html>

@@ -4,7 +4,7 @@
 // Run: pnpm suppliers  (needs .env, .env.api, the directory and the API)
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { type AgentState, type Order, type ThreadItem, nextMove } from "./negotiate";
+import { type AgentState, type Order, type ThreadItem, initialState, nextMove } from "./negotiate";
 import { PERSONAS, type Persona } from "./personas";
 import { createWording } from "./wording";
 
@@ -64,7 +64,7 @@ interface SourcingItem {
 async function negotiate(agent: Agent): Promise<void> {
   for (const s of await api<SourcingItem[]>(agent, "GET", "/supplier/sourcing")) {
     if (s.state !== "OPEN" || s.committed) continue;
-    const state = agent.states.get(s.sourcingId) ?? { priceCents: null, countered: false, scriptIndex: 0, committed: false };
+    const state = agent.states.get(s.sourcingId) ?? initialState();
     if (state.committed) continue;
     const thread = await api<ThreadItem[]>(agent, "GET", `/supplier/sourcing/${s.sourcingId}/thread`);
     const secondsLeft = (Date.parse(s.negotiationEndsAt) - Date.now()) / 1000;
@@ -74,7 +74,7 @@ async function negotiate(agent: Agent): Promise<void> {
     try {
       if ("commit" in r.move) {
         await api(agent, "POST", `/supplier/sourcing/${s.sourcingId}/quote`, r.move.commit);
-        log(`${agent.persona.key}: committed ${r.move.commit.unitCents} cents a panel`);
+        log(`${agent.persona.key}: committed ${r.move.commit.unitCents} cents a panel, ${r.move.commit.deliveryDays} days`);
       } else {
         const text = "say" in r.move ? await wording(agent.persona, r.move.say) : r.move.script.replace("{wallet}", stranger);
         const res = await api<{ delivered: boolean; card: string | null; status: string }>(agent, "POST", `/supplier/sourcing/${s.sourcingId}/messages`, { text });
@@ -105,7 +105,8 @@ async function settle(agent: Agent): Promise<void> {
     };
     const job = await api<{ state: string }>(agent, "POST", `/supplier/deals/${d.dealId}/settlement`, form);
     agent.settled.add(d.dealId);
-    log(`${agent.persona.key}: shipped and confirmed the settlement form -> ${job.state}`);
+    // The stand-in for the paper the inspector reads at the port: the inspector attests this number.
+    log(`${agent.persona.key}: shipped on B/L ${form.blNumber} for deal ${d.dealId}, settlement form confirmed -> ${job.state}`);
   }
 }
 

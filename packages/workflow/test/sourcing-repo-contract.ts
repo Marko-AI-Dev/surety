@@ -21,6 +21,7 @@ export const brief: SourcingBrief = {
   port: "Durban",
   deadlineSeconds: 300,
   negotiationSeconds: 90,
+  priority: "balanced",
 };
 
 let n = 0;
@@ -142,12 +143,28 @@ export function describeSourcingRepo(name: string, make: () => Promise<JobsRepo 
       expect(cards).toHaveLength(3);
     });
 
+    it("commitQuote stores the delivery days, and an invite starts with none", async () => {
+      const s = await repo.createSourcing(newRef(), brief, ends());
+      expect((await repo.addInvite(s.id, { address: SUPPLIER, name: "Brightway" })).deliveryDays).toBeNull();
+      const invite = await repo.commitQuote(s.id, SUPPLIER, quote, "a".repeat(64), 21);
+      expect(invite.deliveryDays).toBe(21);
+      expect((await repo.listInvites(s.id))[0]?.deliveryDays).toBe(21);
+    });
+
+    it("the same hash with different days throws QuoteConflict", async () => {
+      const s = await repo.createSourcing(newRef(), brief, ends());
+      await repo.addInvite(s.id, { address: SUPPLIER, name: "Brightway" });
+      await repo.commitQuote(s.id, SUPPLIER, quote, "a".repeat(64), 21);
+      await expect(repo.commitQuote(s.id, SUPPLIER, quote, "a".repeat(64), 14)).rejects.toBeInstanceOf(QuoteConflict);
+      expect((await repo.listInvites(s.id))[0]?.deliveryDays).toBe(21);
+    });
+
     it("commitQuote stores the quote once; the same hash is unchanged and a different one is a QuoteConflict", async () => {
       const s = await opened();
-      const invite = await repo.commitQuote(s.id, SUPPLIER, quote, "a".repeat(64));
+      const invite = await repo.commitQuote(s.id, SUPPLIER, quote, "a".repeat(64), 21);
       expect(invite).toMatchObject({ quote, quoteHash: "a".repeat(64) });
-      expect(await repo.commitQuote(s.id, SUPPLIER, quote, "a".repeat(64))).toEqual(invite);
-      await expect(repo.commitQuote(s.id, SUPPLIER, { ...quote, unitCents: 11_000 }, "b".repeat(64))).rejects.toBeInstanceOf(QuoteConflict);
+      expect(await repo.commitQuote(s.id, SUPPLIER, quote, "a".repeat(64), 21)).toEqual(invite);
+      await expect(repo.commitQuote(s.id, SUPPLIER, { ...quote, unitCents: 11_000 }, "b".repeat(64), 21)).rejects.toBeInstanceOf(QuoteConflict);
     });
 
     it("attachDeal links one deal to an invite once, and getInviteByDeal finds it", async () => {

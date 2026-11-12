@@ -19,6 +19,11 @@ function fixture(relativePath: string, content: string): string {
 }
 
 describe("key boundary", () => {
+  it("skips git worktree copies under .worktrees, which hold their own services/signer", () => {
+    const root = fixture(".worktrees/review/services/signer/scripts/init.ts", `Wallet.${wantFromSeed}(process.env.BUYER${wantEnvSeed})`);
+    expect(checkBoundaries(root)).toEqual([]);
+  });
+
   it("finds no key handling outside services/signer in this repo", () => {
     expect(checkBoundaries(ROOT)).toEqual([]);
   });

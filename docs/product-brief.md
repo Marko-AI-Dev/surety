@@ -30,6 +30,7 @@ Escrow for import purchases, run by AI agents: the buyer's agent team finds and 
 | Negotiator (on Paperclip) | Chats with suppliers for a better price. It only talks: it never commits, never accepts and never pays, and it only knows the target price, not the maximum |
 | Supplier | Chats with the negotiator, commits its final quote on the Surety form, ships, confirms its pre-filled invoice and shipping details, gets paid |
 | Supplier agents (demo) | The other side, outside Paperclip: honest suppliers with different pricing styles, and one crook |
+| Inspector (a person) | The second key: reads the bill of lading number off the shipment and attests it, or refuses. Never an agent, and never shown the number the supplier submitted |
 | Judges and the audience | Run the demo themselves and try to break it, including from their phones |
 
 ## The deal loop
@@ -45,7 +46,7 @@ This follows the five-step payment loop: Intent, Policy, Quote, Settlement, Audi
    Refusals show here.
 3. **Quote.**
    - **Sourcing:** the sourcing agent shortlists approved suppliers. It may flag a supplier that isn't on the list, but only the operator can approve one.
-   - **Negotiation:** the negotiator chats with the shortlisted suppliers through Surety's inbox. In the demo the chat is time-boxed to about a minute with at most one round of counter-offers. Every supplier message passes the bouncer before any agent reads it.
+   - **Negotiation:** the negotiator chats with the shortlisted suppliers through Surety's inbox. In the demo the chat is time-boxed to about five minutes and runs several rounds: the negotiator tells each supplier the best competing offer for the buyer's priority ("another approved supplier offered $X with N days"), never naming it, and suppliers beat it, trade price for delivery days, or hold at their floor. Every supplier message passes the bouncer before any agent reads it.
    - **Chat to negotiate, form to commit.** Nothing said in chat is binding and no chat message can move money. A supplier commits by submitting the Surety quote form: price, quantity, terms. Its wallet comes from its approval record and is never typed.
    - **The decision:** the lead agent picks the best committed quote and accepts or declines it with a reason. Surety checks the quote against the brief and the live policy again, whatever the agent says.
    - **Why this step exists:** the agents make the buying decision and a person only sets the brief and the limits. That's the Ripple track rule.
@@ -187,6 +188,9 @@ The table appears in the Control room and the README. Each row is linked to test
 | Overspend | Refused | |
 | Runaway loop | Capped | |
 | Stolen agent credentials | Worst case: the attacker locks within caps to approved suppliers and can't release | |
+| Supplier confirms its own shipping documents | Held until an independent inspector attests the B/L number; a refusal or a different number fails rule `attested` and refunds | Proven: the inspector refused, rule `attested`, refunded ([evidence](../evidence/sourcing-2026-11-10T17-33-34-735Z.json)) |
+| The inspector never answers | The deal waits unjudged, is held at the decision cutoff and refunds | Proven: `inspection_missing`, refunded ([evidence](../evidence/sourcing-2026-11-10T17-02-35-960Z.json)) |
+| The lead picks a dearer quote than the priority says | Allowed, and recorded as `off_priority` with the lead's reason next to the quote Surety ranked first | |
 
 ## Scope
 
@@ -225,7 +229,7 @@ The table appears in the Control room and the README. Each row is linked to test
 - Distribution through freight forwarders and clearing agents, who already handle these documents for importers.
 - The payment-control layer for agent workforces such as Paperclip.
 - Bring your own Claude or ChatGPT subscription to power the agents.
-- **The strongest future upgrade:** the bill of lading comes straight from the shipping line's electronic system, signed by the carrier, so the shipping proof can't be written by the supplier at all. In the demo the supplier still confirms its own shipping details; the pitch says so.
+- **The strongest future upgrade:** the bill of lading comes straight from the shipping line's electronic system, signed by the carrier, so the shipping proof can't be written by the supplier at all. The demo already has a person's second key: an inspector must attest the B/L number before Surety Verify can release (Phase 4d). Carrier-signed electronic B/Ls remain the upgrade.
 
 ## Out of scope for the hackathon
 

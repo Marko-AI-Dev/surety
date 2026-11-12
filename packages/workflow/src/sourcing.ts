@@ -1,3 +1,6 @@
+import type { InspectionRepo } from "./inspection-repo";
+import { type Offer, leverageOffers, namesOtherSupplier } from "./leverage";
+import { type RankedQuote, rankQuotes } from "./sourcing-rank";
 import { z } from "zod";
 import {
   Address,
@@ -26,7 +29,7 @@ import { CommittedQuoteConflict, type Invite, type Sourcing, type SourcingMessag
 // Chat is never binding and never moves money.
 
 export interface SourcingDeps {
-  repo: JobsRepo & DealsRepo & SourcingRepo;
+  repo: JobsRepo & DealsRepo & SourcingRepo & InspectionRepo;
   signer: SignerClient;
   // The supplier's TESTUSD trust line from the ledger (read-only), used when a deal opens.
   supplierLine: (address: string) => Promise<SupplierLine | null>;
@@ -226,8 +229,12 @@ export async function postNegotiatorMessage(deps: SourcingDeps, sourcingId: stri
   const text = ChatTextSchema.parse(raw);
   const s = await mustSourcing(deps, sourcingId);
   mustBeOpen(s, nowOf(deps), { timed: true });
-  await mustInvite(deps, s.id, address);
+  const invite = await mustInvite(deps, s.id, address);
   if ((await statusOf(deps, s.id, address)) === "out") throw new SupplierOut(s.id, address);
+  // Leverage stays anonymous: a message naming another invited supplier is refused, never stored.
+  const others = (await deps.repo.listInvites(s.id)).filter((i) => i.address !== address);
+  const allowed = [s.brief.goods.description, s.brief.port, invite.name];
+  if (namesOtherSupplier(text, others, allowed) !== null) throw new SourcingRefused("a message must not name another supplier");
   return deps.repo.addMessage({
     sourcingId: s.id,
     supplier: address,
@@ -324,7 +331,13 @@ export async function commitQuote(deps: SourcingDeps, sourcingId: string, addres
   // second time, so one sentence can never earn two cards; different terms are a conflict.
   if (invite.quote) {
     const q = invite.quote;
-    const same = q.quoteNumber === form.quoteNumber && q.quantity === form.quantity && q.unitCents === form.unitCents && q.incoterm === form.incoterm && q.port === form.port;
+    const same =
+      q.quoteNumber === form.quoteNumber &&
+      q.quantity === form.quantity &&
+      q.unitCents === form.unitCents &&
+      q.incoterm === form.incoterm &&
+      q.port === form.port &&
+      invite.deliveryDays === form.deliveryDays;
     if (same) return invite;
     throw new CommittedQuoteConflict(s.id, address);
   }
@@ -369,7 +382,8 @@ export async function commitQuote(deps: SourcingDeps, sourcingId: string, addres
     port: form.port,
     notes,
   });
-  return deps.repo.commitQuote(s.id, address, quote, sha256Hex(canonicalJson(quote)));
+  // The delivery days ride beside the quote: the deal's SupplierQuote and its hash are exactly 4b's.
+  return deps.repo.commitQuote(s.id, address, quote, sha256Hex(canonicalJson(quote)), form.deliveryDays);
 }
 
 export type ReportItem =
@@ -385,7 +399,9 @@ export interface LeadView {
   secondsLeft: number;
   selectedSupplier: string | null;
   dealId: string | null;
-  invites: { address: string; name: string; status: "in" | "out"; cards: { yellow: number; red: number }; quote: SupplierQuote | null; dealId: string | null }[];
+  invites: { address: string; name: string; status: "in" | "out"; cards: { yellow: number; red: number }; quote: SupplierQuote | null; deliveryDays: number | null; dealId: string | null }[];
+  // Surety's ranking of the committed quotes for the buyer's priority. Lead and view only.
+  ranking: RankedQuote[];
   reports: ReportItem[];
   suggestions: SupplierSuggestion[];
 }
@@ -400,6 +416,7 @@ export async function leadView(deps: SourcingDeps, sourcingId: string): Promise<
     status: supplierStatus(of(i.address)),
     cards: cardsOf(of(i.address)),
     quote: i.quote,
+    deliveryDays: i.deliveryDays,
     dealId: i.dealId,
   }));
   // The offer's facts only: its summary reaches the lead through the screened deliveredBody, or not at all.
@@ -422,6 +439,10 @@ export async function leadView(deps: SourcingDeps, sourcingId: string): Promise<
     selectedSupplier: s.selectedSupplier,
     dealId: s.dealId,
     invites,
+    ranking: rankQuotes(
+      s.brief,
+      invites.flatMap((i) => (i.quote ? [{ supplier: i.address, status: i.status, unitCents: i.quote.unitCents, deliveryDays: i.deliveryDays }] : [])),
+    ),
     reports,
     suggestions: await deps.repo.listSuggestions(s.id),
   };
@@ -434,15 +455,22 @@ export interface NegotiatorView {
   goods: { description: string; quantity: number; targetUnitCents: number };
   incoterm: string;
   port: string;
+  // What the buyer cares about, so the negotiator knows what to push for. Never the ranking.
+  priority: SourcingBrief["priority"];
+  latestDeliveryDays: number | null;
   negotiationEndsAt: string;
   secondsLeft: number;
   invites: { address: string; name: string; status: "in" | "out"; committed: boolean }[];
+  // Competing offers to use as leverage, anonymised in what the negotiator says. Nothing in them comes
+  // from the maximum.
+  offers: Offer[];
 }
 
 // The negotiator's view carries the target price only: never the maximum, never committed prices.
 export async function negotiatorView(deps: SourcingDeps, sourcingId: string): Promise<NegotiatorView> {
   const s = await mustSourcing(deps, sourcingId);
   const messages = await deps.repo.listMessages(s.id);
+  const invites = await deps.repo.listInvites(s.id);
   return {
     id: s.id,
     ref: s.ref,
@@ -450,13 +478,16 @@ export async function negotiatorView(deps: SourcingDeps, sourcingId: string): Pr
     goods: { description: s.brief.goods.description, quantity: s.brief.goods.quantity, targetUnitCents: s.brief.goods.targetUnitCents },
     incoterm: s.brief.incoterm,
     port: s.brief.port,
+    priority: s.brief.priority,
+    latestDeliveryDays: s.brief.latestDeliveryDays ?? null,
     negotiationEndsAt: s.negotiationEndsAt,
     secondsLeft: secondsLeft(s, nowOf(deps)),
-    invites: (await deps.repo.listInvites(s.id)).map((i) => ({
+    invites: invites.map((i) => ({
       address: i.address,
       name: i.name,
       status: supplierStatus(messages.filter((m) => m.supplier === i.address)),
       committed: i.quote !== null,
     })),
+    offers: leverageOffers(messages, invites),
   };
 }

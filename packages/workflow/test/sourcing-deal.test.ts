@@ -3,6 +3,7 @@ import type { SourcingBrief } from "@surety/contracts";
 import type { DecisionEngine, EvaluationResult } from "@surety/gate";
 import {
   type DealsRepo,
+  type InspectionRepo,
   type JobsRepo,
   NotInvited,
   SourcingClosed,
@@ -49,7 +50,7 @@ function fixedEngine(sat: number, inj: number): DecisionEngine {
   };
 }
 
-let repo: JobsRepo & DealsRepo & SourcingRepo;
+let repo: JobsRepo & DealsRepo & SourcingRepo & InspectionRepo;
 let signer: FakeSigner;
 let deps: SourcingDeps;
 const NAMES: Record<string, string> = { [SUPPLIER]: SUPPLIER_NAME, [SECOND]: "Sunpeak Energy" };
@@ -61,8 +62,9 @@ const brief = (): SourcingBrief => ({
   port: "Durban",
   deadlineSeconds: 300,
   negotiationSeconds: 90,
+  priority: "balanced",
 });
-const form = (unitCents: number) => ({ quoteNumber: "Q-88213", quantity: 400, unitCents, incoterm: "CIF", port: "Durban", notes: "" });
+const form = (unitCents: number) => ({ quoteNumber: "Q-88213", quantity: 400, unitCents, incoterm: "CIF", port: "Durban", deliveryDays: 21, notes: "" });
 const accept = { outcome: "accept", reason: "Cheapest committed quote within the brief." };
 const settlement = {
   invoiceNumber: "INV-88213",
@@ -189,7 +191,16 @@ describe("selection and the lead's decision", () => {
 });
 
 describe("end to end in memory", () => {
-  it("open, invite, chat, commit, select, accept, settle, runEngineOnce, PAID", async () => {
+  it("every job a sourcing deal creates freezes inspection: \"required\"", async () => {
+    const s = await openSourcing(deps, brief());
+    await inviteSupplier(deps, s.id, SUPPLIER);
+    await commitQuote(deps, s.id, SUPPLIER, form(11_400));
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    const { job } = await leadDecision(deps, deal.id, accept, "lead");
+    expect(job?.criteria).toMatchObject({ kind: "trade", inspection: "required" });
+  });
+
+  it("open, invite, chat, commit, select, accept, settle, wait for the inspector, attest, runEngineOnce, PAID", async () => {
     const s = await openSourcing(deps, brief());
     await inviteSupplier(deps, s.id, SUPPLIER);
     await postNegotiatorMessage(deps, s.id, SUPPLIER, "What is your best price for 400 panels?");
@@ -202,8 +213,67 @@ describe("end to end in memory", () => {
     expect(draft.fixed.invoice.totalCents).toBe(4_560_000);
     const delivered = await submitSettlement(deps, deal.id, SUPPLIER, { ...settlement, invoiceNumber: draft.suggested.invoiceNumber });
     expect(delivered.state).toBe("DELIVERED");
-    const report = await runEngineOnce({ repo, signer, engine: fixedEngine(0.95, 0.02), gateSecret: GATE_SECRET, ledgerCloseTime: async () => CLOSE + 10 });
+    const engineDeps = { repo, signer, engine: fixedEngine(0.95, 0.02), gateSecret: GATE_SECRET, ledgerCloseTime: async () => CLOSE + 10 };
+    expect((await runEngineOnce(engineDeps)).awaitingInspection).toEqual([job.id]);
+    await repo.addAttestation({ dealId: deal.id, jobId: job.id, inspector: "Port inspector (demo)", blNumber: "SZXDUR-55120", outcome: "attested", note: "" });
+    const report = await runEngineOnce(engineDeps);
     expect(report.paid).toEqual([job.id]);
     expect((await repo.getJob(job.id))?.state).toBe("PAID");
+  });
+});
+
+describe("the buyer's priority and the lead's choice", () => {
+  // Brightway $109.00 in 21 days, Sunpeak $118.00 in 14 days.
+  async function twoQuotes(priority: "price" | "speed" | "balanced") {
+    const s = await openSourcing(deps, { ...brief(), priority });
+    await inviteSupplier(deps, s.id, SUPPLIER);
+    await inviteSupplier(deps, s.id, SECOND);
+    await commitQuote(deps, s.id, SUPPLIER, { ...form(10_900), deliveryDays: 21 });
+    await commitQuote(deps, s.id, SECOND, { ...form(11_800), quoteNumber: "Q-2", deliveryDays: 14 });
+    return s;
+  }
+  const notes = async (dealId: string) => (await repo.listDealEvents(dealId)).filter((e) => e.reasonCodes.includes("off_priority"));
+
+  it("accepting the second-ranked quote for speed locks it and records off_priority with both quotes and the lead's reason", async () => {
+    const s = await twoQuotes("speed");
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    const reason = "Brightway is cheaper and 21 days still meets the project date.";
+    const { job } = await leadDecision(deps, deal.id, { outcome: "accept", reason }, "lead");
+    expect(job?.state).toBe("LOCKED");
+    const [note, ...more] = await notes(deal.id);
+    expect(more).toEqual([]);
+    expect(note).toMatchObject({
+      actor: "surety",
+      fromState: "QUOTE_RECEIVED",
+      toState: "QUOTE_RECEIVED",
+      detail: {
+        priority: "speed",
+        best: { supplier: SECOND, unitCents: 11_800, deliveryDays: 14 },
+        chosen: { supplier: SUPPLIER, unitCents: 10_900, deliveryDays: 21 },
+        reason,
+      },
+    });
+  });
+
+  it("accepting the first-ranked quote records no note", async () => {
+    const s = await twoQuotes("price");
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    await leadDecision(deps, deal.id, accept, "lead");
+    expect(await notes(deal.id)).toEqual([]);
+  });
+
+  it("a decline records no note", async () => {
+    const s = await twoQuotes("speed");
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    await leadDecision(deps, deal.id, { outcome: "decline", reason: "Too slow." }, "lead");
+    expect(await notes(deal.id)).toEqual([]);
+  });
+
+  it("a retried accept records the note once", async () => {
+    const s = await twoQuotes("speed");
+    const deal = await selectSupplier(deps, s.id, SUPPLIER);
+    await leadDecision(deps, deal.id, accept, "lead");
+    await leadDecision(deps, deal.id, accept, "lead");
+    expect(await notes(deal.id)).toHaveLength(1);
   });
 });

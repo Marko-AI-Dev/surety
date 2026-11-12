@@ -25,7 +25,8 @@ const PATTERNS = [
   ["secret", "box"],
 ].map((parts) => parts.join(""));
 
-const SKIP_DIRS = new Set(["node_modules", ".git", ".superpowers", "dist", "docs", "evidence"]);
+// .worktrees holds git worktree copies of this repo, each with its own services/signer.
+const SKIP_DIRS = new Set(["node_modules", ".git", ".superpowers", ".worktrees", "dist", "docs", "evidence"]);
 const SIGNER_DIR = "services/signer";
 const SCANNED_EXTENSIONS = new Set([
   ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",

@@ -1,11 +1,14 @@
-// Testnet evidence for the agent team (Phase 4c, Task 12). Two steps around one live run:
+// Testnet evidence for the agent team (Phase 4c Task 12, Phase 4d Task 8). Two steps around one live run:
 //   pnpm evidence:sourcing before                          prints the treasury's TESTUSD balance in cents
-//   pnpm evidence:sourcing <sourcingId> --before <cents>   gathers the run and writes evidence/sourcing-<UTC>.json
+//   pnpm evidence:sourcing <sourcingId> --before <cents> [--expect paid|refunded]
+//                                                          gathers the run and writes evidence/sourcing-<UTC>.json
 // It reads the database, the negotiator's view and inbox through the API with the negotiator's own token
 // (never printed), and the ledger (read-only). Exits 1 unless every check in scripts/sourcing-checks.ts passes.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Client } from "xrpl";
+import { type OfferReport, TradeDocumentsSchema } from "@surety/contracts";
+import { parseTradeDocuments } from "@surety/gate";
 import { createSignerClient } from "@surety/signer-client";
 import { type Deal, createPgRepo, supplierStatus } from "@surety/workflow";
 import { TESTUSD_CURRENCY_HEX, explorerTxUrl, getTrustLine, getTxResult, tokenValueToCents } from "@surety/xrpl-settlement";
@@ -37,6 +40,10 @@ try {
     const sourcingId = arg ?? "";
     const beforeFlag = process.argv.indexOf("--before");
     const before = beforeFlag === -1 ? null : BigInt(process.argv[beforeFlag + 1] ?? "");
+    const expectFlag = process.argv.indexOf("--expect");
+    const expectArg = expectFlag === -1 ? "paid" : process.argv[expectFlag + 1];
+    if (expectArg !== "paid" && expectArg !== "refunded") throw new Error("--expect must be paid or refunded");
+    const expect: "paid" | "refunded" = expectArg;
     const repo = createPgRepo(need("DATABASE_URL"));
     try {
       const s = await repo.getSourcing(sourcingId);
@@ -45,6 +52,10 @@ try {
       const crook = directory.find((e) => e.persona === "coastline")?.address ?? "";
       const stranger = directory.find((e) => e.persona === "lowtide")?.address ?? "";
       const messages = await repo.listMessages(s.id);
+      // Was the crook on hold when this sourcing opened: cards after its last review and before the start?
+      const review = await repo.lastReview(crook);
+      const reviewedAt = review && Date.parse(review.clearedAt) < Date.parse(s.createdAt) ? Date.parse(review.clearedAt) : Number.NEGATIVE_INFINITY;
+      const crookHeldAtStart = (await repo.listCards(crook, null)).some((c) => Date.parse(c.createdAt) > reviewedAt && Date.parse(c.createdAt) < Date.parse(s.createdAt));
       const invites = await repo.listInvites(s.id);
       const suggestions = await repo.listSuggestions(s.id);
 
@@ -67,6 +78,17 @@ try {
       const tx = (type: string) => txs.find((t) => t.type === type && t.status === "validated")?.txHash;
       const create = await confirm(tx("create"));
       const finish = await confirm(tx("finish"));
+      const cancel = await confirm(tx("cancel"));
+      const attestation = job ? await repo.getAttestation(job.id) : null;
+      const jobEvents = job ? await repo.listEvents(job.id) : [];
+      const paidAt = jobEvents.find((ev) => ev.toState === "PAID")?.createdAt ?? null;
+      const docs = job ? TradeDocumentsSchema.safeParse(job.deliverable) : null;
+      const deliveredBl = docs?.success ? (parseTradeDocuments(docs.data)?.billOfLading.blNumber ?? null) : null;
+      const notes = deal ? (await repo.listDealEvents(deal.id)).filter((ev) => ev.fromState === ev.toState) : [];
+      const reports = messages
+        .filter((m) => m.kind === "report" && m.offer)
+        .map((m) => ({ supplier: m.supplier, unitCents: (m.offer as OfferReport).unitCents, deliveryDays: (m.offer as OfferReport).deliveryDays, at: m.createdAt }));
+      const negotiatorMessages = messages.filter((m) => m.kind === "to_supplier").map((m) => ({ supplier: m.supplier, text: m.body }));
       const after = await treasuryCents();
       const decision = job ? await repo.latestDecision(job.id) : null;
 
@@ -78,26 +100,39 @@ try {
           status: supplierStatus(mine),
           cards: mine.filter((m) => m.kind === "from_supplier" && m.card).map((m) => m.card as string),
           quote: i.quote && { unitCents: i.quote.unitCents, quantity: i.quote.quantity, totalCents: i.quote.totalCents },
+          deliveryDays: i.deliveryDays,
           dealId: i.dealId,
         };
       });
       const totalCents = job && job.amount.asset === "TESTUSD" ? BigInt(job.amount.cents) : 0n;
-      const checks = sourcingChecks({
-        maxUnitCents: s.brief.goods.maxUnitCents,
+      const checks = sourcingChecks(
+        {
+        brief: s.brief,
         crook,
+        crookHeldAtStart,
         stranger,
         invites: evidenceInvites,
         quarantinedBodies: messages.filter((m) => m.kind === "from_supplier" && m.verdict === "quarantine").map((m) => m.body),
         negotiatorView,
         negotiatorInbox,
+        reports,
+        negotiatorMessages,
         suggestions: suggestions.map((g) => g.address),
         selectedSupplier: s.selectedSupplier,
+        notes: notes.map((n) => ({ reasonCodes: n.reasonCodes, detail: n.detail })),
         jobState: job?.state ?? null,
         finishResult: finish?.result ?? null,
+        cancelResult: cancel?.result ?? null,
+        decisionReasonCodes: decision?.reasonCodes ?? [],
+        attestation: attestation && { outcome: attestation.outcome, blNumber: attestation.blNumber, at: attestation.createdAt },
+        deliveredBl,
+        paidAt,
         treasury: { before, after },
         totalCents,
         leadReasons: deals.map((d) => d.decision?.agent.reason ?? ""),
-      });
+        },
+        expect,
+      );
       const screenCost = messages.reduce((acc, m) => acc + (((m.screen as { costUsd?: number } | null)?.costUsd ?? 0) || 0), 0);
       const evidence = {
         network: "XRPL Testnet",
@@ -118,8 +153,18 @@ try {
         deals: deals.map((d) => ({ id: d.id, ref: d.ref, state: d.state, supplier: d.intent.supplier, quote: d.quote, decision: d.decision })),
         job: job && { id: job.id, ref: job.ref, state: job.state, amount: job.amount, seller: job.sellerAddress, policyVersion: job.policyVersion },
         verify: decision && { outcome: decision.outcome, satisfaction: decision.satisfaction, injectionRisk: decision.injectionRisk, reasonCodes: decision.reasonCodes, policyVersion: decision.policyVersion },
+        // The web app's shape (apps/web/src/data/types.ts, Inspection).
+        inspection: job
+          ? attestation
+            ? { state: attestation.outcome, inspector: attestation.inspector, blNumber: attestation.blNumber, note: attestation.note, at: attestation.createdAt }
+            : { state: "pending" }
+          : null,
+        notes: notes.map((n) => ({ at: n.createdAt, actor: n.actor, reasonCodes: n.reasonCodes, detail: n.detail })),
+        events: jobEvents.map((ev) => ({ at: ev.createdAt, actor: ev.actor, from: ev.fromState, to: ev.toState, reasonCodes: ev.reasonCodes })),
+        expect,
         create,
         finish,
+        cancel,
         treasuryCents: { before: before?.toString() ?? null, after: after?.toString() ?? null },
         costUsd: { bouncer: screenCost, verify: decision?.costUsd ?? 0 },
         checks,

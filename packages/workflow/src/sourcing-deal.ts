@@ -4,18 +4,24 @@ import { type Deal, DealTransitionConflict } from "./deal-repo";
 import { type DealDeps, type QuoteDecider, decideQuote, openDeal, ruleFollowingDecider, submitDocuments, submitQuote } from "./deals";
 import type { Job } from "./repo";
 import { InviteConflict, SourcingConflict } from "./sourcing-repo";
-import { NotInvited, SourcingClosed, type SourcingDeps, SourcingNotFound, SourcingRefused, SupplierOut, supplierStatus } from "./sourcing";
+import { NotInvited, SourcingClosed, type SourcingDeps, SourcingNotFound, SourcingRefused, SupplierOut, leadView, supplierStatus } from "./sourcing";
+import type { RankedQuote } from "./sourcing-rank";
+
+// Surety itself, when it records something in a deal without changing it.
+export const SURETY_ACTOR = "surety";
 
 // From a committed quote to a locked deal: the lead selects a supplier, Surety opens a deal from the
 // brief (the Policy step) with that supplier's committed quote, and the lead's accept or decline runs
 // through the 4b deal loop, whose checks overrule an accept that breaks the brief or the live policy.
 
-// openDeal and submitQuote take DealDeps, whose decider they never use.
+// openDeal and submitQuote take DealDeps, whose decider they never use. Every sourcing deal needs the
+// inspector's second key before release.
 const dealDeps = (deps: SourcingDeps): DealDeps => ({
   repo: deps.repo,
   signer: deps.signer,
   supplierLine: deps.supplierLine,
   decider: ruleFollowingDecider,
+  inspection: "required",
 });
 
 // The lead's answer, carried into decideQuote as an agent decision.
@@ -89,6 +95,21 @@ export async function leadDecision(
     throw new SourcingClosed(s.id, "not_open");
   }
 
+  // The buyer's priority: an accept that isn't Surety's first-ranked eligible quote is allowed, and
+  // recorded with the lead's reason. Once, on the first decision, never on a retry.
+  if (answer.outcome === "accept" && current.state === "QUOTE_RECEIVED") {
+    const ranking = (await leadView(deps, s.id)).ranking;
+    const best = ranking.find((q) => q.eligible);
+    const chosen = ranking.find((q) => q.supplier === invite.address);
+    if (best && chosen && best.supplier !== chosen.supplier) {
+      const terms = (q: RankedQuote) => ({ supplier: q.supplier, unitCents: q.unitCents, deliveryDays: q.deliveryDays });
+      await deps.repo.addDealNote(dealId, {
+        actor: SURETY_ACTOR,
+        reasonCodes: ["off_priority"],
+        detail: { priority: s.brief.priority, best: terms(best), chosen: terms(chosen), reason: answer.reason },
+      });
+    }
+  }
   const result = await decideQuote({ ...dealDeps(deps), decider: answerDecider(answer, `paperclip:${agentName}`) }, dealId);
   // Only a final decline (or an overruled accept) releases the claim: nothing was locked, so the
   // sourcing opens again for another supplier. A decision that throws keeps the claim, so its retry
