@@ -17,7 +17,7 @@ curl -s -X POST "$SURETY_API_URL/sourcing" -H "Authorization: Bearer $SURETY_API
   -d '{"buyer":{"name":"<buyer name>","address":"<treasury wallet>"},"goods":{"description":"<goods>","quantity":<n>,"targetUnitCents":<target>,"maxUnitCents":<maximum>},"incoterm":"CIF","port":"<port>","deadlineSeconds":<seconds>,"negotiationSeconds":<seconds>,"priority":"<price|speed|balanced>","latestDeliveryDays":<days>}'
 ```
 
-Leave out `latestDeliveryDays` if the brief gives none; `priority` defaults to `balanced`.
+Leave out `latestDeliveryDays` and `push` if the brief gives none; `priority` defaults to `balanced`. `push` is `"gentle"` or `"firm"`: add `,"push":"<gentle|firm>"` to the body when the brief gives it.
 
 See the sourcing, the committed quotes with their delivery days, Surety's `ranking` for the buyer's priority, the negotiator's reports and any suggestions:
 
@@ -37,7 +37,7 @@ Select a supplier's committed quote. This opens the deal and Surety runs its che
 curl -s -X POST "$SURETY_API_URL/sourcing/$SOURCING_ID/select" -H "Authorization: Bearer $SURETY_API_TOKEN" -H "content-type: application/json" -d '{"supplier":"<wallet>"}'
 ```
 
-Accept or decline that deal, always with a reason. On accept, Surety checks again and the payment locks:
+Accept or decline that deal, always with a reason. Your accept is a recommendation: the answer is `{ "deal": ..., "job": null, "awaitingBuyer": true }`, and the payment locks only when the buyer says yes on their screen, after Surety checks again:
 
 ```bash
 curl -s -X POST "$SURETY_API_URL/deals/$DEAL_ID/decision" -H "Authorization: Bearer $SURETY_API_TOKEN" -H "content-type: application/json" -d '{"outcome":"accept","reason":"<why>"}'
@@ -60,7 +60,7 @@ curl -s -X POST "$SURETY_API_URL/sourcing/$SOURCING_ID/suggestions" -H "Authoriz
 
 ## Negotiator
 
-`GET /sourcing/<id>` shows you the buyer's `priority`, `latestDeliveryDays` and `offers`: each supplier's latest reported price or committed quote, with delivery days. A message that names another invited supplier is refused with `400 refused`.
+`GET /sourcing/<id>` shows you the buyer's `priority`, `latestDeliveryDays`, `push` (`"gentle"` or `"firm"`), `buyerNotes` (`[{ "text", "at" }]`, what the buyer told you during the negotiation) and `offers`: each supplier's latest reported price or committed quote, with delivery days. A message that names another invited supplier is refused with `400 refused`.
 
 ```bash
 curl -s -X GET "$SURETY_API_URL/sourcing/$SOURCING_ID" -H "Authorization: Bearer $SURETY_API_TOKEN"

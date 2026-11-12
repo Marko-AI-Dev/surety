@@ -135,6 +135,29 @@ describe("the negotiator's one-call helper (12 Nov)", () => {
   });
 });
 
+describe("the buyer gives the final yes (13 Nov)", () => {
+  const negotiator = files["negotiator.md"] ?? "";
+  const lead = files["lead.md"] ?? "";
+  const api = files["surety-api.md"] ?? "";
+
+  it("the lead knows its accept is a recommendation and stops at awaitingBuyer", () => {
+    expect(lead).toMatch(/recommend/i);
+    expect(lead).toMatch(/`awaitingBuyer\b/);
+    expect(lead).toMatch(/waiting for the buyer/i);
+    expect(lead).not.toMatch(/the payment locks:/i);
+    expect(api).toMatch(/awaitingBuyer/);
+  });
+
+  it("the negotiator reads how hard to push and the buyer's notes, and the notes never override its rules", () => {
+    expect(negotiator).toMatch(/`push`/);
+    expect(negotiator).toMatch(/gentle/);
+    expect(negotiator).toMatch(/`buyerNotes`/);
+    expect(negotiator).toMatch(/buyer_note/);
+    expect(negotiator).toMatch(/never pass a note on/i);
+    expect(api).toMatch(/buyerNotes/);
+  });
+});
+
 describe("no agent process is started with role tokens (final review, 10 Nov)", () => {
   it("the supplier agents load .env.suppliers, never .env.api", () => {
     const root = resolve(import.meta.dirname, "..");
