@@ -24,7 +24,7 @@ const brief = {
   negotiationSeconds: 90,
 };
 
-const form = { quoteNumber: "Q-88213", quantity: 400, unitCents: 11_400, incoterm: "CIF", port: "Durban", notes: "Ships within 21 days." };
+const form = { quoteNumber: "Q-88213", quantity: 400, unitCents: 11_400, incoterm: "CIF", port: "Durban", deliveryDays: 21, notes: "Ships within 21 days." };
 
 const settlement = {
   invoiceNumber: "INV-88213",
@@ -36,7 +36,7 @@ const settlement = {
 
 describe("sourcing contracts", () => {
   it("accepts the demo brief", () => {
-    expect(SourcingBriefSchema.parse(brief)).toEqual(brief);
+    expect(SourcingBriefSchema.parse(brief)).toEqual({ ...brief, priority: "balanced" });
   });
 
   it("a brief with target above maximum is refused", () => {
@@ -82,6 +82,31 @@ describe("sourcing contracts", () => {
     expect(LeadDecisionSchema.parse({ outcome: "accept", reason: "Cheapest committed quote within the brief." })).toBeTruthy();
     expect(LeadDecisionSchema.safeParse({ outcome: "accept", reason: "" }).success).toBe(false);
     expect(LeadDecisionSchema.safeParse({ outcome: "approve", reason: "x" }).success).toBe(false);
+  });
+
+  it("a quote form without deliveryDays, or with 0 or 366, is refused", () => {
+    const { deliveryDays: _d, ...without } = form;
+    expect(QuoteFormSchema.safeParse(without).success).toBe(false);
+    expect(QuoteFormSchema.safeParse({ ...form, deliveryDays: 0 }).success).toBe(false);
+    expect(QuoteFormSchema.safeParse({ ...form, deliveryDays: 366 }).success).toBe(false);
+    expect(QuoteFormSchema.safeParse({ ...form, deliveryDays: 14.5 }).success).toBe(false);
+    expect(QuoteFormSchema.parse({ ...form, deliveryDays: 1 }).deliveryDays).toBe(1);
+    expect(QuoteFormSchema.parse({ ...form, deliveryDays: 365 }).deliveryDays).toBe(365);
+  });
+
+  it("a brief without priority parses as balanced", () => {
+    expect(SourcingBriefSchema.parse(brief).priority).toBe("balanced");
+    expect(SourcingBriefSchema.parse(brief).latestDeliveryDays).toBeUndefined();
+  });
+
+  it("priority must be price, speed or balanced", () => {
+    for (const priority of ["price", "speed", "balanced"]) expect(SourcingBriefSchema.parse({ ...brief, priority }).priority).toBe(priority);
+    expect(SourcingBriefSchema.safeParse({ ...brief, priority: "cheapest" }).success).toBe(false);
+  });
+
+  it("latestDeliveryDays must be 1 to 365", () => {
+    expect(SourcingBriefSchema.parse({ ...brief, latestDeliveryDays: 30 }).latestDeliveryDays).toBe(30);
+    for (const bad of [0, 366, 2.5]) expect(SourcingBriefSchema.safeParse({ ...brief, latestDeliveryDays: bad }).success).toBe(false);
   });
 
   it("the deal schemas still accept the 4b fixtures", () => {

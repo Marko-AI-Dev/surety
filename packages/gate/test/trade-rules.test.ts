@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TradeDocuments, TradeFields } from "@surety/contracts";
-import { RULE_IDS, TRADE_RULE_IDS, POLICY_V2, decide, parseTradeDocuments, runRules, runTradeRules } from "../src/index";
+import { INSPECTION_RULE_ID, RULE_IDS, TRADE_RULE_IDS, POLICY_V2, type TradeRulesInput, decide, normalizeBlNumber, parseTradeDocuments, runRules, runTradeRules } from "../src/index";
 import { ATTACKER, SUPPLIER, intent, presets, quote } from "../../../scripts/deal-fixtures";
 
 const lock = { destination: SUPPLIER, amount: { asset: "TESTUSD", cents: "4800000" } as const };
@@ -96,5 +96,64 @@ describe("runTradeRules", () => {
     const invoice = runRules({ sourceText: "nothing", allowedCurrencies: ["ZAR"], deliverable: {} });
     expect(RULE_IDS).toContain("schema");
     expect(decide(invoice, null, POLICY_V2).reasonCodes).toEqual(["rule:schema"]);
+  });
+});
+
+describe("the inspector's attested rule", () => {
+  const attested = (blNumber: string, outcome: "attested" | "refused" = "attested") => ({ attestation: { outcome, blNumber } });
+  const inspected = (documents: TradeDocuments, inspection: TradeRulesInput["inspection"]) =>
+    runTradeRules({ intent, quote, documents, readerFields: parseTradeDocuments(documents), lock, inspection });
+  const attestedResult = (r: ReturnType<typeof rules>) => r.results.find((x) => x.id === INSPECTION_RULE_ID);
+
+  it("without inspection the results are exactly the 12 trade rules, as before", () => {
+    const r = rules(doc("docs-honest"));
+    expect(r.results.map((x) => x.id)).toEqual([...TRADE_RULE_IDS]);
+    expect(r.results).toHaveLength(12);
+  });
+
+  it('an attested SZXDUR-55120 passes attested, and "szxdur 55120" passes too', () => {
+    for (const bl of ["SZXDUR-55120", "szxdur 55120", " SzXdUr55120 "]) {
+      const r = inspected(doc("docs-honest"), attested(bl));
+      expect(r.passed).toBe(true);
+      expect(r.results.map((x) => x.id)).toEqual([...TRADE_RULE_IDS, "attested"]);
+      expect(attestedResult(r)).toEqual({ id: "attested", status: "pass" });
+    }
+  });
+
+  it("SZXDUR-55121 fails attested and the detail names both numbers", () => {
+    const r = inspected(doc("docs-honest"), attested("SZXDUR-55121"));
+    expect(r.passed).toBe(false);
+    expect(failed(r)).toEqual(["attested"]);
+    expect(attestedResult(r)?.detail).toBe("the inspector read B/L SZXDUR-55121, the documents say SZXDUR-55120");
+    expect(decide(r, null, POLICY_V2).reasonCodes).toEqual(["rule:attested"]);
+  });
+
+  it("a refused attestation fails attested even with the right number", () => {
+    const r = inspected(doc("docs-honest"), attested("SZXDUR-55120", "refused"));
+    expect(failed(r)).toEqual(["attested"]);
+    expect(attestedResult(r)?.detail).toBe("the inspector refused the bill of lading");
+  });
+
+  it("no attestation fails attested", () => {
+    const r = inspected(doc("docs-honest"), { attestation: null });
+    expect(failed(r)).toEqual(["attested"]);
+    expect(attestedResult(r)?.detail).toBe("no inspector attestation");
+  });
+
+  it("an attested rule runs beside other failures, so a wrong number shows even on edited documents", () => {
+    const r = inspected(doc("docs-quantity-edited"), attested("SZXDUR-55121"));
+    expect(failed(r)).toEqual(["shipment", "attested"]);
+  });
+
+  it("unparseable documents mark attested skipped", () => {
+    const r = runTradeRules({ intent, quote, documents: doc("docs-second-pay-to"), readerFields: null, lock, inspection: attested("SZXDUR-55120") });
+    expect(r.passed).toBe(false);
+    expect(r.results.map((x) => x.id)).toEqual([...TRADE_RULE_IDS, "attested"]);
+    expect(attestedResult(r)).toEqual({ id: "attested", status: "skipped" });
+  });
+
+  it("normalizeBlNumber folds case, spaces, hyphens and full-width forms", () => {
+    expect(normalizeBlNumber(" szxdur - 55120 ")).toBe("SZXDUR55120");
+    expect(normalizeBlNumber("ＳＺＸＤＵＲ－５５１２０")).toBe("SZXDUR55120");
   });
 });

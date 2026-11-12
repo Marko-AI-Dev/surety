@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { deliverableHash } from "@surety/contracts";
 import { type DecisionEngine } from "@surety/gate";
-import { type Job, type JobsRepo, createMemoryRepo, deliverJob, operationId, runEngineOnce } from "../src/index";
+import { type Job, type InspectionRepo, type JobsRepo, createMemoryRepo, deliverJob, operationId, runEngineOnce } from "../src/index";
 import { FakeSigner } from "./fake-signer";
 import { EXACT, GATE_SECRET, INJECTION, WINDOW, WRONG_TOTAL, demoEngine, lockedGateJob } from "./gate-helpers";
 
 const CLOSE = 800_000_000;
 const AFTER_EXPIRY = CLOSE + WINDOW + 1;
 
-let repo: JobsRepo;
+let repo: JobsRepo & InspectionRepo;
 let signer: FakeSigner;
 let closeTime: number;
 
@@ -111,7 +111,7 @@ describe("runEngineOnce", () => {
     let decisions = 0;
     let crash = true;
     // The claim commits, then the process dies before anything else happens.
-    const crashing: JobsRepo = {
+    const crashing: JobsRepo & InspectionRepo = {
       ...repo,
       async transition(jobId, from, to, event) {
         const moved = await repo.transition(jobId, from, to, event);
@@ -147,7 +147,7 @@ describe("runEngineOnce", () => {
     const engine = demoEngine();
     let decisions = 0;
     let crash = true;
-    const crashing: JobsRepo = {
+    const crashing: JobsRepo & InspectionRepo = {
       ...repo,
       async recordDecision(d) {
         decisions += 1;
@@ -177,7 +177,7 @@ describe("runEngineOnce", () => {
     const job = await deliveredJob(EXACT);
     const engine = demoEngine();
     // The verdict can never be stored (after the Jev call), so every attempt dies the same way.
-    const poisoned: JobsRepo = {
+    const poisoned: JobsRepo & InspectionRepo = {
       ...repo,
       async recordDecision() {
         throw new Error("decision store rejects this job");

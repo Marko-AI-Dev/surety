@@ -41,6 +41,8 @@ export {
 export {
   TRADE_RULE_IDS,
   runTradeRules,
+  INSPECTION_RULE_ID,
+  normalizeBlNumber,
   type TradeRuleId,
   type TradeRuleResult,
   type TradeRulesInput,
@@ -49,6 +51,7 @@ export {
 export {
   CHAT_RULE_IDS,
   RED_CARD_RULES,
+  foldText,
   runChatRules,
   stripLinks,
   type ChatRuleId,
