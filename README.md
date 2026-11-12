@@ -1,10 +1,72 @@
 # Surety
 
-**The trust layer for the agent economy.** One AI agent hires another. Payment is locked in native XRP Ledger escrow and released only when the delivered work passes checks the agents cannot override. If the work fails, or the evaluator is down, the buyer gets a refund once the escrow expires.
+**AI agents that can buy for your business and cannot steal from it.**
 
-> **TESTNET ONLY.** Surety runs on XRPL Testnet with valueless test XRP and synthetic data. It is a hackathon prototype for W3NODE 2026 (Agentic Finance track), not a financial product.
+A team of AI agents finds suppliers, negotiates and chooses a quote. They never hold the money. The payment locks in XRP Ledger escrow, to a supplier a person approved, under limits a person set. It is released only when the supplier's paperwork passes and an independent inspector, a person with a phone, confirms the shipment. If either fails, or the deadline passes, the ledger refunds the buyer.
 
-## Proven so far on XRPL Testnet
+> **TESTNET ONLY.** Surety runs on XRPL Testnet with a valueless test dollar (TESTUSD) and synthetic data. It is a hackathon prototype for W3NODE 2026 (Agentic Finance track), not a financial product.
+
+![The Surety web app at the end of a recorded purchase: the price negotiated down, the money paid, both ledger links, and the inspector's confirmation](docs/img/app-purchase.png)
+
+```mermaid
+flowchart LR
+  P([A person sets the brief,<br/>the limits and the<br/>approved suppliers]) --> A
+  subgraph Agents[The agents: talk and choose, never pay]
+    A[Lead, Sourcing,<br/>Negotiator]
+  end
+  S[Suppliers] -- "every message" --> B{{Bouncer}}
+  B -- "clean" --> A
+  B -. "held: yellow or red card" .-> Q[(Quarantine)]
+  A -- "accept a committed quote" --> G[[Isolated signer:<br/>caps, approved wallets]]
+  G -- "lock" --> X[(XRP Ledger escrow)]
+  S -- "invoice and bill of lading" --> V{{Surety Verify:<br/>rules, then a model}}
+  I([Inspector:<br/>a person, the second key]) -- "confirms the shipment" --> V
+  V -- "pass: one-use authorization" --> G
+  X -- "paid" --> S
+  X -. "refused or deadline passed: refund" .-> P
+```
+
+## One real purchase, start to finish
+
+10 Nov 2026, XRPL Testnet, from one brief: "400 solar panels, target $110, maximum $120, a balance of price and speed, delivered within 30 days" ([evidence](evidence/sourcing-2026-11-10T17-11-48-091Z.json)).
+
+| | What happened |
+|---|---|
+| 1 | The Negotiator played the suppliers' offers against each other without naming them. Brightway came down from $118 to $111 in 21 days. Sunpeak came down from $126 to $116 in 14 days. Surety never showed the Negotiator the $120 maximum |
+| 2 | Surety ranked the committed quotes for the buyer's priority. The Lead agent accepted Sunpeak: $5 dearer, a week faster. It gave its reason |
+| 3 | The signer locked $46,400: [CA12F7D9…](https://testnet.xrpl.org/transactions/CA12F7D91C49F025935B9BC732BF2236AF97634CBA2DFC13254316E27BFBE68E) |
+| 4 | An inspector, a person and never an agent, read the bill of lading number off the shipment and confirmed it: "400 cartons counted, seal intact". The inspector never sees the number the supplier submitted |
+| 5 | The paperwork passed Surety Verify with that number, and the signer released the payment: [9DFBB357…](https://testnet.xrpl.org/transactions/9DFBB35742CDE9FABE6BDC0EBAF5EC8127D77E50CBF6FCD991B6A36B1EA68B73) |
+| 6 | The treasury ended exactly $46,400.00 lower |
+
+**And when it goes wrong** ([evidence](evidence/sourcing-2026-11-10T17-33-34-735Z.json)): in the next run a crooked supplier wrote to the agents and was sent off by the bouncer with a yellow card and then a red one. The agents never read either message. Later the inspector refused the shipment ("Seal broken, 380 cartons counted"). Nothing was paid, and the ledger returned the $44,400 to the buyer: [lock B2AAE2DE…](https://testnet.xrpl.org/transactions/B2AAE2DE6C58B8E8FE49BE08E34382F111FDB3AF9C905CE419DCD239EEB963C3).
+
+## See it
+
+```bash
+pnpm install
+pnpm web     # http://localhost:5173
+```
+
+With no backend running, the app says so and plays four recorded testnet runs, badged "Recorded": paid with the inspector's confirmation, refunded after a refusal, refunded when nobody answered, and the first run. With the backend running it shows a purchase live. See [`apps/web/README.md`](apps/web/README.md).
+
+## How it meets the Agentic Finance track rules
+
+| Rule | How | Proof |
+|---|---|---|
+| An agent executes a testnet transaction | The Lead agent's accept locks the payment. No person clicks | The lock above |
+| Limits are enforced outside the agent | The signer is a separate process with its own keys. It refuses a deal over the cap, an unapproved wallet and a sixth open deal, whatever the agent says. The agents run sandboxed and cannot see the drive that holds the keys | [evidence](evidence/testusd-signer-2026-11-09T09-22-15-177Z.json) |
+| A human operator sets the limits | The operator changes caps live with a secret the agents and the worker never hold. A cap lowered to $500 refused the next $600 deal; the worker's own credential got `401` | Same file |
+| Meaningful use of XRPL and RLUSD | Native token escrow with crypto-conditions, refunds by ledger time, no smart contract. TESTUSD stands in for RLUSD because RLUSD's testnet issuer has escrow switched off; it is the same trust-line mechanism, so moving is a change of issuer | [token escrow trial](evidence/token-escrow-trial-testusd-2026-11-09T08-13-36-693Z.json) |
+
+## What it does not do yet
+
+- **The inspector is a stand-in.** In the demo a person with a phone plays the inspector. In real trade that is a freight forwarder, an inspection company or, best, the carrier's own signed shipping record.
+- **RLUSD itself is not used,** for the reason above.
+- **The signer runs on the same machine as everything else.** It is a separate process with separate secrets, and the agents are sandboxed away from it, but it is not yet a separate device.
+- **No real money, no KYC, no legal standing.** The approved-supplier list is a demo list.
+
+## Evidence on XRPL Testnet
 
 Through the isolated signer only (8 Nov 2026, evidence in [`evidence/`](evidence/)):
 
@@ -103,7 +165,7 @@ All 12 checks pass for run A and all 11 for run B. Decision-model cost across th
 
 See [`docs/architecture.md`](docs/architecture.md) for the diagram and trust boundaries. In short:
 
-- Keys exist only in `services/signer`, a separate process that accepts three operations and nothing else.
+- Keys exist only in `services/signer`, a separate process that accepts three money operations (lock, pay, refund) and one operator-only policy update, and nothing else.
 - Each escrow is locked with a crypto-condition whose secret only the signer holds.
 - Payment needs a short-lived, one-use authorization bound to the exact escrow, job, deliverable and policy.
 - Refunds happen by ledger time, not laptop time.
@@ -113,11 +175,11 @@ See [`docs/architecture.md`](docs/architecture.md) for the diagram and trust bou
 
 ## Run it
 
-Requires Node 24 and pnpm 10.
+Requires Node 24 and pnpm 10. On Windows, clone into a short path such as `C:\dev\surety`: under a deep folder the dependency paths pass 260 characters and `pnpm test` fails at startup.
 
 ```bash
 pnpm install
-pnpm test                 # 968 unit tests, no Docker needed, no network
+pnpm test                 # 1069 unit tests, no Docker needed, no network
 pnpm typecheck
 pnpm check:boundaries     # lint: flags key-handling code outside the signer
 
@@ -163,6 +225,6 @@ pnpm inspector:attest <dealId> <blNumber> attested "400 cartons counted, seal in
 2. Durable job state and an expiry worker that survives restarts: **done**
 3. Deterministic checks and the Jev evaluator: **done**
 4. Operator spending limits and TESTUSD in the signer: **done** (Phase 4a). Deals with the Policy step, the quote step, trade-document rules and Surety Verify: **done** (Phase 4b). The agent team on Paperclip, sourcing and negotiation, the bouncer, supplier forms and the API: **done** (Phase 4c). Negotiation with leverage, delivery days, the buyer's priority and the inspector's second key: **done** (Phase 4d)
-5. The web app: a normal view for the business user and an admin view (Control room and Attack lab), with ledger-linked receipts
+5. The web app (`apps/web`): a live purchase screen, the Control room, the Attack lab, the supplier seat and the inspector's phone page, with ledger-linked proof: **done**, tested on recorded runs and a simulated feed; a live run against the backend is the last check
 
 Plan: [`docs/step1-plan-review.md`](docs/step1-plan-review.md). Disclosures: [`PRIOR_WORK.md`](PRIOR_WORK.md).
