@@ -4,11 +4,13 @@ import { type RankedQuote, rankQuotes } from "./sourcing-rank";
 import { z } from "zod";
 import {
   Address,
+  BuyerNoteSchema,
   type Card,
   ChatTextSchema,
   MAX_TESTUSD_CENTS,
   type OfferReport,
   OfferReportSchema,
+  type Push,
   QuoteFormSchema,
   type SourcingBrief,
   SourcingBriefSchema,
@@ -21,7 +23,7 @@ import { type DecisionEngine, type ScreenResult, type SupplierLine, chatState, s
 import type { SignerClient } from "@surety/signer-client";
 import type { DealsRepo } from "./deal-repo";
 import type { JobsRepo } from "./repo";
-import { CommittedQuoteConflict, type Invite, type Sourcing, type SourcingMessage, type SourcingRepo, type SupplierSuggestion } from "./sourcing-repo";
+import { type BuyerNote, CommittedQuoteConflict, type Invite, type Sourcing, type SourcingMessage, type SourcingRepo, type SupplierSuggestion } from "./sourcing-repo";
 
 // Sourcing and negotiation: the lead opens a sourcing from the buyer's brief, the sourcing agent
 // invites approved suppliers, the negotiator and suppliers chat through Surety, and suppliers commit
@@ -173,6 +175,19 @@ export async function openSourcing(deps: SourcingDeps, raw: unknown): Promise<So
   }
   const now = nowOf(deps);
   return deps.repo.createSourcing(newRef(now), brief, new Date(now.getTime() + brief.negotiationSeconds * 1000));
+}
+
+// How many notes the buyer may send its negotiator in one sourcing.
+export const BUYER_NOTE_LIMIT = 20;
+
+// The buyer nudges its own negotiator. The note is the buyer's own words to its own agent, so it is not
+// screened; it never reaches a supplier. Only while the negotiation is open.
+export async function addBuyerNote(deps: SourcingDeps, sourcingId: string, raw: unknown): Promise<BuyerNote> {
+  const { text } = BuyerNoteSchema.parse(raw);
+  const s = await mustSourcing(deps, sourcingId);
+  mustBeOpen(s, nowOf(deps), { timed: true });
+  if ((await deps.repo.listBuyerNotes(s.id)).length >= BUYER_NOTE_LIMIT) throw new SourcingRefused(`the buyer has sent ${BUYER_NOTE_LIMIT} notes in this sourcing`);
+  return deps.repo.addBuyerNote(s.id, text);
 }
 
 // Any card since the operator last reviewed this supplier puts it on hold across sourcings.
@@ -477,6 +492,9 @@ export interface NegotiatorView {
   // What the buyer cares about, so the negotiator knows what to push for. Never the ranking.
   priority: SourcingBrief["priority"];
   latestDeliveryDays: number | null;
+  // How hard the buyer wants the push, and anything the buyer said since the negotiation began.
+  push: Push;
+  buyerNotes: { text: string; at: string }[];
   negotiationEndsAt: string;
   secondsLeft: number;
   invites: { address: string; name: string; status: "in" | "out"; committed: boolean }[];
@@ -499,6 +517,8 @@ export async function negotiatorView(deps: SourcingDeps, sourcingId: string): Pr
     port: s.brief.port,
     priority: s.brief.priority,
     latestDeliveryDays: s.brief.latestDeliveryDays ?? null,
+    push: s.brief.push ?? "firm",
+    buyerNotes: (await deps.repo.listBuyerNotes(s.id)).map((n) => ({ text: n.text, at: n.createdAt })),
     negotiationEndsAt: s.negotiationEndsAt,
     secondsLeft: secondsLeft(s, nowOf(deps)),
     invites: invites.map((i) => ({

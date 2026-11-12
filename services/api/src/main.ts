@@ -11,6 +11,7 @@ import { createPgRepo } from "@surety/workflow";
 import { TESTUSD_CURRENCY_HEX, getTrustLine } from "@surety/xrpl-settlement";
 import { loadApiConfig } from "./config";
 import { createPaperclipStarter } from "./demo-start";
+import { createOpenRouterChat } from "./intake";
 import { createApiServer } from "./http";
 import { createSupplierLine } from "./supplier-line";
 
@@ -41,6 +42,7 @@ const server = createApiServer(
   { repo, signer, supplierLine, engine: createJevEngine({ apiKey: config.openRouterKey }), directory: (a) => names.get(a) ?? null },
   {
     ...config,
+    chat: createOpenRouterChat({ apiKey: config.openRouterKey, model: config.chatModel }),
     ...(config.demoStart ? { start: createPaperclipStarter(config.demoStart), demoDeadlineSeconds: config.demoStart.deadlineSeconds } : {}),
   },
   { log },

@@ -52,6 +52,7 @@ export {
   type Sourcing,
   type SourcingMessage,
   type SourcingRepo,
+  type BuyerNote,
   type SupplierReview,
   type SupplierSuggestion,
 } from "./sourcing-repo";
@@ -63,6 +64,8 @@ export {
   SUPPLIER_MESSAGE_LIMIT,
   SupplierMessageLimit,
   SupplierOut,
+  BUYER_NOTE_LIMIT,
+  addBuyerNote,
   commitQuote,
   inviteSupplier,
   leadView,
@@ -94,7 +97,19 @@ export {
 export { InspectionNotFound, attest, inspectionOf, inspectorQueue, type InspectorItem } from "./inspection";
 export { rankQuotes, type RankableOffer, type RankedQuote } from "./sourcing-rank";
 export { leverageOffers, namesOtherSupplier, type Offer } from "./leverage";
-export { answerDecider, leadDecision, selectSupplier, settlementDraftFor, submitSettlement } from "./sourcing-deal";
+export {
+  BUYER_ACTOR,
+  BUYER_APPROVED,
+  BUYER_DECLINED,
+  LEAD_RECOMMENDS,
+  answerDecider,
+  buyerDecision,
+  leadDecision,
+  recommendationOf,
+  selectSupplier,
+  settlementDraftFor,
+  submitSettlement,
+} from "./sourcing-deal";
 export { createMemoryRepo } from "./memory-repo";
 export { createPgRepo } from "./pg-repo";
 export { fundJob, type FundDeps } from "./fund";

@@ -1,4 +1,15 @@
-import { type Deal, type SourcingDeps, SourcingNotFound, inspectionOf, leadView, supplierOnHold, supplierStatus } from "@surety/workflow";
+import {
+  BUYER_APPROVED,
+  BUYER_DECLINED,
+  type Deal,
+  LEAD_RECOMMENDS,
+  type SourcingDeps,
+  SourcingNotFound,
+  inspectionOf,
+  leadView,
+  supplierOnHold,
+  supplierStatus,
+} from "@surety/workflow";
 import { explorerTxUrl } from "@surety/xrpl-settlement";
 
 // The operator's record of one sourcing, in the same shape as evidence/sourcing-*.json, so the web app
@@ -34,6 +45,24 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
   const ranking = (await leadView(deps, s.id)).ranking;
   const jobEvents = job ? await repo.listEvents(job.id) : [];
   const notes = deal ? (await repo.listDealEvents(deal.id)).filter((ev) => ev.fromState === ev.toState) : [];
+  // The buyer's final yes. The lead recommends a deal; nothing locks until the buyer approves it.
+  // The newest recommended deal, whatever happened to it since.
+  let approval: { state: "waiting" | "approved" | "declined"; dealId: string; supplier: string; leadReason: string; at: string; answeredAt: string | null } | null = null;
+  for (const d of deals) {
+    const events = await repo.listDealEvents(d.id);
+    const asked = events.find((ev) => ev.reasonCodes.includes(LEAD_RECOMMENDS));
+    if (!asked || (approval && approval.at > asked.createdAt)) continue;
+    const answered = events.find((ev) => ev.reasonCodes.includes(BUYER_APPROVED) || ev.reasonCodes.includes(BUYER_DECLINED));
+    approval = {
+      state: !answered ? "waiting" : answered.reasonCodes.includes(BUYER_APPROVED) ? "approved" : "declined",
+      dealId: d.id,
+      supplier: d.intent.supplier.address,
+      leadReason: String((asked.detail as { reason?: unknown } | null)?.reason ?? ""),
+      at: asked.createdAt,
+      answeredAt: answered?.createdAt ?? null,
+    };
+  }
+  const buyerNotes = (await repo.listBuyerNotes(s.id)).map((n) => ({ text: n.text, at: n.createdAt }));
   // Only a validated transaction is shown as one; the mirror's result is the ledger's.
   const tx = (type: string) => {
     const t = txs.find((x) => x.type === type && x.status === "validated" && x.txHash);
@@ -98,6 +127,8 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
       rules: decision.rules,
     },
     inspection,
+    approval,
+    buyerNotes,
     ranking,
     notes: notes.map((n) => ({ at: n.createdAt, actor: n.actor, reasonCodes: n.reasonCodes, detail: n.detail })),
     events: jobEvents.map((ev) => ({ at: ev.createdAt, actor: ev.actor, from: ev.fromState, to: ev.toState, reasonCodes: ev.reasonCodes })),

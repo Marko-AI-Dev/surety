@@ -29,6 +29,8 @@ export interface ApiConfig {
   supplierTokens: Record<string, string>;
   // Set only when the big screen may start a purchase: where the Lead agent's task is created.
   demoStart: { companyId: string; leadAgentId: string; deadlineSeconds: number } | null;
+  // The small model that reads the buyer's words and answers the admin's questions.
+  chatModel: string;
 }
 
 export const MIN_TOKEN_CHARS = 32;
@@ -102,6 +104,7 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
     inspectorName: env.API_INSPECTOR_NAME || "Port inspector (demo)",
     supplierTokens,
     demoStart,
+    chatModel: env.API_CHAT_MODEL || "openai/gpt-4o-mini",
   };
   if (problems.length > 0) throw new Error(`API config: ${problems.join("; ")}`);
   return config;

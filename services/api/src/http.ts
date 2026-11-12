@@ -21,7 +21,9 @@ import {
   SupplierOut,
   TransitionConflict,
   TransitionError,
+  addBuyerNote,
   attest,
+  buyerDecision,
   commitQuote,
   inspectionOf,
   inspectorQueue,
@@ -33,6 +35,7 @@ import {
   openSourcing,
   postNegotiatorMessage,
   postSupplierMessage,
+  recommendationOf,
   reportOffer,
   selectSupplier,
   settlementDraftFor,
@@ -41,7 +44,9 @@ import {
   supplierOnHold,
   supplierThread,
 } from "@surety/workflow";
+import { adminAnswer } from "./assistant";
 import type { ApiTokens } from "./config";
+import { type Chat, intake } from "./intake";
 import { DEFAULT_DEADLINE_SECONDS, StartBody, type StartPurchase, demoBrief, leadTask } from "./demo-start";
 import { sourcingList, sourcingRecord } from "./record";
 
@@ -122,6 +127,9 @@ export function createApiServer(
     // Absent: POST /demo/start answers 404.
     start?: StartPurchase;
     demoDeadlineSeconds?: number;
+    // The small model behind the intake and the admin assistant. Absent: the intake reads with code
+    // alone and POST /admin/ask answers 404.
+    chat?: Chat;
   },
   opts: { log?: (line: string) => void; now?: () => number } = {},
 ): http.Server {
@@ -217,7 +225,38 @@ export function createApiServer(
       roles: ["lead"],
       handle: ({ id, body }) => selectSupplier(deps, id, SupplierBody.parse(body).supplier),
     },
-    { method: "POST", pattern: /^\/deals\/([^/]+)\/decision$/, roles: ["lead"], handle: ({ id, body }) => leadDecision(deps, id, body, "lead") },
+    // The lead's accept is a recommendation here: nothing locks until the buyer approves the deal.
+    { method: "POST", pattern: /^\/deals\/([^/]+)\/decision$/, roles: ["lead"], handle: ({ id, body }) => leadDecision(deps, id, body, "lead", { buyerApproval: true }) },
+    // The buyer's final yes or no, from the buyer's own screen. Only an approve can lock the payment.
+    {
+      method: "POST",
+      pattern: /^\/deals\/([^/]+)\/approval$/,
+      roles: ["view"],
+      handle: async ({ id, body }) => {
+        const { deal, job } = await buyerDecision(deps, id, body);
+        return { deal: { id: deal.id, ref: deal.ref, state: deal.state }, job: job && { id: job.id, ref: job.ref, state: job.state, amount: job.amount } };
+      },
+    },
+    // The buyer nudges its own negotiator. The negotiator reads the notes with its view of the sourcing.
+    { method: "POST", pattern: /^\/sourcing\/([^/]+)\/notes$/, roles: ["view"], handle: async ({ id, body }) => ({ text: (await addBuyerNote(deps, id, body)).text }) },
+    // Plain words in, the six numbers of a purchase out, and the next thing to ask. Opens nothing.
+    { method: "POST", pattern: /^\/buyer\/intake$/, roles: ["view"], handle: ({ body }) => intake(body, config.chat) },
+    // The admin assistant: answers from the records only. It reads; it cannot act.
+    {
+      method: "POST",
+      pattern: /^\/admin\/ask$/,
+      roles: ["view"],
+      handle: async ({ body }) => {
+        const chat = config.chat;
+        if (!chat) throw new HttpError(404, "not_found", "no such resource");
+        try {
+          return await adminAnswer(deps, chat, body);
+        } catch (e) {
+          if (e instanceof ZodError) throw e;
+          throw new HttpError(502, "assistant_failed", "the assistant could not answer just now");
+        }
+      },
+    },
     {
       method: "GET",
       pattern: /^\/deals\/([^/]+)$/,
@@ -232,6 +271,8 @@ export function createApiServer(
           job: job && { id: job.id, ref: job.ref, state: job.state, amount: job.amount, sellerAddress: job.sellerAddress },
           decision: job ? await deps.repo.latestDecision(job.id) : null,
           inspection: await inspectionOf(deps, deal.id),
+          // Set once the lead has recommended this deal; it locks only on the buyer's approval.
+          recommendation: await recommendationOf(deps, deal.id),
         };
       },
     },

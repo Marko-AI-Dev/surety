@@ -1,4 +1,4 @@
-import { type DealIntent, type LeadDecision, LeadDecisionSchema, SettlementFormSchema } from "@surety/contracts";
+import { BuyerDecisionSchema, type DealIntent, type LeadDecision, LeadDecisionSchema, SettlementFormSchema } from "@surety/contracts";
 import { type SettlementDraft, buildSettlementDocuments, settlementDraft } from "@surety/gate";
 import { type Deal, DealTransitionConflict } from "./deal-repo";
 import { type DealDeps, type QuoteDecider, decideQuote, openDeal, ruleFollowingDecider, submitDocuments, submitQuote } from "./deals";
@@ -9,6 +9,11 @@ import type { RankedQuote } from "./sourcing-rank";
 
 // Surety itself, when it records something in a deal without changing it.
 export const SURETY_ACTOR = "surety";
+export const BUYER_ACTOR = "buyer";
+// Notes in a deal's record: the lead recommended it, and what the buyer answered.
+export const LEAD_RECOMMENDS = "lead_recommends";
+export const BUYER_APPROVED = "buyer_approved";
+export const BUYER_DECLINED = "buyer_declined";
 
 // From a committed quote to a locked deal: the lead selects a supplier, Surety opens a deal from the
 // brief (the Policy step) with that supplier's committed quote, and the lead's accept or decline runs
@@ -69,7 +74,10 @@ export async function leadDecision(
   dealId: string,
   raw: unknown,
   agentName: string,
-): Promise<{ deal: Deal; job: Job | null }> {
+  // With buyerApproval, the lead's accept is a recommendation: it claims the sourcing and is written
+  // into the deal's record, and nothing locks until buyerDecision approves it. The API always sets it.
+  opts: { buyerApproval?: boolean } = {},
+): Promise<{ deal: Deal; job: Job | null; awaitingBuyer?: true }> {
   const answer = LeadDecisionSchema.parse(raw);
   const invite = await deps.repo.getInviteByDeal(dealId);
   if (!invite) throw new SourcingRefused(`deal ${dealId} did not come from a sourcing`);
@@ -102,7 +110,8 @@ export async function leadDecision(
 
   // The buyer's priority: an accept that isn't Surety's first-ranked eligible quote is allowed, and
   // recorded with the lead's reason. Once, on the first decision, never on a retry.
-  if (answer.outcome === "accept" && current.state === "QUOTE_RECEIVED") {
+  const recommended = opts.buyerApproval ? (await recommendationOf(deps, dealId)) !== null : false;
+  if (answer.outcome === "accept" && current.state === "QUOTE_RECEIVED" && !recommended) {
     const ranking = (await leadView(deps, s.id)).ranking;
     const best = ranking.find((q) => q.eligible);
     const chosen = ranking.find((q) => q.supplier === invite.address);
@@ -115,10 +124,71 @@ export async function leadDecision(
       });
     }
   }
+  if (opts.buyerApproval && answer.outcome === "accept" && current.state === "QUOTE_RECEIVED") {
+    if (!recommended) {
+      await deps.repo.addDealNote(dealId, { actor: `paperclip:${agentName}`, reasonCodes: [LEAD_RECOMMENDS], detail: { reason: answer.reason } });
+    }
+    return { deal: current, job: null, awaitingBuyer: true };
+  }
   const result = await decideQuote({ ...dealDeps(deps), decider: answerDecider(answer, `paperclip:${agentName}`) }, dealId);
   // Only a final decline (or an overruled accept) releases the claim: nothing was locked, so the
   // sourcing opens again for another supplier. A decision that throws keeps the claim, so its retry
   // resumes it and no concurrent decision can slip a second lock in; the lead may also decline it.
+  if (result.deal.state === "DECLINED") {
+    try {
+      await deps.repo.releaseSelection(s.id, dealId);
+    } catch (e) {
+      if (!(e instanceof SourcingConflict)) throw e;
+    }
+  }
+  return result;
+}
+
+// The lead's recommendation on a deal, if it made one: its reason and when.
+export async function recommendationOf(deps: SourcingDeps, dealId: string): Promise<{ reason: string; at: string } | null> {
+  const note = (await deps.repo.listDealEvents(dealId)).find((e) => e.reasonCodes.includes(LEAD_RECOMMENDS));
+  if (!note) return null;
+  return { reason: String((note.detail as { reason?: unknown } | null)?.reason ?? ""), at: note.createdAt };
+}
+
+// The buyer's final word on the deal the lead recommends. An approve runs the accept the lead asked
+// for, through the same checks, and only then can the payment lock. A decline locks nothing and opens
+// the sourcing again. A deal the lead has not recommended cannot be approved.
+export async function buyerDecision(deps: SourcingDeps, dealId: string, raw: unknown): Promise<{ deal: Deal; job: Job | null }> {
+  const answer = BuyerDecisionSchema.parse(raw);
+  const invite = await deps.repo.getInviteByDeal(dealId);
+  if (!invite) throw new SourcingRefused(`deal ${dealId} did not come from a sourcing`);
+  const s = await deps.repo.getSourcing(invite.sourcingId);
+  if (!s) throw new SourcingNotFound(invite.sourcingId);
+  const current = await deps.repo.getDeal(dealId);
+  if (!current) throw new DealTransitionConflict(dealId, "missing", "ACCEPTED");
+  const run = (decision: LeadDecision, model: string) => decideQuote({ ...dealDeps(deps), decider: answerDecider(decision, model) }, dealId);
+  const recommendation = await recommendationOf(deps, dealId);
+
+  // Approved before and the lock stopped short: an approve again resumes it.
+  if (current.state === "ACCEPTED" && current.jobId && answer.outcome === "approve" && recommendation) {
+    return run({ outcome: "accept", reason: recommendation.reason }, "paperclip:lead");
+  }
+  if (current.state !== "QUOTE_RECEIVED" || !recommendation || s.dealId !== dealId) {
+    throw new DealTransitionConflict(dealId, current.state, "ACCEPTED");
+  }
+
+  if (answer.outcome === "decline") {
+    await deps.repo.addDealNote(dealId, { actor: BUYER_ACTOR, reasonCodes: [BUYER_DECLINED], detail: { reason: answer.reason ?? "" } });
+    const declined = await run({ outcome: "decline", reason: answer.reason ? `The buyer said no: ${answer.reason}`.slice(0, 500) : "The buyer said no." }, BUYER_ACTOR);
+    try {
+      await deps.repo.releaseSelection(s.id, dealId);
+    } catch (e) {
+      if (!(e instanceof SourcingConflict)) throw e;
+    }
+    return declined;
+  }
+
+  // A supplier sent off after the lead recommended it must not be paid.
+  if (supplierStatus(await deps.repo.listMessages(s.id, { supplier: invite.address })) === "out") throw new SupplierOut(s.id, invite.address);
+  await deps.repo.addDealNote(dealId, { actor: BUYER_ACTOR, reasonCodes: [BUYER_APPROVED], detail: { reason: answer.reason ?? "" } });
+  const result = await run({ outcome: "accept", reason: recommendation.reason }, "paperclip:lead");
+  // Surety's checks can still overrule the accept: nothing locked, so the sourcing opens again.
   if (result.deal.state === "DECLINED") {
     try {
       await deps.repo.releaseSelection(s.id, dealId);

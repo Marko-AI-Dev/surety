@@ -108,6 +108,33 @@ The API adds the rest of the order (Karoo Solar Imports, monocrystalline solar p
 
 The view token is otherwise read-only. This is its one action, and it moves no money: every limit still sits with the signer.
 
+## The buyer's screen (view token)
+
+The view token is the buyer's own screen. Besides reading, it can do the four things below. The web app's dev proxy forwards them only from its own page on the same machine.
+
+### `POST /deals/:id/approval` (view)
+
+The buyer's final yes or no. Over this API the Lead's `accept` on `POST /deals/:id/decision` is a recommendation: it returns `{ deal, job: null, awaitingBuyer: true }`, claims the sourcing and writes the Lead's reason into the deal's record. **Nothing locks until this route approves it.**
+
+- Body `{ "outcome": "approve" | "decline", "reason"?: "..." }`.
+- `approve` runs the accept through Surety's checks and locks the payment. Returns `{ deal: { id, ref, state }, job: { id, ref, state, amount } }`. The same approve again resumes the same lock.
+- `decline` locks nothing: the deal is `DECLINED` and the sourcing is `OPEN` again.
+- `409 conflict` when the Lead has not recommended this deal, or it was already declined.
+
+The record (`GET /sourcing/:id/record`) carries `approval: { state: "waiting" | "approved" | "declined", dealId, supplier, leadReason, at, answeredAt } | null`.
+
+### `POST /sourcing/:id/notes` (view)
+
+The buyer nudges its own negotiator: body `{ "text": "..." }` (1 to 500 characters, at most 20 a sourcing, only while the negotiation is open). The negotiator's `GET /sourcing/:id` gains `push` (`"gentle"` or `"firm"`, from the brief; `"firm"` when the brief has none) and `buyerNotes: [{ text, at }]`. A note never reaches a supplier and is not screened: it is the buyer's own words to its own agent.
+
+### `POST /buyer/intake` (view)
+
+Plain words in, the numbers of a purchase out. Body `{ "text": "...", "draft"?: {...}, "field"?: "quantity" | ... }`. Returns `{ draft, question: { field, ask } | null, ready, readBy }`. Code reads the obvious; a small model (`API_CHAT_MODEL`, default `openai/gpt-4o-mini`, through OpenRouter) fills in what code missed, and its answer is checked like any input. It opens nothing.
+
+### `POST /admin/ask` (view)
+
+Body `{ "question": "..." }`. A small model answers from the last five purchases' records only and returns `{ answer, basedOn: [refs] }`. A held supplier message reaches it only as its card and reason codes, never as text. `404` without a model, `502 assistant_failed` when the model fails.
+
 ### `GET /suppliers` (lead, sourcing)
 
 The approved suppliers: `[{ address, name, onHold }]`. A supplier is on hold after any card until the operator clears it (`pnpm supplier:clear`).
