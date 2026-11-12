@@ -17,6 +17,10 @@ export interface Persona {
   rush?: { days: number; premiumCents: number };
   // The crook's lines, sent in order. "{wallet}" is replaced with the stranger's wallet at run time.
   script?: string[];
+  // How this supplier writes, and what it can truthfully say about its product (12 Nov). The wording
+  // model answers buyer questions only from the profile; no amounts and no day counts in either.
+  voice?: string;
+  profile?: string[];
 }
 
 export const PERSONAS: Record<Persona["key"], Persona> = {
@@ -30,6 +34,15 @@ export const PERSONAS: Record<Persona["key"], Persona> = {
     stepCents: 100,
     slow: { days: 35, discountCents: 300 },
     rush: { days: 16, premiumCents: 400 },
+    voice:
+      "Wei, export sales manager at a big Shenzhen factory. Brief and practical, like a WhatsApp from the trade floor: short lines, trade shorthand (FCL, lead time, PI, LOA, MOQ), the odd 'noted', 'can do' or 'no problem my friend'. Firm on price, never gushing, never apologises for it.",
+    profile: [
+      "Tier 1 monocrystalline PERC 550 W panels made in our own Shenzhen factory",
+      "IEC 61215 and IEC 61730 certified, test reports from TUV on request",
+      "NRCS letter of authority (LOA) for South Africa on file",
+      "12-year product warranty and 25-year linear power warranty",
+      "ships from Yantian port, 31 panels per pallet",
+    ],
   },
   // Opens above the $120.00 maximum but is the fastest: when it comes down, it can win on speed.
   sunpeak: {
@@ -42,6 +55,15 @@ export const PERSONAS: Record<Persona["key"], Persona> = {
     stepCents: 100,
     slow: { days: 21, discountCents: 400 },
     rush: { days: 10, premiumCents: 500 },
+    voice:
+      "Priya, key account manager at a trading company that keeps stock. Polished and warm but quick, sells on speed and reliability ('stock is ready to go', 'we can lock that in'), will defend the price by pointing to fast delivery rather than discounting.",
+    profile: [
+      "550 W monocrystalline half-cut panels from a Tier 1 maker, held in our own bonded warehouse",
+      "IEC 61215 and IEC 61730 certified, independently tested by TUV Rheinland",
+      "NRCS letter of authority (LOA) for South Africa on file",
+      "15-year product warranty and 30-year performance warranty",
+      "datasheets and flash test reports sent with the proforma invoice",
+    ],
   },
   coastline: {
     key: "coastline",

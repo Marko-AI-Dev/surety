@@ -34,7 +34,9 @@ export const initialState = (): AgentState => ({
   committed: false,
 });
 
-export type SayMove = { unitCents: number; deliveryDays: number; intent: "open" | "counter" | "beat" | "trade" | "hold" | "final" };
+// "answer": the buyer asked something (certification, warranty, a thank-you) without pushing on price,
+// so the supplier answers and its offer stands (12 Nov).
+export type SayMove = { unitCents: number; deliveryDays: number; intent: "open" | "counter" | "beat" | "trade" | "hold" | "final" | "answer" };
 export type Move = { say: SayMove } | { commit: QuoteForm } | { script: string };
 
 export interface Order {
@@ -62,8 +64,10 @@ export interface Leverage {
 
 const AMOUNT = /\$\s?(\d[\d,]*(?:\.\d{1,2})?)|\bUSD\s?(\d[\d,]*(?:\.\d{1,2})?)|\b(\d[\d,]*(?:\.\d{1,2})?)\s?USD\b/i;
 const DAYS = /\b(\d{1,3})\s?-?\s?days?\b/i;
-const COMPETITOR = /\banother\b|\bother supplier|\bcompeting\b|\bcompetitor|\boffered\b/i;
+const COMPETITOR = /\banother\b|\bother supplier|\bcompeting\b|\bcompetitor|\boffered\b|\belsewhere\b|\bon the table\b|\bother quote|\bbest offer\b/i;
 const FASTER = /\bfaster\b|\bsooner\b|\bquicker\b|\bearlier\b/i;
+// A push on price in words, without a number.
+const PUSH = /\bbetter\b|\blower\b|\bdiscount|\bsharpen|\bcome down\b|\breduce\b|\bcheaper\b|\bimprove\b|\bbest price\b|\bbeat\b|\bmove on (the )?price\b/i;
 const cents = (s: string) => Math.round(Number(s.replace(/,/g, "")) * 100);
 
 // What a negotiator's message says, by sentence: a sentence about another supplier gives the competing
@@ -147,7 +151,10 @@ export function nextMove(
     return say(base + persona.rush.premiumCents, persona.rush.days, "trade", { traded: { ...state.traded, rush: true } });
   }
 
-  // 3. Any other push: counter half way toward the ask (never below the floor), at most twice.
+  // 3. No number and no push (a question, a thank-you, "we'll come back to you"): answer, offer stands.
+  if (lev.askCents === undefined && lev.askDays === undefined && lev.competitorCents === undefined && !PUSH.test(last.text)) return say(price, days, "answer");
+
+  // 4. Any other push: counter half way toward the ask (never below the floor), at most twice.
   if (lev.askCents !== undefined && lev.askCents >= price) return say(price, days, "hold");
   const target = Math.max(lev.askCents ?? floor, floor);
   if (state.counters < MAX_COUNTERS && price > target) {

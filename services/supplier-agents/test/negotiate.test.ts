@@ -102,6 +102,26 @@ describe("nextMove over several rounds", () => {
     expect(sayOf(moves[1])).toEqual({ unitCents: 11_400, deliveryDays: 21, intent: "counter" });
   });
 
+  it("a buyer's question with no price push is answered at the same price and days (12 Nov: questions never cost a supplier money)", () => {
+    const { moves } = play(PERSONAS.brightway, ["Price?", "Are the panels IEC 61215 certified, and do you have an NRCS letter of authority for South Africa?"]);
+    expect(sayOf(moves[1])).toEqual({ unitCents: 11_800, deliveryDays: 21, intent: "answer" });
+    const thanks = play(PERSONAS.sunpeak, ["Price?", "That works for us. I'll take it to the buyer and come back within one business day."]);
+    expect(sayOf(thanks.moves[1])).toEqual({ unitCents: 12_600, deliveryDays: 14, intent: "answer" });
+  });
+
+  it("a push without a number still counts as a push", () => {
+    for (const line of ["Can you sharpen your price?", "Any discount for 400 units?", "Could you come down a bit?"]) {
+      expect(sayOf(play(PERSONAS.brightway, ["Price?", line]).moves[1])?.intent, line).toBe("counter");
+    }
+  });
+
+  it("a competing quote in other words is still read as a competitor", () => {
+    const elsewhere = readLeverage("We have a quote elsewhere at $117.00 with 14 days delivery.");
+    expect(elsewhere).toMatchObject({ competitorCents: 11_700, competitorDays: 14 });
+    expect(elsewhere.askCents).toBeUndefined();
+    expect(readLeverage("The best offer on the table is $117.00 in 14 days.")).toMatchObject({ competitorCents: 11_700 });
+  });
+
   it('"final" commits at the current price and days, and the form carries those days', () => {
     const { moves } = play(PERSONAS.brightway, ["Price?", "Another approved supplier offered $105.00 per panel.", "We accept 35 days. Please send your final committed quote."]);
     expect(moves[2]).toEqual({

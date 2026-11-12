@@ -58,7 +58,9 @@ for (const r of ROLES) {
 let leadId = agents.find((a) => a.name === "Lead")?.id ?? null;
 for (const r of ROLES) {
   const cwd = `/home/marko/surety-demo/${r.key}`;
-  wsl(`mkdir -p ${cwd} && cp ${SOURCE}/${r.file} ${SOURCE}/surety-api.md ${cwd}/`);
+  // The negotiator also gets surety.ts, its one-call helper (look, wait, act), run by the sandbox's own Node.
+  const helper = r.key === "negotiator" ? ` ${SOURCE}/surety.ts` : "";
+  wsl(`mkdir -p ${cwd} && cp ${SOURCE}/${r.file} ${SOURCE}/surety-api.md${helper} ${cwd}/`);
   const payload = {
     name: r.name,
     role: r.role,
