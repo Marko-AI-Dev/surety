@@ -81,7 +81,10 @@ The operator's record of one sourcing, for the web app. It has the same shape as
 
 - `sourcing` (with the full brief), `invites` (status, cards, committed quote), `suggestions`
 - `messages`: every message with its bouncer result, **held messages in full**
-- `deals` with their decision and events, `job` with its events, `verify` (outcome, scores, rules)
+- `invites` also carry `deliveryDays`; `ranking` is Surety's ordering of the committed quotes for the buyer's priority
+- `deals` with their decision and events, `job`, `verify` (outcome, scores, rules)
+- `inspection`: `null` for a deal that needs no inspector, `{ state: "pending" }` until the inspector answers, then `{ state, inspector, blNumber, note, at }`
+- `events`: the job's state changes as `[{ at, actor, from, to, reasonCodes }]`, and `notes`: deal events that change no state, such as a choice against the priority
 - `create`, `finish`, `cancel`: the validated ledger transactions with explorer links, or `null`
 - `policy`: the signer's live limits, policy version and approved suppliers with their hold status
 - `treasuryCents` and `checks` are `null`: only the evidence script reads the ledger for them

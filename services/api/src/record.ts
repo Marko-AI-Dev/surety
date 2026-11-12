@@ -1,4 +1,4 @@
-import { type Deal, type SourcingDeps, SourcingNotFound, supplierOnHold, supplierStatus } from "@surety/workflow";
+import { type Deal, type SourcingDeps, SourcingNotFound, inspectionOf, leadView, supplierOnHold, supplierStatus } from "@surety/workflow";
 import { explorerTxUrl } from "@surety/xrpl-settlement";
 
 // The operator's record of one sourcing, in the same shape as evidence/sourcing-*.json, so the web app
@@ -26,6 +26,14 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
   const job = deal?.jobId ? await repo.getJob(deal.jobId) : null;
   const txs = job ? await repo.listTransactions(job.id) : [];
   const decision = job ? await repo.latestDecision(job.id) : null;
+  // Phase 4d. The inspector's second key in the web app's Inspection shape: null for a deal that needs
+  // no inspector, { state: "pending" } until the inspector answers. Then Surety's ranking of the
+  // committed quotes for the buyer's priority, the job's events with their real times, and the deal's
+  // notes (an event that changes no state, such as a choice that went against the priority).
+  const inspection = deal ? await inspectionOf(deps, deal.id) : null;
+  const ranking = (await leadView(deps, s.id)).ranking;
+  const jobEvents = job ? await repo.listEvents(job.id) : [];
+  const notes = deal ? (await repo.listDealEvents(deal.id)).filter((ev) => ev.fromState === ev.toState) : [];
   // Only a validated transaction is shown as one; the mirror's result is the ledger's.
   const tx = (type: string) => {
     const t = txs.find((x) => x.type === type && x.status === "validated" && x.txHash);
@@ -47,6 +55,7 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
         status: supplierStatus(mine),
         cards: mine.filter((m) => m.kind === "from_supplier" && m.card).map((m) => m.card as string),
         quote: i.quote && { unitCents: i.quote.unitCents, quantity: i.quote.quantity, totalCents: i.quote.totalCents },
+        deliveryDays: i.deliveryDays,
         dealId: i.dealId,
       };
     }),
@@ -79,7 +88,6 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
       amount: job.amount,
       seller: job.sellerAddress,
       policyVersion: job.policyVersion,
-      events: await repo.listEvents(job.id),
     },
     verify: decision && {
       outcome: decision.outcome,
@@ -89,6 +97,10 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
       policyVersion: decision.policyVersion,
       rules: decision.rules,
     },
+    inspection,
+    ranking,
+    notes: notes.map((n) => ({ at: n.createdAt, actor: n.actor, reasonCodes: n.reasonCodes, detail: n.detail })),
+    events: jobEvents.map((ev) => ({ at: ev.createdAt, actor: ev.actor, from: ev.fromState, to: ev.toState, reasonCodes: ev.reasonCodes })),
     create: tx("create"),
     finish: tx("finish"),
     cancel: tx("cancel"),

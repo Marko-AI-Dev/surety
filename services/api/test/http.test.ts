@@ -279,13 +279,16 @@ describe("the Surety API", () => {
     expect(before).toMatchObject({
       network: "XRPL Testnet",
       sourcing: { id, state: "OPEN", brief: { goods: { maxUnitCents: 12_000 } } },
-      invites: [{ address: SUPPLIER, name: SUPPLIER_NAME, status: "in", cards: ["yellow"], quote: { unitCents: 11_400, quantity: 400, totalCents: 4_560_000 }, dealId: null }],
+      invites: [{ address: SUPPLIER, name: SUPPLIER_NAME, status: "in", cards: ["yellow"], quote: { unitCents: 11_400, quantity: 400, totalCents: 4_560_000 }, deliveryDays: 21, dealId: null }],
       deals: [],
       job: null,
       verify: null,
       create: null,
       finish: null,
       cancel: null,
+      inspection: null,
+      notes: [],
+      events: [],
       treasuryCents: null,
       checks: null,
       policy: { policyVersion: 5, limits: { perDealCents: "10000000", dailyCents: "50000000", openDeals: 10 } },
@@ -314,7 +317,25 @@ describe("the Surety API", () => {
     });
     expect(after.create.explorer).toContain(after.create.txHash);
     expect(after.deals[0].events.length).toBeGreaterThan(0);
-    expect(after.job.events.length).toBeGreaterThan(0);
+    // Phase 4d: the job's events with their real times, the ranking for the buyer's priority, and the
+    // inspector's second key, pending until a person answers.
+    expect(after.events.map((e: { to: string }) => e.to)).toContain("LOCKED");
+    expect(after.events[0]).toEqual({ at: expect.any(String), actor: expect.any(String), from: expect.any(String), to: expect.any(String), reasonCodes: expect.any(Array) });
+    expect(after.ranking[0]).toMatchObject({ supplier: SUPPLIER, unitCents: 11_400, deliveryDays: 21, eligible: true });
+    expect(after.inspection).toEqual({ state: "pending" });
+    expect(before.ranking[0]).toMatchObject({ supplier: SUPPLIER, unitCents: 11_400 });
+
+    const answered = await call("POST", `/inspector/deals/${deal.id}/attestation`, TOKENS.inspector, { blNumber: "SZXDUR-55120", outcome: "attested", note: "400 cartons counted" });
+    expect(answered.status).toBe(200);
+    expect((await call("GET", `/sourcing/${id}/record`, TOKENS.view)).json.inspection).toEqual({
+      state: "attested",
+      inspector: expect.any(String),
+      blNumber: "SZXDUR-55120",
+      note: "400 cartons counted",
+      at: expect.any(String),
+    });
+    // The inspector's own token cannot read the record: it would show the supplier's side.
+    expect((await call("GET", `/sourcing/${id}/record`, TOKENS.inspector)).status).toBe(403);
   });
 
   it("reading the record changes nothing and asks the decision model nothing", async () => {
