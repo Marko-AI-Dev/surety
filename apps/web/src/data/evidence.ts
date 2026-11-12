@@ -29,16 +29,16 @@ export const TRADE_THRESHOLDS = { approveMinConsistency: 0.7, approveMaxTrick: 0
 // The twelve trade rules Surety Verify runs before the decision model, in order
 // (packages/gate/src/trade-rules.ts). The model is asked only when all of them pass.
 export const TRADE_RULES: { id: string; label: string }[] = [
-  { id: "size", label: "Document size" },
-  { id: "parse", label: "Template parses" },
-  { id: "reader_agrees", label: "Reader agrees" },
-  { id: "po_number", label: "PO number" },
+  { id: "size", label: "Documents are a normal size" },
+  { id: "parse", label: "Documents are readable" },
+  { id: "reader_agrees", label: "Read the same way twice" },
+  { id: "po_number", label: "Order number" },
   { id: "parties", label: "Buyer and supplier" },
   { id: "goods", label: "Goods, quantity, unit price" },
-  { id: "arithmetic", label: "Arithmetic" },
-  { id: "total_matches_lock", label: "Total equals the lock" },
+  { id: "arithmetic", label: "The sums add up" },
+  { id: "total_matches_lock", label: "Total equals the locked amount" },
   { id: "currency", label: "Currency" },
-  { id: "terms", label: "Incoterm and port" },
+  { id: "terms", label: "Delivery terms and port" },
   { id: "shipment", label: "Shipment matches invoice" },
-  { id: "pay_to", label: "Pay-to wallet is the locked one" },
+  { id: "pay_to", label: "Pays the wallet the money is locked for" },
 ];

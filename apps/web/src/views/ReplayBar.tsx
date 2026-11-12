@@ -10,7 +10,7 @@ export function ReplayBar({ replay, current }: { replay: ReplayControls; current
   const atEnd = replay.t >= replay.end;
   const done = replay.steps.filter((s) => s.at <= replay.t).length;
   return (
-    <footer className="replay" aria-label="Replay controls">
+    <footer className="replay glass" aria-label="Replay controls">
       <div className="replay-buttons">
         <button type="button" className="btn" onClick={() => replay.step(-1)} aria-label="Previous step">
           Back
@@ -36,7 +36,7 @@ export function ReplayBar({ replay, current }: { replay: ReplayControls; current
             <span
               key={s.id}
               className="tick"
-              data-kind={s.kind === "message" && s.title.includes("held") ? "held" : (TICK_KIND[s.kind] ?? "plain")}
+              data-kind={s.kind === "message" && s.title.startsWith("Surety held") ? "held" : (TICK_KIND[s.kind] ?? "plain")}
               style={{ left: pct(s.at) }}
             />
           ))}

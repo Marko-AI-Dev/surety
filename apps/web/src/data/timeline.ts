@@ -60,7 +60,7 @@ export function buildTimeline(r: SourcingRecord): Step[] {
     at: t0,
     timed: true,
     kind: "opened",
-    title: "The Lead opened the sourcing from the brief",
+    title: "Your Lead agent opened the purchase from your brief",
     detail: `${g.quantity} x ${g.description}, target ${dollars(g.targetUnitCents)}, ${r.sourcing.brief.incoterm} ${r.sourcing.brief.port}`,
   });
 
@@ -74,7 +74,7 @@ export function buildTimeline(r: SourcingRecord): Step[] {
       timed: false,
       kind: "invited",
       supplier: inv.address,
-      title: `Sourcing invited ${nameOf(r, inv.address)}`,
+      title: `Your Sourcing agent invited ${nameOf(r, inv.address)}`,
       detail: "An approved supplier",
     });
   });
@@ -85,7 +85,7 @@ export function buildTimeline(r: SourcingRecord): Step[] {
       timed: true,
       kind: "suggested",
       supplier: s.address,
-      title: `Sourcing suggested ${s.name} for the operator, and did not invite it`,
+      title: `Your Sourcing agent flagged ${s.name}, which is not approved, and did not invite it`,
       detail: s.reason,
     });
   }
@@ -93,14 +93,14 @@ export function buildTimeline(r: SourcingRecord): Step[] {
     const who = nameOf(r, m.supplier);
     const title =
       m.kind === "to_supplier"
-        ? `Negotiator to ${who}`
+        ? `Your Negotiator wrote to ${who}`
         : m.kind === "report"
-          ? `Negotiator reported the offer from ${who} to the Lead`
+          ? `Your Negotiator reported ${who}'s offer to the Lead agent`
           : m.delivered
-            ? `${who} replied, delivered`
+            ? `${who} replied`
             : m.card
-              ? `${who}: message held, ${m.card} card`
-              : `${who}: message held`;
+              ? `Surety held a message from ${who}, ${m.card} card`
+              : `Surety held a message from ${who}`;
     steps.push({ id: `message:${i}`, at: Date.parse(m.at), timed: true, kind: "message", supplier: m.supplier, messageIndex: i, title });
   });
 
@@ -116,11 +116,11 @@ export function buildTimeline(r: SourcingRecord): Step[] {
       timed: false,
       kind: "quote",
       supplier: inv.address,
-      title: `${nameOf(r, inv.address)} committed a binding quote on the form`,
+      title: `${nameOf(r, inv.address)} submitted its final price`,
       detail: `${dollars(inv.quote.unitCents)} a unit, ${dollars(inv.quote.totalCents)} in total`,
     });
   }
-  steps.push({ id: "closed", at: closeAt, timed: true, kind: "closed", title: "The negotiation time ended" });
+  steps.push({ id: "closed", at: closeAt, timed: true, kind: "closed", title: "The negotiation ended" });
 
   cursor = Math.max(cursor, closeAt);
   // Declined deals first, the accepted one last: a decline reopens the sourcing for the next supplier.
@@ -140,10 +140,10 @@ export function buildTimeline(r: SourcingRecord): Step[] {
       supplier: d.supplier.address,
       dealId: d.id,
       title: ok
-        ? `The Lead selected ${who} and accepted; Surety re-checked the quote`
+        ? `Your Lead agent chose ${who}, and Surety checked the choice`
         : d.decision.agent.outcome === "accept"
-          ? `${who}: the Lead accepted, and Surety's checks overruled it`
-          : `${who}: the Lead declined`,
+          ? `Your Lead agent chose ${who}, and Surety refused it`
+          : `Your Lead agent turned down ${who}`,
       detail: d.decision.agent.reason,
     });
   }
@@ -157,7 +157,7 @@ export function buildTimeline(r: SourcingRecord): Step[] {
       timed: false,
       kind: "locked",
       supplier: accepted.supplier.address,
-      title: `The signer locked ${dollars(Number(r.job?.amount.cents ?? accepted.quote?.totalCents ?? 0))} in XRPL escrow`,
+      title: `${dollars(Number(r.job?.amount.cents ?? accepted.quote?.totalCents ?? 0))} was locked on the ledger`,
       detail: `Ledger ${r.create.ledgerIndex}, ${r.create.result}`,
     });
     if (r.verify) {
@@ -168,7 +168,7 @@ export function buildTimeline(r: SourcingRecord): Step[] {
         timed: false,
         kind: "documents",
         supplier: accepted.supplier.address,
-        title: `${who} confirmed its invoice and shipping details`,
+        title: `${who} sent its invoice and shipping document`,
       });
       if (r.inspection && r.inspection.state !== "pending") {
         const at = r.inspection.at ? Date.parse(r.inspection.at) : Number.NaN;
@@ -178,7 +178,7 @@ export function buildTimeline(r: SourcingRecord): Step[] {
           at: cursor,
           timed: Number.isFinite(at),
           kind: "inspected",
-          title: r.inspection.state === "attested" ? "The inspector attested the bill of lading" : "The inspector refused the bill of lading",
+          title: r.inspection.state === "attested" ? "The inspector confirmed the shipment" : "The inspector did not confirm the shipment",
           detail: r.inspection.inspector ?? undefined,
         });
       }
@@ -188,7 +188,7 @@ export function buildTimeline(r: SourcingRecord): Step[] {
         at: cursor,
         timed: false,
         kind: "verified",
-        title: `Surety Verify: ${r.verify.outcome === "APPROVE" ? "approved" : r.verify.outcome.toLowerCase()}`,
+        title: r.verify.outcome === "APPROVE" ? "The paperwork check passed" : "The paperwork check did not pass",
         detail: r.verify.policyVersion,
       });
     }
@@ -200,7 +200,7 @@ export function buildTimeline(r: SourcingRecord): Step[] {
         timed: false,
         kind: "paid",
         supplier: accepted.supplier.address,
-        title: `Paid to ${who}`,
+        title: `${who} was paid`,
         detail: `Ledger ${r.finish.ledgerIndex}, ${r.finish.result}`,
       });
     } else if (r.cancel?.validated && r.cancel.result === "tesSUCCESS") {
@@ -210,7 +210,7 @@ export function buildTimeline(r: SourcingRecord): Step[] {
         at: cursor,
         timed: false,
         kind: "refunded",
-        title: "Refunded to the treasury after the deadline",
+        title: "The ledger refunded the buyer after the deadline",
         detail: `Ledger ${r.cancel.ledgerIndex}, ${r.cancel.result}`,
       });
     }

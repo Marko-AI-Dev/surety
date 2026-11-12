@@ -21,6 +21,14 @@ The money rail (treasury, XRPL escrow, supplier) stays on screen in the Buy and 
 
 On a phone the four views are four tabs in one row, and the recorded-run and live switch is hidden: switching to live is a job for the operator's desk.
 
+## Plain words first
+
+The app is written for someone who has never seen Surety.
+
+- **One sentence says what is happening.** The deal bar opens with it ("$45,600.00 is locked on the ledger for Shenzhen Brightway Solar Co., Ltd. Nobody can take it..."). It comes from `statusLine` in `src/data/plain.ts` and is tested at every step of the recorded run, including that it never uses our own jargon.
+- **Our own words explain themselves.** A dotted word (locked on the ledger, the bouncer, Surety Verify, the signer) shows its meaning on hover, focus or tap. "How it works" beside the recording notice gives the whole idea in five steps.
+- **Detail opens when asked for.** Scores, thresholds, rule names and policy versions sit behind "Why", "Show the checks" and "How they are enforced". The record is unchanged; only the order of telling is.
+
 ## The supplier seat's QR code
 
 The Control room draws a QR code for the supplier seat. A phone cannot open `localhost`, so type the address phones should use (this machine's network address after `pnpm web --host`, or the hosted address) and the code follows. It is made in the browser by `src/data/qr.ts` (byte mode, level M, versions 1 to 9), with no dependency and no outside service. The encoder's output was checked once against an independent decoder for every version it supports.
@@ -48,7 +56,9 @@ A second key for the release is coming: an inspector, separate from the buyer's 
 
 ## Design
 
-- **A treasury desk, not a crypto dashboard.** A navy bar, white panels on cool grey, light blue for the escrow, IBM Plex Sans, large tabular figures for money. No glass, glow or 3D: on a projector they cost legibility and add nothing a judge can check.
+- **A calm room with glass in it.** A few large frosted surfaces float at different depths: the bar, the deal bar, the panes on the arc and the replay bar. Everything inside them is a solid, lightly tinted panel. Each view has three panes on a gentle arc; bring one forward by clicking it, with the tabs, the arrow keys or a drag. The front pane tilts slightly toward the pointer. Text uses the device's own interface font.
+- **Flat mode.** Reduced motion, a narrow screen or the "Flat" button turns off depth and tilt; reduced motion and the button also make the panels solid. Blur also falls back to solid where it is unsupported or reduced transparency is requested.
+- **The Control room shows one conversation at a time.** All four suppliers stay listed beside it; "Side by side" brings back the four lanes on a wide screen.
 - **Four colours with fixed meanings.** Blue is money in motion, green is a validated ledger result or a pass, amber is held, red is stopped. Nothing else is coloured.
 - **Light by default, dark through the same tokens.** Light holds up on a projector. The "Dark" button in the bar switches, and the choice is remembered on that device.
 - **Motion only where money or a verdict changes:** the balances count, the rail's legs draw, a message appears. Reduced motion turns all of it off.

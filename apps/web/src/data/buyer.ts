@@ -76,47 +76,47 @@ export function dealStages(record: SourcingRecord, view: RunView): Stage[] {
 
   const inspector: Stage =
     view.inspection === "none"
-      ? { id: "inspector", label: "Inspector", state: "off", note: "Second key. Not part of this run" }
+      ? { id: "inspector", label: "Inspector", state: "off", note: "A second check, coming soon. Not part of this run" }
       : view.inspection === "attested"
-        ? { id: "inspector", label: "Inspector", state: "done", note: "Attested the bill of lading" }
+        ? { id: "inspector", label: "Inspector", state: "done", note: "Confirmed the shipment" }
         : view.inspection === "refused"
-          ? { id: "inspector", label: "Inspector", state: "stopped", note: "Refused the bill of lading" }
-          : { id: "inspector", label: "Inspector", state: view.documents ? "now" : "todo", note: view.documents ? "Waiting for the attestation" : "Attests the bill of lading" };
+          ? { id: "inspector", label: "Inspector", state: "stopped", note: "Did not confirm the shipment" }
+          : { id: "inspector", label: "Inspector", state: view.documents ? "now" : "todo", note: view.documents ? "Waiting for confirmation" : "Confirms the shipment" };
 
   const settled: Stage = view.paid
-    ? { id: "settled", label: "Paid", state: "done", note: "Released to the supplier" }
+    ? { id: "settled", label: "Paid", state: "done", note: "Supplier has the money" }
     : view.refunded
-      ? { id: "settled", label: "Refunded", state: "stopped", note: "Returned to your treasury" }
-      : { id: "settled", label: "Paid", state: view.verified && !verifyFailed ? "now" : "todo", note: "Or refunded at the deadline" };
+      ? { id: "settled", label: "Refunded", state: "stopped", note: "You have the money back" }
+      : { id: "settled", label: "Paid", state: view.verified && !verifyFailed ? "now" : "todo", note: "Or you are refunded" };
 
   return [
-    { id: "brief", label: "Brief", state: step(view.opened, false), note: view.opened ? `Sourcing ${record.sourcing.ref}` : "Not opened yet" },
+    { id: "brief", label: "Brief", state: step(view.opened, false), note: view.opened ? "What to buy, and the most to pay" : "Not opened yet" },
     {
       id: "suppliers",
       label: "Suppliers",
       state: step(invited > 0 && talking, view.opened),
-      note: invited > 0 ? `${invited} approved, invited` : "From your approved list",
+      note: invited > 0 ? `${invited} invited from your approved list` : "From your approved list",
     },
     {
       id: "negotiation",
       label: "Negotiation",
       state: step(view.closed, talking),
-      note: view.closed ? `${committed} committed quote${committed === 1 ? "" : "s"}` : talking ? "In progress" : "Chat, then a binding form",
+      note: view.closed ? `${committed} final price${committed === 1 ? "" : "s"} submitted` : talking ? "In progress" : "Agents ask for a better price",
     },
     {
       id: "decision",
       label: "Decision",
       state: view.accepted ? "done" : declined ? "stopped" : view.closed ? "now" : "todo",
-      note: view.accepted ? `${view.accepted.supplier.name}` : declined ? "No quote accepted yet" : "Made by the Lead agent",
+      note: view.accepted ? `${view.accepted.supplier.name}` : declined ? "Nothing accepted yet" : "Your Lead agent picks one",
     },
-    { id: "locked", label: "Locked", state: step(view.locked, view.accepted !== null), note: view.locked ? "In XRPL escrow" : "Only the signer can lock" },
-    { id: "documents", label: "Documents", state: step(view.documents, view.locked), note: view.documents ? "Invoice and bill of lading" : "From the supplier" },
+    { id: "locked", label: "Money locked", state: step(view.locked, view.accepted !== null), note: view.locked ? "Held by the ledger" : "Held by the ledger, not by anyone" },
+    { id: "documents", label: "Paperwork", state: step(view.documents, view.locked), note: view.documents ? "Invoice and shipping document" : "Sent by the supplier" },
     inspector,
     {
       id: "verify",
-      label: "Surety Verify",
+      label: "Check",
       state: verifyFailed ? "stopped" : step(view.verified, view.documents && view.inspection !== "waiting"),
-      note: view.verified ? (verifyFailed ? "Not approved" : "Approved") : "Rules, then a decision model",
+      note: view.verified ? (verifyFailed ? "Paperwork did not match" : "Paperwork matches the order") : "Does the paperwork match the order",
     },
     settled,
   ];

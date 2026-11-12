@@ -1,59 +1,78 @@
-/* Surety. A treasury desk, not a crypto dashboard: a navy bar, white panels on cool grey, large
-   tabular money, four colours with fixed meanings. Blue is money in motion. Green is a validated ledger result or a
-   pass. Amber is held. Red is stopped. Nothing else is coloured. */
+/* Surety. A calm room with glass in it: a few large frosted surfaces floating at different depths,
+   solid wells inside them, large tabular money, four colours with fixed meanings. Blue is money in
+   motion. Green is a validated ledger result or a pass. Amber is held. Red is stopped. */
 
 :root {
-  /* Light is the default: navy ink and a navy bar, light blue for the escrow and for what the buyer's
-     side says, cool grey behind white panels. It holds up on a projector. Dark is a choice. */
+  /* A calm room with glass in it. Navy ink, light blue light, grey air, a little white. Light is the
+     default; dark is a choice. Glass is for the few large surfaces that float (the bar, the deal bar,
+     the panes on the arc, the replay bar); everything inside them is a solid, lightly tinted well. */
   color-scheme: light;
-  --bg: #edf1f6;
-  --surface: #ffffff;
-  --surface-2: #e6eff9;
-  --line: #c6d1de;
+  --ground: #dde6f1;
+  --ambient:
+    radial-gradient(1100px 700px at 6% -6%, rgba(112, 166, 230, 0.7), transparent 62%),
+    radial-gradient(900px 640px at 98% 6%, rgba(38, 84, 160, 0.34), transparent 62%),
+    radial-gradient(760px 520px at 72% 58%, rgba(150, 190, 235, 0.38), transparent 66%),
+    radial-gradient(1200px 760px at 46% 120%, rgba(255, 255, 255, 0.95), transparent 60%);
+  --glass: rgba(255, 255, 255, 0.54);
+  --glass-solid: #f3f6fb;
+  --glass-edge: rgba(255, 255, 255, 0.85);
+  --glass-lip: rgba(255, 255, 255, 0.95);
+  --glass-shadow: 0 50px 90px -52px rgba(11, 37, 69, 0.5), 0 18px 36px -26px rgba(11, 37, 69, 0.3);
+  --blur: 30px;
+  --bg: rgba(11, 37, 69, 0.05);
+  --surface: rgba(255, 255, 255, 0.68);
+  --surface-2: rgba(206, 224, 246, 0.72);
+  --line: rgba(11, 37, 69, 0.13);
   --text: #0b2545;
-  --muted: #4b5d75;
+  --muted: #44566f;
   --money: #1257a6;
   --money-ink: #ffffff;
+  --primary: #0b2545;
+  --primary-ink: #ffffff;
   --ok: #0f6e45;
   --held: #8a5200;
   --stop: #b3261e;
   --yellow-card: #f5c518;
   --red-card: #e5484d;
   --focus: #0b2545;
-  --bar: #0b2545;
-  --bar-text: #ffffff;
-  --bar-muted: #bccde3;
-  --bar-active: #1d4273;
-  --bar-line: #35557f;
-  --bar-warn: #ffd58a;
   --ours: #0b2545;
   --ours-text: #ffffff;
-  --sans: "IBM Plex Sans", system-ui, "Segoe UI", sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
-  --r: 6px;
+  --veil: rgba(11, 37, 69, 0.3);
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  --r: 14px;
+  --glide: cubic-bezier(0.22, 0.7, 0.2, 1);
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0f1620;
-  --surface: #172130;
-  --surface-2: #1f2b3d;
-  --line: #2f3d52;
-  --text: #eef2f6;
-  --muted: #a9b6c6;
-  --money: #84b6ff;
-  --money-ink: #0b1a30;
-  --ok: #5fd09b;
-  --held: #f2b84b;
-  --stop: #ff8279;
+  --ground: #070f1c;
+  --ambient:
+    radial-gradient(1000px 680px at 8% -4%, rgba(54, 110, 196, 0.46), transparent 62%),
+    radial-gradient(900px 640px at 94% 10%, rgba(120, 160, 220, 0.2), transparent 62%),
+    radial-gradient(760px 520px at 70% 60%, rgba(40, 84, 160, 0.3), transparent 66%),
+    radial-gradient(1200px 760px at 46% 120%, rgba(24, 60, 120, 0.55), transparent 62%);
+  --glass: rgba(255, 255, 255, 0.075);
+  --glass-solid: #121d2f;
+  --glass-edge: rgba(255, 255, 255, 0.16);
+  --glass-lip: rgba(255, 255, 255, 0.22);
+  --glass-shadow: 0 50px 90px -50px rgba(0, 0, 0, 0.9), 0 18px 36px -24px rgba(0, 0, 0, 0.6);
+  --bg: rgba(0, 0, 0, 0.22);
+  --surface: rgba(255, 255, 255, 0.065);
+  --surface-2: rgba(132, 182, 255, 0.14);
+  --line: rgba(255, 255, 255, 0.14);
+  --text: #f2f6fb;
+  --muted: #b4c2d6;
+  --money: #8fbcff;
+  --money-ink: #06162c;
+  --primary: #eaf1fb;
+  --primary-ink: #0b2545;
+  --ok: #6fd6a6;
+  --held: #f2c062;
+  --stop: #ff8f86;
   --focus: #ffffff;
-  --bar: #0a1018;
-  --bar-text: #eef2f6;
-  --bar-muted: #a9b6c6;
-  --bar-active: #1f2b3d;
-  --bar-line: #2f3d52;
-  --bar-warn: #f2b84b;
-  --ours: #2b4c7e;
+  --ours: #2d5596;
   --ours-text: #ffffff;
+  --veil: rgba(0, 0, 0, 0.55);
 }
 
 * {
@@ -213,7 +232,7 @@ code,
 .source-banner {
   font-size: 0.875rem;
   color: var(--muted);
-  border-left: 3px solid var(--held);
+  border-left: 1px solid var(--held);
   padding: 6px 12px;
   margin-bottom: 12px;
   background: var(--surface);
@@ -533,7 +552,7 @@ tr[data-selected="true"] th {
 .reason {
   margin: 10px 0 0;
   padding: 8px 14px;
-  border-left: 3px solid var(--line);
+  border-left: 1px solid var(--line);
   font-size: 1.0625rem;
 }
 .rules {
@@ -721,7 +740,7 @@ tr[data-selected="true"] th {
 .msg[data-kind="report"] {
   background: transparent;
   border: 0;
-  border-left: 2px solid var(--muted);
+  border-left: 1px solid var(--muted);
   border-radius: 0;
   padding: 2px 0 2px 10px;
   font-size: 0.875rem;
@@ -911,7 +930,7 @@ tr[data-selected="true"] th {
 }
 .case {
   border: 1px solid var(--line);
-  border-left: 3px solid var(--stop);
+  border-left: 1px solid var(--stop);
   border-radius: var(--r);
   padding: 12px 14px;
   background: var(--surface);
@@ -994,7 +1013,7 @@ textarea {
 }
 .banner {
   border: 1px solid var(--line);
-  border-left: 3px solid var(--muted);
+  border-left: 1px solid var(--muted);
   border-radius: var(--r);
   padding: 10px 14px;
   font-size: 0.9375rem;
@@ -1202,52 +1221,6 @@ textarea {
   font-weight: 400;
 }
 
-/* ---------- the navy bar */
-.top {
-  background: var(--bar);
-  color: var(--bar-text);
-  padding: 12px 0;
-  margin-bottom: 12px;
-  /* Full width behind a centred page, without a wrapper element. */
-  box-shadow: 0 0 0 100vmax var(--bar);
-  clip-path: inset(0 -100vmax);
-}
-.top .brand {
-  color: var(--bar-text);
-}
-.top .testnet {
-  color: var(--bar-warn);
-}
-.top nav a {
-  color: var(--bar-muted);
-}
-.top nav a:hover {
-  color: var(--bar-text);
-}
-.top nav a[aria-current="page"] {
-  color: var(--bar-text);
-  background: var(--bar-active);
-  box-shadow: inset 0 -2px 0 var(--bar-text);
-}
-.top .btn,
-.top .seg button {
-  background: transparent;
-  color: var(--bar-muted);
-  border-color: var(--bar-line);
-}
-.top .btn:hover,
-.top .seg button:hover {
-  border-color: var(--bar-muted);
-}
-.top .btn[aria-pressed="true"],
-.top .seg button[aria-pressed="true"] {
-  background: var(--bar-active);
-  color: var(--bar-text);
-  border-color: var(--bar-muted);
-}
-.top :focus-visible {
-  outline-color: var(--bar-text);
-}
 .nav-short {
   display: none;
 }
@@ -1375,7 +1348,7 @@ input[type="url"] {
   padding: 6px 12px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-left-width: 3px;
+  border-left-width: 1px;
   border-radius: var(--r);
   animation: msg-in 260ms ease-out both;
 }
@@ -1600,11 +1573,1057 @@ input[type="url"] {
   }
 }
 
+/* ====================================================================== the spatial layer
+   Everything below restyles the shell. It comes last so it wins over the component rules above. */
+
+html {
+  overflow-x: clip;
+}
+body {
+  background: var(--ground);
+  letter-spacing: -0.003em;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--ambient);
+}
+h2 {
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+h3 {
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+}
+.app {
+  max-width: 1480px;
+  padding: 0 28px 150px;
+}
+.app[data-route="attack"] {
+  padding-bottom: 56px;
+}
+
+/* Glass: a few large floating surfaces only. */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  border-radius: 30px;
+  box-shadow: inset 0 1px 0 var(--glass-lip), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.35);
+  backdrop-filter: blur(var(--blur)) saturate(1.35);
+}
+/* Where blur is missing, unwanted or too slow, the same surfaces are solid and lightly tinted. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--glass-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: var(--glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+:root[data-solid="true"] .glass {
+  background: var(--glass-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ---------- the bar: the nearest layer */
+.top {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  margin: 12px 0 14px;
+  padding: 8px 10px 8px 22px;
+  border-radius: 999px;
+  gap: 8px 18px;
+}
+.brand {
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+.testnet {
+  font-size: 0.8125rem;
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+.top nav {
+  gap: 2px;
+}
+.top nav a {
+  padding: 8px 16px;
+  border-radius: 999px;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+.top nav a[aria-current="page"] {
+  background: var(--primary);
+  color: var(--primary-ink);
+  box-shadow: none;
+}
+.btn,
+.seg button {
+  border-radius: 999px;
+  transition: background 0.4s ease, border-color 0.4s ease, color 0.4s ease;
+}
+.seg button:first-child {
+  border-radius: 999px 0 0 999px;
+}
+.seg button:last-child {
+  border-radius: 0 999px 999px 0;
+}
+.btn[aria-pressed="true"],
+.seg button[aria-pressed="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+.source-banner {
+  background: transparent;
+  border: 0;
+  padding: 0 22px;
+  margin-bottom: 10px;
+  font-size: 0.8125rem;
+}
+.source-banner[data-tone="stop"] {
+  color: var(--stop);
+}
+
+/* ---------- the deal bar: where the money is and where the deal stands, one sheet of glass */
+.dealbar {
+  padding: 8px 8px 18px;
+}
+.dealbar .rail {
+  background: transparent;
+  border: 0;
+  margin: 0;
+}
+.dealbar .rail-escrow {
+  border: 0;
+  border-radius: 22px;
+}
+.rail-amount {
+  letter-spacing: -0.03em;
+}
+.dealbar .stages {
+  padding: 14px 20px 0;
+}
+
+/* ---------- wells: the solid panels inside the glass */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 16px 18px 18px;
+}
+.waiting,
+.banner,
+.seat-card,
+.seat-url,
+.tx,
+.reason {
+  border-radius: var(--r);
+}
+.lane {
+  border-radius: 18px;
+}
+.msg {
+  border-radius: 12px;
+}
+
+/* ---------- the arc */
+.arc {
+  margin-top: 18px;
+}
+.arc-tabs {
+  display: flex;
+  gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto 14px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.arc-tabs button {
+  font: 500 0.875rem/1 var(--sans);
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 16px;
+  min-height: 36px;
+  cursor: pointer;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+.arc-tabs button:hover {
+  color: var(--text);
+}
+.arc-tabs button[aria-selected="true"] {
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+.arc-stage {
+  --shift: 0;
+  --tx: 0deg;
+  --ty: 0deg;
+  display: grid;
+  /* The stage runs the full width of the window so the side panes can sit out at its edges. */
+  margin-inline: calc((100vw - 100%) / -2);
+  padding: 4px calc((100vw - 100%) / 2) 70px;
+  overflow-x: clip;
+  touch-action: pan-y;
+}
+.pane {
+  --d: calc(var(--i) - var(--f) - var(--shift));
+  --ad: max(var(--d), calc(var(--d) * -1));
+  grid-area: 1 / 1;
+  justify-self: center;
+  align-self: start;
+  position: relative;
+  width: min(1120px, 78%);
+  padding: 22px 24px 26px;
+  /* Each pane carries its own perspective, so the blur behind it keeps working. */
+  transform: perspective(1800px) translate3d(calc(var(--d) * 80%), 0, calc(var(--ad) * -260px)) rotateY(calc(var(--d) * -24deg));
+  transition: transform 0.9s var(--glide), opacity 0.7s ease;
+  will-change: transform;
+}
+.pane[data-pos="0"] {
+  z-index: 3;
+  /* The pane in front leans a degree or two toward the pointer. */
+  transform: perspective(1800px) translate3d(calc(var(--d) * 80%), 0, calc(var(--ad) * -260px)) rotateY(calc(var(--d) * -24deg + var(--ty))) rotateX(var(--tx));
+}
+.pane[data-pos="near"] {
+  z-index: 2;
+  opacity: 0.72;
+  cursor: pointer;
+}
+.pane[data-pos="near"]:hover {
+  opacity: 0.92;
+}
+.pane[data-pos="far"] {
+  z-index: 1;
+  opacity: 0.28;
+  cursor: pointer;
+}
+.arc-stage[data-dragging="true"] {
+  cursor: grabbing;
+  user-select: none;
+}
+.arc-stage[data-dragging="true"] .pane {
+  transition: none;
+}
+.pane-inner {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.pane-inner[inert] {
+  pointer-events: none;
+  user-select: none;
+}
+.pane-head {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+.pane-head > div:first-child {
+  flex: 1 1 300px;
+}
+.pane-inner > .feed,
+.pane-inner > .lanes,
+.pane-inner > .waiting {
+  grid-column: 1 / -1;
+}
+.pane-fwd {
+  position: absolute;
+  top: 22px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: var(--primary);
+  color: var(--primary-ink);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.pane[data-side="left"] .pane-fwd {
+  left: 22px;
+}
+.pane[data-side="right"] .pane-fwd {
+  right: 22px;
+}
+.pane:hover .pane-fwd {
+  opacity: 1;
+}
+.pane .lanes {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+/* ---------- flat: no depth, no tilt. Reduced motion, a narrow screen, or the Flat button. */
+.arc[data-flat="true"] .arc-stage {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-inline: 0;
+  padding: 0;
+  overflow: visible;
+}
+.arc[data-flat="true"] .pane {
+  grid-area: auto;
+  width: 100%;
+  transform: none;
+  transition: none;
+  opacity: 1;
+  will-change: auto;
+}
+/* The main pane leads and takes the full width; the other two share the row under it. */
+.arc[data-flat="true"] .pane[data-pane="negotiation"],
+.arc[data-flat="true"] .pane[data-pane="lanes"] {
+  order: -1;
+  grid-column: 1 / -1;
+}
+.arc[data-flat="true"] .pane:not([data-pane="negotiation"]):not([data-pane="lanes"]) .pane-inner {
+  grid-template-columns: 1fr;
+}
+
+/* ---------- the conversation: holds its messages, never scrolls inside the pane */
+.feed {
+  height: auto;
+  min-height: 200px;
+  overflow: visible;
+  border: 0;
+  border-radius: 22px;
+  padding: 16px;
+}
+.feed-more {
+  align-self: center;
+}
+.bubble {
+  border-radius: 18px;
+  padding: 9px 14px 11px;
+}
+.bubble[data-side="us"] {
+  border-bottom-right-radius: 5px;
+}
+.bubble[data-side="them"] {
+  border-bottom-left-radius: 5px;
+  background: var(--glass-solid);
+}
+.feed-note {
+  background: var(--glass-solid);
+  border-radius: 12px;
+}
+.chip-btn[aria-pressed="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+.quote-rows {
+  display: grid;
+  gap: 4px;
+}
+.quote-row {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: background 0.4s ease, border-color 0.4s ease;
+}
+.quote-row:hover {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+.quote-row[data-selected="true"] {
+  background: color-mix(in srgb, var(--ok) 11%, transparent);
+  box-shadow: inset 3px 0 0 var(--ok);
+}
+.quote-name {
+  font-weight: 500;
+}
+.quote-price {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+.stage[data-state="done"] .stage-dot {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+.stage[data-state="done"]::before {
+  background: var(--primary);
+}
+
+/* ---------- attack lab */
+.attack-top {
+  padding: 22px 24px 24px;
+  margin: 6px 0 18px;
+}
+.layer-strip {
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  margin-bottom: 0;
+}
+.layer-strip li {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.cases > li {
+  display: grid;
+}
+.case {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--glass-solid);
+  border: 1px solid var(--line);
+  border-left: 1px solid var(--stop);
+  border-radius: 18px;
+  padding: 14px 16px 16px;
+  cursor: pointer;
+  transition: transform 0.6s var(--glide), box-shadow 0.6s ease;
+}
+.case:hover,
+.case:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 26px 40px -30px rgba(11, 37, 69, 0.55);
+}
+.case-layer {
+  margin: 0;
+}
+.case-title {
+  font-weight: 600;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+}
+.case-outcome {
+  display: block;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+/* ---------- the detail layer: what you pick comes forward */
+.detail {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: var(--veil);
+  animation: veil-in 0.45s ease both;
+}
+.detail-card {
+  width: min(640px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  background: var(--glass-solid);
+  border: 1px solid var(--glass-edge);
+  border-radius: 30px;
+  padding: 22px 26px 26px;
+  box-shadow: inset 0 1px 0 var(--glass-lip), 0 70px 120px -50px rgba(0, 0, 0, 0.6);
+  animation: come-forward 0.6s var(--glide) both;
+}
+.detail-head {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.detail-lead {
+  margin-bottom: 14px;
+}
+.detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+.detail-facts dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.detail-facts dd {
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+.detail-sub {
+  margin: 16px 0 4px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+/* While a detail is forward, the room behind it settles back a little. */
+.app > main,
+.dealbar {
+  transition: transform 0.7s var(--glide);
+}
+body:has(> .detail) .app > main,
+body:has(> .detail) .dealbar {
+  transform: scale(0.985);
+}
+@keyframes veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes come-forward {
+  from {
+    opacity: 0;
+    transform: perspective(1200px) translate3d(0, 10px, -90px);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1200px) translate3d(0, 0, 0);
+  }
+}
+
+/* ---------- supplier seat */
+.seat {
+  padding: 24px 24px 28px;
+}
+
+/* ---------- the replay bar: a floating capsule, nearest to you */
+.replay {
+  inset: auto auto 14px 50%;
+  translate: -50% 0;
+  width: min(1180px, calc(100vw - 32px));
+  padding: 10px 20px 12px;
+  border-radius: 26px;
+}
+
+@media (max-width: 1000px) {
+  .pane-inner {
+    grid-template-columns: 1fr;
+  }
+  .arc[data-flat="true"] .arc-stage {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .app {
+    padding: 0 12px 170px;
+  }
+  .top {
+    position: static;
+    margin: 8px 0 10px;
+    padding: 10px 14px 0;
+    border-radius: 24px;
+    overflow: hidden;
+  }
+  .top nav {
+    margin: 2px -14px 0;
+    width: calc(100% + 28px);
+    border-top: 1px solid var(--line);
+  }
+  .top nav a {
+    border-radius: 0;
+    padding: 13px 2px;
+  }
+  .top nav a[aria-current="page"] {
+    background: transparent;
+    color: var(--text);
+    box-shadow: inset 0 -3px 0 var(--primary);
+  }
+  .flat-btn {
+    display: none;
+  }
+  .source-banner {
+    padding: 0 6px;
+  }
+  .glass {
+    border-radius: 24px;
+  }
+  .dealbar {
+    padding: 4px 4px 14px;
+  }
+  .dealbar .stages {
+    padding: 12px 14px 0;
+  }
+  .pane {
+    padding: 16px 14px 18px;
+  }
+  .feed {
+    height: auto;
+    padding: 10px;
+  }
+  .seat {
+    padding: 18px 14px 20px;
+  }
+  .attack-top {
+    padding: 16px 14px 16px;
+  }
+  .detail {
+    padding: 10px;
+  }
+  .detail-card {
+    padding: 18px 18px 20px;
+    border-radius: 24px;
+    max-height: calc(100dvh - 20px);
+  }
+  .replay {
+    inset: auto auto 8px 50%;
+    width: calc(100vw - 16px);
+    padding: 8px 14px 10px;
+    border-radius: 22px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* The deal bar stays compact, so the pane in front starts well above the fold. */
+.dealbar .rail-node {
+  padding: 12px 20px 10px;
+}
+.dealbar .rail-note {
+  min-height: 0;
+}
+.dealbar .rail-amount {
+  font-size: clamp(1.5rem, 2.3vw, 2.25rem);
+}
+.dealbar .stage-note {
+  font-size: 0.78125rem;
+}
+
+/* ====================================================================== finish
+   Small things that carry the design: type that wraps well, the surfaces the browser draws, quick
+   feedback on small controls, and depth that means something. */
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p,
+li,
+dd,
+blockquote {
+  text-wrap: pretty;
+}
+/* Light text on a dark ground reads thinner: a little more leading and tracking. */
+:root[data-theme="dark"] body {
+  line-height: 1.56;
+  letter-spacing: 0.004em;
+}
+:root {
+  accent-color: var(--money);
+  caret-color: var(--money);
+  scrollbar-color: color-mix(in srgb, var(--text) 32%, transparent) transparent;
+}
+::selection {
+  background: color-mix(in srgb, var(--money) 26%, transparent);
+}
+:focus-visible {
+  outline: 2px solid var(--money);
+  outline-offset: 3px;
+}
+/* A flat dark gradient bands on a projector. A little grain makes it a lit room. */
+:root[data-theme="dark"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Small controls answer at once and give a little when pressed. Space moves slowly; buttons do not. */
+.btn,
+.seg button,
+.chip-btn,
+.arc-tabs button,
+.top nav a,
+.quote-row {
+  transition-duration: 0.16s;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+.btn:active,
+.seg button:active,
+.chip-btn:active,
+.arc-tabs button:active,
+.quote-row:active,
+.case:active {
+  transform: scale(0.97);
+}
+/* Hover effects are for a real pointer; a tap must not leave one stuck on. */
+@media not ((hover: hover) and (pointer: fine)) {
+  .case:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .pane:hover .pane-fwd {
+    opacity: 0;
+  }
+  .pane[data-pos="near"]:hover {
+    opacity: 0.72;
+  }
+}
+
+/* Depth that means something: whichever place holds the money sits forward. */
+.dealbar .rail-node {
+  border-radius: 22px;
+  transition: transform 0.9s var(--glide), box-shadow 0.9s ease, background 0.9s ease;
+}
+.dealbar .rail-escrow[data-state="holding"],
+.dealbar .rail-node[data-state="paid"] {
+  transform: translateY(-3px) scale(1.015);
+  background: var(--glass-solid);
+  box-shadow: inset 0 1px 0 var(--glass-lip), 0 30px 50px -34px rgba(11, 37, 69, 0.65);
+}
+
+/* Tone is carried by a chip, a card mark or the border's colour, never by a thick side stripe. */
+.case {
+  border-left-width: 1px;
+}
+.feed-note {
+  border-left-width: 1px;
+}
+.banner {
+  border-left-width: 1px;
+}
+.banner[data-tone="held"] {
+  border-color: var(--held);
+}
+.banner[data-tone="stop"] {
+  border-color: var(--stop);
+}
+.reason {
+  border-left: 0;
+  background: var(--bg);
+  padding: 10px 14px;
+}
+.msg[data-held="true"] {
+  box-shadow: none;
+}
+.quote-row[data-selected="true"] {
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+}
+
+/* ---------- the control room's conversations: all four suppliers as a list, one conversation to read */
+.lanes-wrap {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.lanes-wrap:has(> .lanes) {
+  grid-template-columns: 1fr;
+}
+.lane-pick {
+  display: grid;
+  gap: 10px;
+}
+.lane-list {
+  display: grid;
+  gap: 6px;
+}
+.lane-row {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 11px 14px 12px;
+  min-height: 48px;
+  cursor: pointer;
+  transition: background 0.16s cubic-bezier(0.23, 1, 0.32, 1), border-color 0.16s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.lane-row:hover {
+  border-color: var(--muted);
+}
+.lane-row[aria-pressed="true"] {
+  background: var(--glass-solid);
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+.lane-row[data-status="out"] {
+  border-color: color-mix(in srgb, var(--stop) 60%, transparent);
+}
+.lane-row[data-status="out"][aria-pressed="true"] {
+  border-color: var(--stop);
+  box-shadow: inset 0 0 0 1px var(--stop);
+}
+.lane-row-name {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.lane-row .lane-meta {
+  margin-top: 0;
+}
+.lane-row-count {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+.lane-row-held {
+  color: var(--held);
+  font-weight: 500;
+}
+.lanes-all {
+  justify-self: start;
+}
+.lanes-switch {
+  margin-bottom: 10px;
+}
+/* The one conversation: wide enough to read, and the bouncer's verdict sits beside its message. */
+.lane-solo {
+  padding: 16px 18px 18px;
+}
+.lane-solo .thread {
+  gap: 12px;
+}
+.lane-solo .msg {
+  padding: 10px 14px 12px;
+}
+.lane-solo .msg-body {
+  font-size: 1rem;
+  max-width: 68ch;
+}
+.lane-solo .msg[data-kind="from_supplier"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+  gap: 4px 20px;
+}
+.lane-solo .msg[data-kind="from_supplier"] > .msg-meta,
+.lane-solo .msg[data-kind="from_supplier"] > .msg-body {
+  grid-column: 1;
+}
+.lane-solo .msg[data-kind="from_supplier"] > .screen {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin: 0;
+  padding: 0 0 0 16px;
+  border-top: 0;
+  border-left: 1px solid var(--line);
+}
+@media (max-width: 1000px) {
+  .lanes-wrap {
+    grid-template-columns: 1fr;
+  }
+  .lane-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .lane-list {
+    grid-template-columns: 1fr;
+  }
+  .lane-solo .msg[data-kind="from_supplier"] {
+    grid-template-columns: 1fr;
+  }
+  .lane-solo .msg[data-kind="from_supplier"] > .screen {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 8px;
+    padding: 8px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+.lane-solo .msg[data-kind="from_supplier"] {
+  grid-template-rows: auto 1fr;
+  align-items: start;
+}
+
+/* ====================================================================== plain words first
+   One sentence says what is happening. A dotted word explains itself. Detail opens when asked for. */
+.now {
+  padding: 10px 20px 8px;
+  font-size: 1.1875rem;
+  line-height: 1.35;
+  letter-spacing: -0.012em;
+  max-width: 92ch;
+}
+.now strong {
+  font-weight: 600;
+}
+.now span {
+  color: var(--muted);
+}
+.now[data-tone="money"] strong {
+  color: var(--money);
+}
+.now[data-tone="ok"] strong {
+  color: var(--ok);
+}
+.now[data-tone="stop"] strong {
+  color: var(--stop);
+}
+.link-btn {
+  font: inherit;
+  font-weight: 500;
+  color: var(--money);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.term {
+  position: relative;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+  text-underline-offset: 0.2em;
+  border-radius: 4px;
+}
+.term-pop {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  top: calc(100% + 8px);
+  width: min(320px, 78vw);
+  padding: 10px 14px 12px;
+  border-radius: 14px;
+  background: var(--primary);
+  color: var(--primary-ink);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 24px 40px -24px rgba(11, 37, 69, 0.7);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.16s ease-out, transform 0.16s ease-out, visibility 0.16s;
+  pointer-events: none;
+}
+.term:hover .term-pop,
+.term:focus .term-pop,
+.term:focus-visible .term-pop {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+.more {
+  margin-top: 8px;
+}
+.more > summary {
+  display: inline-block;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--money);
+  padding: 6px 0;
+  min-height: 32px;
+}
+.more > summary::-webkit-details-marker {
+  display: none;
+}
+.more > summary::after {
+  content: " +";
+}
+.more[open] > summary::after {
+  content: " \2212";
+}
+.more-body {
+  padding-top: 4px;
+}
+.screen-head {
+  font-weight: 500;
+}
+.lane-solo .screen .more {
+  margin-top: 2px;
+}
+.attack-lead {
+  font-size: 1.1875rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin: 2px 0 4px;
+}
+.how {
+  display: grid;
+  gap: 10px;
+  counter-reset: how;
+}
+.how li {
+  counter-increment: how;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+}
+.how li::before {
+  content: counter(how);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+.how li > strong {
+  display: contents;
+}
+.glossary {
+  display: grid;
+  gap: 8px;
+}
+.glossary dt {
+  font-weight: 600;
+}
+.glossary dd {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+@media (max-width: 760px) {
+  .now {
+    padding: 10px 14px 6px;
+    font-size: 1.0625rem;
   }
 }

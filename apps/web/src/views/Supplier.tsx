@@ -419,7 +419,7 @@ export function Supplier({
   setMode: (m: SeatMode) => void;
 }) {
   return (
-    <div className="seat">
+    <div className="seat glass">
       <header className="seat-head">
         <h2>Supplier seat</h2>
         <p className="panel-note">What a supplier sees. Never the buyer's prices, the other suppliers, or the treasury.</p>
