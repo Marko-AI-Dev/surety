@@ -167,18 +167,25 @@ describe("the simulated feed (testing only)", () => {
 
 describe("the phone pages", () => {
   it("the proxy passes the inspector's routes with the inspector's own token, from anywhere, and never adds the view token", () => {
-    const req = (path: string, method = "GET", remoteAddress = "192.168.1.23") => proxyDecision({ method, path, remoteAddress, headers: {} });
+    const req = (path: string, method = "GET", remoteAddress = "192.168.1.23") => proxyDecision({ method, path, remoteAddress, headers: { host: "192.168.1.23:5173" } });
     expect(req("/api/inspector/deals")).toBe("pass");
     expect(req("/api/inspector/deals/fb7d0b49-1432-40a9-9ee9-dc81d1e7c9a1/attestation", "POST")).toBe("pass");
     expect(req("/api/inspectorx/deals")).toBe("refuse");
   });
 
-  it("starting a purchase is allowed from this machine only", () => {
-    const req = (remoteAddress: string, headers: Record<string, unknown> = {}) => proxyDecision({ method: "POST", path: "/api/demo/start", remoteAddress, headers });
+  it("starting a purchase needs this machine and this app's own page", () => {
+    const own = { host: "localhost:5173", origin: "http://localhost:5173", "sec-fetch-site": "same-origin", "content-type": "application/json" };
+    const req = (remoteAddress: string, headers: Record<string, unknown> = own, method = "POST") => proxyDecision({ method, path: "/api/demo/start", remoteAddress, headers });
     expect(req("127.0.0.1")).toBe("inject");
     expect(req("192.168.1.23")).toBe("refuse");
-    expect(req("127.0.0.1", { "x-forwarded-for": "203.0.113.9" })).toBe("refuse");
-    expect(proxyDecision({ method: "GET", path: "/api/demo/start", remoteAddress: "127.0.0.1", headers: {} })).toBe("refuse");
+    expect(req("127.0.0.1", { ...own, "x-forwarded-for": "203.0.113.9" })).toBe("refuse");
+    expect(req("127.0.0.1", own, "GET")).toBe("refuse");
+    // Another site open in the operator's browser posting to localhost: wrong origin, cross-site, or a form post.
+    expect(req("127.0.0.1", { ...own, origin: "https://evil.example" })).toBe("refuse");
+    expect(req("127.0.0.1", { ...own, "sec-fetch-site": "cross-site" })).toBe("refuse");
+    expect(req("127.0.0.1", { ...own, "content-type": "text/plain" })).toBe("refuse");
+    expect(req("127.0.0.1", { host: "localhost:5173", "content-type": "application/json" })).toBe("refuse");
+    expect(req("127.0.0.1", { ...own, host: "evil.example:5173", origin: "http://evil.example:5173" })).toBe("refuse");
   });
 
   it("the inspector client sends the token in a header and the form as the API documents it", async () => {

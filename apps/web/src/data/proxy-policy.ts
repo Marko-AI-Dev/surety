@@ -21,6 +21,7 @@ export interface ProxyRequest {
 
 const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 const FORWARDED = ["x-forwarded-for", "x-forwarded-host", "forwarded", "x-real-ip", "cf-connecting-ip", "true-client-ip"];
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 const ID = "[0-9a-fA-F-]{36}";
 const OPERATOR_READS = [
   new RegExp(`^/api/sourcing$`),
@@ -38,8 +39,18 @@ export function proxyDecision(req: ProxyRequest): ProxyDecision {
   if (path.startsWith("/api/inspector/")) return "pass";
   const local = req.remoteAddress !== undefined && LOOPBACK.has(req.remoteAddress);
   const forwarded = FORWARDED.some((h) => req.headers[h] !== undefined);
+  // The operator's screen is opened as localhost on this machine. Any other Host means the request was
+  // aimed here under another name (DNS rebinding), so it gets no token.
+  const host = String(req.headers.host ?? "");
+  const ownHost = LOCAL_HOST.test(host);
   const read = req.method === "GET" && OPERATOR_READS.some((p) => p.test(path));
-  // Starting a purchase is the one thing the operator's screen may ask for besides reading.
-  const start = req.method === "POST" && path === "/api/demo/start";
-  return local && !forwarded && (read || start) ? "inject" : "refuse";
+  // Starting a purchase is the one thing the operator's screen may ask for besides reading. It changes
+  // something, so it must also prove it came from this app's own page: another site open in the same
+  // browser can post to localhost, but it cannot claim this origin, be same-origin, or send JSON
+  // without a preflight.
+  const origin = req.headers.origin;
+  const fromOwnPage =
+    typeof origin === "string" && origin.replace(/^https?:\/\//, "") === host && req.headers["sec-fetch-site"] === "same-origin" && String(req.headers["content-type"] ?? "").startsWith("application/json");
+  const start = req.method === "POST" && path === "/api/demo/start" && fromOwnPage;
+  return local && !forwarded && ownHost && (read || start) ? "inject" : "refuse";
 }
