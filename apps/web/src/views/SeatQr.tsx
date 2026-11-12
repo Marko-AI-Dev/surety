@@ -14,7 +14,7 @@ export function phoneLink(base: string, page: "supplier" | "inspector", token: s
   return `${origin}#/${page}${t ? `?t=${encodeURIComponent(t)}` : ""}`;
 }
 
-export function SeatQr({ page, tokenLabel, tokenHelp }: { page: "supplier" | "inspector"; tokenLabel: string; tokenHelp: string }) {
+export function SeatQr({ page, tokenLabel, tokenHelp }: { page: "supplier" | "inspector"; tokenLabel?: string; tokenHelp?: string }) {
   const [base, setBase] = useState(() => `${location.origin}${location.pathname}`);
   const [token, setToken] = useState("");
   const url = phoneLink(base, page, token);
@@ -40,11 +40,13 @@ export function SeatQr({ page, tokenLabel, tokenHelp }: { page: "supplier" | "in
           <span>Address phones should open</span>
           <input type="url" value={base} onChange={(e) => setBase(e.target.value)} spellCheck={false} autoCapitalize="off" />
         </label>
-        <label className="field">
-          <span>{tokenLabel}</span>
-          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" spellCheck={false} />
-        </label>
-        <p className="fine">{token.trim() ? tokenHelp : page === "supplier" ? "Without a token the code opens practice mode, which needs no backend." : "Paste the inspector's token to make the link."}</p>
+        {tokenLabel ? (
+          <label className="field">
+            <span>{tokenLabel}</span>
+            <input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" spellCheck={false} />
+          </label>
+        ) : null}
+        <p className="fine">{token.trim() ? tokenHelp : page === "supplier" ? "The code opens practice mode, which needs no backend." : "Paste the inspector's token to make the link."}</p>
         <p className="seat-url mono">{shown}</p>
         {local ? (
           <p className="fine" data-tone="held">

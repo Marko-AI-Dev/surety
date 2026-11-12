@@ -50,12 +50,12 @@ export function Numbers({ h }: { h: Headline }) {
         </dd>
         <dd className="numbers-note">
           {h.openingBestCents === null
-            ? "Best opening offer against best offer now"
+            ? "A supplier's first offer against its price now"
             : moved > 0
-              ? `Negotiated down ${usd(moved)} a unit, ${usd(h.movedTotalCents ?? 0, { decimals: false })} on the order`
+              ? `${h.supplierName ?? "The supplier"} came down ${usd(moved)} a unit from its first offer, ${usd(h.movedTotalCents ?? 0, { decimals: false })} on the order`
               : moved < 0
-                ? `Best offer is ${usd(-moved)} a unit above the opening one`
-                : "Best offer so far. No movement yet"}
+                ? `${h.supplierName ?? "The supplier"} is ${usd(-moved)} a unit above its first offer`
+                : `${h.chosen ? "The chosen supplier" : "Best offer so far"}${h.supplierName ? `, ${h.supplierName}` : ""}. No movement yet`}
         </dd>
       </div>
       <div data-tone={h.ejected > 0 ? "stop" : "plain"}>
@@ -235,12 +235,8 @@ export function Business({ record, view, replaying, flat }: { record: SourcingRe
           </p>
         ))}
       </Panel>
-      <Panel title="Play a supplier" note="Scan to join this purchase as a supplier from a phone. Haggle, or try to trick the Negotiator.">
-        <SeatQr
-          page="supplier"
-          tokenLabel="Supplier token for the judge's seat"
-          tokenHelp="The code now opens the live seat as that supplier. Whatever they send appears on this screen with Surety's verdict."
-        />
+      <Panel title="Play a supplier" note="Scan to try the supplier's seat on a phone, in practice mode. Haggle, or try to trick the Negotiator.">
+        <SeatQr page="supplier" />
       </Panel>
     </>
   );

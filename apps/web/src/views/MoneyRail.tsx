@@ -18,15 +18,17 @@ export function MoneyRail({ record, view }: { record: SourcingRecord; view: RunV
   const escrowState = view.paid ? "Released to the supplier" : view.refunded ? "Returned to you" : view.locked ? "Held for the supplier" : "Nothing locked yet";
 
   return (
-    <section className="rail" aria-label="Where the money is">
-      <div className="rail-node">
+    <section className="rail" aria-label="Where the money is" data-treasury={m.treasuryCents === null ? "hidden" : "shown"}>
+      {m.treasuryCents === null ? null : (
+        <div className="rail-node">
         <p className="rail-role">Your money</p>
         <p className="rail-name">{brief.buyer.name}</p>
         <p className="rail-amount" aria-live="polite">
-          {m.treasuryCents === null ? "Balance not in this record" : usd(treasury)}
+          {usd(treasury)}
         </p>
-        <p className="rail-note">{m.treasuryCents === null ? "Read from the ledger when the run is recorded" : "Test dollars, no real value"}</p>
-      </div>
+        <p className="rail-note">Test dollars, no real value</p>
+        </div>
+      )}
 
       <div className="rail-leg" data-state={lockLeg}>
         <span className="rail-leg-line" aria-hidden="true" />

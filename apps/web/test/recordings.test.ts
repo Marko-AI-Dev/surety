@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { dealStages } from "../src/data/buyer";
 import { RECORDINGS, recordingOf } from "../src/data/evidence";
 import { INSPECTOR_ROW, chatRows, headline, recordUpTo } from "../src/data/livescreen";
-import { statusLine } from "../src/data/plain";
+import { liveLine, statusLine } from "../src/data/plain";
 import { buildTimeline, timelineBounds, viewAt } from "../src/data/timeline";
 
 // Every recorded run the app can play back, read exactly as the screen reads it.
@@ -33,6 +33,22 @@ describe("the recorded runs", () => {
     expect(p.steps.find((s) => s.kind === "locked")?.timed).toBe(true);
     expect(p.steps.find((s) => s.kind === "paid")?.timed).toBe(true);
     expect(headline(p.record, p.view).money).toMatchObject({ state: "paid", cents: 4_640_000 });
+  });
+
+  it("paid: the price number follows the supplier that won, not the cheapest opening offer (live test, 12 Nov)", () => {
+    const p = play("paid");
+    // Brightway opened lowest at $118, but the Lead chose Sunpeak, which came from $126 to $116.
+    expect(headline(p.record, p.view)).toMatchObject({ supplierName: "Sunpeak Energy Ltd", chosen: true, openingBestCents: 12_600, bestNowCents: 11_600, movedCents: 1_000, movedTotalCents: 400_000 });
+    // Before the choice it follows one supplier too: the name and both prices belong together.
+    const early = headline(p.record, viewAt(p.record, p.steps, (p.steps.find((x) => x.kind === "locked")?.at ?? 0) - 1));
+    expect(early.supplierName).not.toBeNull();
+  });
+
+  it("the live banner only says a purchase is happening when one is", () => {
+    const p = play("paid");
+    expect(liveLine(null)).toBe("No purchase is running. Start one below.");
+    expect(liveLine(viewAt(p.record, p.steps, p.start))).toContain("happening now");
+    expect(liveLine(p.view)).toContain("has finished");
   });
 
   it("refused: the inspector's refusal stops the payment and the buyer is refunded, in plain words", () => {

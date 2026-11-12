@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { dealStages } from "./data/buyer";
 import { RECORDINGS, recordingOf } from "./data/evidence";
 import { headline } from "./data/livescreen";
-import { GLOSSARY, HOW_IT_WORKS, statusLine } from "./data/plain";
+import { GLOSSARY, HOW_IT_WORKS, liveLine, statusLine } from "./data/plain";
 import { type Mode, useRun } from "./run";
 import { AttackLab } from "./views/AttackLab";
 import { Business, LedgerLinks, Numbers, Stages } from "./views/Business";
@@ -64,8 +64,9 @@ export function App() {
   const [fellBack, setFellBack] = useState(false);
   const [theme, setTheme] = useState<Theme>(storedTheme);
   const [seatMode, setSeatMode] = useState<SeatMode>("practice");
-  // Flat: no depth, no tilt, solid panels. On for reduced motion and narrow screens, or by the button.
-  const [userFlat, setUserFlat] = useState(false);
+  // Flat: no depth and no tilt, every pane on the page at once. It is the default, because the arc
+  // clips its side panes on a 1440 px screen; the button turns the 3D layout on.
+  const [userFlat, setUserFlat] = useState(true);
   const [help, setHelp] = useState(false);
   const [recording, setRecording] = useState("paid");
   const flatWhy = useFlat(userFlat);
@@ -95,9 +96,8 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.flat = String(flat);
-    // Solid panels when flat was asked for (by the button or by the reduced-motion setting); a narrow
-    // screen is flat in layout only and keeps its glass.
-    document.documentElement.dataset.solid = String(flatWhy === "user" || flatWhy === "motion");
+    // Solid panels only for the reduced-motion setting; the flat layout keeps its glass.
+    document.documentElement.dataset.solid = String(flatWhy === "motion");
     try {
       localStorage.setItem(THEME_KEY, theme);
     } catch {
@@ -164,7 +164,7 @@ export function App() {
             onClick={() => setUserFlat((v) => !v)}
             aria-pressed={flatWhy === "user" || flatWhy === "motion"}
             disabled={flatWhy === "motion"}
-            title={flatWhy === "motion" ? "On because this device asks for reduced motion" : "Turn off the 3D layout and the glass"}
+            title={flatWhy === "motion" ? "On because this device asks for reduced motion" : "Flat shows every panel at once. Turn it off for the 3D layout"}
           >
             Flat
           </button>
@@ -210,7 +210,7 @@ export function App() {
               <span className="badge" data-kind="live">
                 Live
               </span>
-              <span>{run.live?.status === "connecting" ? "Connecting to the Surety backend." : "This purchase is happening now on the XRP test ledger. No real money is involved."}</span>
+              <span>{run.live?.status === "connecting" ? "Connecting to the Surety backend." : liveLine(view)}</span>
             </>
           )}{" "}
           <button type="button" className="link-btn" onClick={() => setHelp(true)}>

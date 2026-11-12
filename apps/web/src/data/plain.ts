@@ -118,6 +118,13 @@ export const GLOSSARY: Record<TermKey, { name: string; means: string }> = {
   finalPrice: { name: "Final price", means: "Chat is only talk. A price counts once the supplier submits it on Surety's form, and then it cannot change it." },
 };
 
+// The live banner: only say a purchase is happening when one is.
+export function liveLine(view: RunView | null | undefined): string {
+  if (!view) return "No purchase is running. Start one below.";
+  if (view.paid || view.refunded) return "This purchase has finished. It ran on the XRP test ledger. No real money was involved.";
+  return "This purchase is happening now on the XRP test ledger. No real money is involved.";
+}
+
 export const HOW_IT_WORKS: { title: string; text: string }[] = [
   { title: "A person sets the rules", text: "What to buy, the most to pay, which suppliers are approved and how much can be spent. The agents cannot change any of it." },
   { title: "AI agents do the buying", text: "They invite approved suppliers, negotiate and choose a final price. They can talk and choose. They cannot move money." },

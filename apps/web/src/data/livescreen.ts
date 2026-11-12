@@ -7,10 +7,14 @@ import type { Card, LedgerTx, SourcingRecord } from "./types";
 // conversations, and (for testing only) the record as it stood at an earlier moment. Pure.
 
 export interface Headline {
-  // The best price any supplier opened with, and the best price on the table now, per unit.
+  // One supplier's journey, per unit: the supplier the Lead chose, or until then the one holding the
+  // best price. openingBestCents is the first price that supplier offered; bestNowCents is its price now.
+  // Comparing two different suppliers' prices undersells what the negotiation did.
+  supplierName: string | null;
+  chosen: boolean;
   openingBestCents: number | null;
   bestNowCents: number | null;
-  // Opening minus now: positive when the negotiation brought the price down.
+  // First offer minus now: positive when the negotiation brought that supplier down.
   movedCents: number | null;
   movedTotalCents: number | null;
   ejected: number;
@@ -28,10 +32,11 @@ export function headline(record: SourcingRecord, view: RunView): Headline {
   // A committed quote is that supplier's price now, whatever it said in chat.
   for (const i of view.invites) if (i.quote) latest.set(i.address, i.quote.unitCents);
   const out = new Set(view.invites.filter((i) => i.status === "out").map((i) => i.address));
-  const opening = [...first.values()];
-  const now = [...latest.entries()].filter(([address]) => !out.has(address)).map(([, cents]) => cents);
-  const openingBestCents = opening.length > 0 ? Math.min(...opening) : null;
-  const bestNowCents = now.length > 0 ? Math.min(...now) : null;
+  const standing = [...latest.entries()].filter(([address]) => !out.has(address)).sort((a, b) => a[1] - b[1]);
+  const winner = view.accepted?.supplier.address ?? null;
+  const who = winner !== null && latest.has(winner) ? winner : (standing[0]?.[0] ?? null);
+  const bestNowCents = who === null ? null : (latest.get(who) ?? null);
+  const openingBestCents = who === null ? null : (first.get(who) ?? bestNowCents);
   const movedCents = openingBestCents !== null && bestNowCents !== null ? openingBestCents - bestNowCents : null;
   const cents = view.money.totalCents;
   const money: Headline["money"] = view.paid
@@ -42,6 +47,8 @@ export function headline(record: SourcingRecord, view: RunView): Headline {
         ? { state: "locked", cents, tx: record.create ?? null }
         : { state: "none", cents: 0, tx: null };
   return {
+    supplierName: who === null ? null : (view.invites.find((i) => i.address === who)?.name ?? null),
+    chosen: winner !== null && who === winner,
     openingBestCents,
     bestNowCents,
     movedCents,
