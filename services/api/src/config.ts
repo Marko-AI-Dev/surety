@@ -1,4 +1,5 @@
 import { Address } from "@surety/contracts";
+import { DEFAULT_DEADLINE_SECONDS } from "./demo-start";
 
 // The API's settings. Every role has its own bearer token, and each supplier its own, so a token
 // names exactly one caller. Errors name the setting, never its value.
@@ -26,6 +27,8 @@ export interface ApiConfig {
   inspectorName: string;
   // Supplier wallet address to its token.
   supplierTokens: Record<string, string>;
+  // Set only when the big screen may start a purchase: where the Lead agent's task is created.
+  demoStart: { companyId: string; leadAgentId: string; deadlineSeconds: number } | null;
 }
 
 export const MIN_TOKEN_CHARS = 32;
@@ -71,6 +74,18 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
   const all = [...Object.values(tokens), ...Object.values(supplierTokens)].filter(Boolean);
   if (new Set(all).size !== all.length) problems.push("every API token must be distinct");
 
+  // Both or neither. With neither, POST /demo/start answers 404.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const companyId = env.PAPERCLIP_COMPANY_ID ?? "";
+  const leadAgentId = env.PAPERCLIP_LEAD_AGENT_ID ?? "";
+  const deadlineSeconds = Number(env.API_DEMO_DEADLINE_SECONDS ?? String(DEFAULT_DEADLINE_SECONDS));
+  let demoStart: ApiConfig["demoStart"] = null;
+  if (companyId || leadAgentId) {
+    if (!UUID.test(companyId) || !UUID.test(leadAgentId)) problems.push("PAPERCLIP_COMPANY_ID and PAPERCLIP_LEAD_AGENT_ID must both be set, each a UUID");
+    else if (!Number.isInteger(deadlineSeconds) || deadlineSeconds < 60 || deadlineSeconds > 86_400) problems.push("API_DEMO_DEADLINE_SECONDS must be between 60 and 86400");
+    else demoStart = { companyId, leadAgentId, deadlineSeconds };
+  }
+
   const port = Number(env.API_PORT ?? "4200");
   if (!Number.isInteger(port) || port < 1 || port > 65_535) problems.push("API_PORT must be a port number");
 
@@ -86,6 +101,7 @@ export function loadApiConfig(env: Record<string, string | undefined>): ApiConfi
     tokens,
     inspectorName: env.API_INSPECTOR_NAME || "Port inspector (demo)",
     supplierTokens,
+    demoStart,
   };
   if (problems.length > 0) throw new Error(`API config: ${problems.join("; ")}`);
   return config;

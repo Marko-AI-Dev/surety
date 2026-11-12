@@ -91,8 +91,7 @@ export function createSimSource(recorded: SourcingRecord, opts: { speed?: number
   };
 }
 
-// PROVISIONAL: what the start screen sends. The route is this app's proposal (POST /demo/start, from
-// this machine only, with the view token added by the dev proxy); it is not in the API yet.
+// What the start screen sends to POST /demo/start (docs/api.md). The API adds the rest of the order.
 export interface StartBrief {
   quantity: number;
   targetUnitCents: number;
