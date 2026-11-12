@@ -100,8 +100,8 @@ export function Control({ record, view, replaying, flat }: { record: SourcingRec
         )}
       </Panel>
 
-      <Panel title="Let someone play a supplier" note="Scan to open the supplier seat on a phone.">
-        <SeatQr page="supplier" tokenLabel="Supplier token for the judge's seat" tokenHelp="The code now opens the live seat as that supplier." />
+      <Panel title="Let someone play a supplier" note="Scan to open the supplier seat on a phone, in practice mode.">
+        <SeatQr page="supplier" />
       </Panel>
 
       <Panel title="The inspector's phone" note="The second key. Scan this with the inspector's own phone, never on the big screen.">

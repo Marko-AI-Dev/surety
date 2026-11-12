@@ -20,9 +20,10 @@ describe("the three numbers on top", () => {
     expect(headline(recordedRun, at(start))).toMatchObject({ openingBestCents: null, bestNowCents: null, movedCents: null, ejected: 0, money: { state: "none", cents: 0, tx: null } });
   });
 
-  it("show the price the negotiation moved: best opening offer against best offer now", () => {
+  it("show the price the negotiation moved: the chosen supplier's first offer against its final price", () => {
     const h = headline(recordedRun, at(end));
-    // Brightway opened at $118 and Sunpeak at $126; Brightway's final price is $114.
+    // Brightway opened at $118 and was chosen at $114.
+    expect(h).toMatchObject({ supplierName: "Shenzhen Brightway Solar Co., Ltd", chosen: true });
     expect(h).toMatchObject({ openingBestCents: 11_800, bestNowCents: 11_400, movedCents: 400, movedTotalCents: 160_000 });
   });
 

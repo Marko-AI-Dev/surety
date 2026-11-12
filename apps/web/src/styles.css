@@ -13,6 +13,9 @@
     radial-gradient(900px 640px at 98% 6%, rgba(38, 84, 160, 0.34), transparent 62%),
     radial-gradient(760px 520px at 72% 58%, rgba(150, 190, 235, 0.38), transparent 66%),
     radial-gradient(1200px 760px at 46% 120%, rgba(255, 255, 255, 0.95), transparent 60%);
+  /* How much of the page colour sits over the background photo. High on purpose: text that lies
+     straight on the page must keep AA contrast whatever the photo shows underneath. */
+  --photo-veil: rgba(221, 230, 241, 0.88);
   --glass: rgba(255, 255, 255, 0.54);
   --glass-solid: #f3f6fb;
   --glass-edge: rgba(255, 255, 255, 0.85);
@@ -51,6 +54,7 @@
     radial-gradient(900px 640px at 94% 10%, rgba(120, 160, 220, 0.2), transparent 62%),
     radial-gradient(760px 520px at 70% 60%, rgba(40, 84, 160, 0.3), transparent 66%),
     radial-gradient(1200px 760px at 46% 120%, rgba(24, 60, 120, 0.55), transparent 62%);
+  --photo-veil: rgba(7, 15, 28, 0.86);
   --glass: rgba(255, 255, 255, 0.075);
   --glass-solid: #121d2f;
   --glass-edge: rgba(255, 255, 255, 0.16);
@@ -251,6 +255,9 @@ code,
   border: 1px solid var(--line);
   border-radius: var(--r);
   margin-bottom: 20px;
+}
+.rail[data-treasury="hidden"] {
+  grid-template-columns: 150px minmax(0, 1.15fr) 150px minmax(0, 1fr);
 }
 .rail-node {
   padding: 16px 20px 14px;
@@ -1588,7 +1595,12 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: var(--ambient);
+  /* Top to bottom: the ambient light, the veil, then a blurred solar field (public/solar-field.jpg,
+     credited in the README). The photo is blurred in the file, so it costs nothing to draw. */
+  background:
+    var(--ambient),
+    linear-gradient(var(--photo-veil), var(--photo-veil)),
+    var(--ground) url("/solar-field.jpg") center / cover no-repeat;
 }
 h2 {
   font-size: 1.5rem;
