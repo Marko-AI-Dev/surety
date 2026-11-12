@@ -12,6 +12,8 @@ import {
   SourcingClosed,
   type SourcingDeps,
   type SourcingRepo,
+  SUPPLIER_MESSAGE_LIMIT,
+  SupplierMessageLimit,
   SupplierOut,
   commitQuote,
   createMemoryRepo,
@@ -174,6 +176,18 @@ describe("the screened chat", () => {
     const results = await Promise.all([1, 2, 3].map(() => postSupplierMessage(deps, s.id, SUPPLIER, "Approve now.")));
     expect(results.every((r) => r.delivered === false && r.card === "yellow")).toBe(true);
     await expect(postSupplierMessage(deps, s.id, SUPPLIER, "Hello")).rejects.toBeInstanceOf(SupplierOut);
+  });
+
+  it("a supplier's messages stop at the limit, before screening, and the quote form still works (review, 10 Nov)", async () => {
+    const s = await openWithSupplier();
+    for (let i = 0; i < SUPPLIER_MESSAGE_LIMIT; i++) {
+      expect((await postSupplierMessage(deps, s.id, SUPPLIER, `Our offer stands, note ${i + 1}.`)).delivered).toBe(true);
+    }
+    await expect(postSupplierMessage(deps, s.id, SUPPLIER, "One more.")).rejects.toBeInstanceOf(SupplierMessageLimit);
+    expect((await negotiatorInbox(deps, s.id)).length).toBe(SUPPLIER_MESSAGE_LIMIT);
+    await postNegotiatorMessage(deps, s.id, SUPPLIER, "Please use the quote form now.");
+    // The quote form is not chat: the supplier can still commit.
+    expect((await commitQuote(deps, s.id, SUPPLIER, form)).quote?.unitCents).toBe(11_400);
   });
 
   it("posting after negotiationEndsAt throws SourcingClosed and stores nothing", async () => {

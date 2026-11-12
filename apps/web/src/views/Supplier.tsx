@@ -283,7 +283,13 @@ function LiveSeat({ token }: { token: string | null }) {
     try {
       setNotice(await fn());
     } catch (e) {
-      setNotice(e instanceof ApiError ? `${e.message}` : "That did not go through.");
+      setNotice(
+        e instanceof ApiError
+          ? e.code === "too_many_messages"
+            ? "You have sent all the messages this purchase allows. You can still send your quote with the form."
+            : e.message
+          : "That did not go through.",
+      );
     } finally {
       setBusy(false);
     }

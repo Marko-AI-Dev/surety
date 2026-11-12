@@ -80,6 +80,11 @@ export async function leadDecision(
   if (!current || !(current.state === "QUOTE_RECEIVED" || (current.state === "ACCEPTED" && current.jobId))) {
     throw new DealTransitionConflict(dealId, current?.state ?? "missing", "ACCEPTED");
   }
+  // A supplier can be sent off after it was selected. An accept must not lock a payment for a supplier
+  // that is out; the lead may still decline. An accepted deal whose lock is resuming is past this point.
+  if (answer.outcome === "accept" && current.state === "QUOTE_RECEIVED") {
+    if (supplierStatus(await deps.repo.listMessages(s.id, { supplier: invite.address })) === "out") throw new SupplierOut(s.id, invite.address);
+  }
   // Claim the sourcing for this deal before anything can lock: one atomic OPEN to SELECTED, so a
   // second decision on another supplier's deal is refused instead of locking a second payment. A retry
   // of this deal finds the sourcing already naming it and goes on.
