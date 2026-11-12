@@ -236,6 +236,10 @@ function LiveSeat({ token }: { token: string | null }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [price, setPrice] = useState("");
+  const [days, setDays] = useState("");
+  const [bl, setBl] = useState("");
+  const [vessel, setVessel] = useState("");
+  const [loading, setLoading] = useState("");
   const [busy, setBusy] = useState(false);
   const current = sourcings[0] ?? null;
   const deal = deals.find((d) => d.sourcingId === current?.sourcingId) ?? null;
@@ -296,7 +300,12 @@ function LiveSeat({ token }: { token: string | null }) {
   const commit = (e: FormEvent) => {
     e.preventDefault();
     const unitCents = Math.round(Number(price) * 100);
+    const deliveryDays = Number(days);
     if (!current || !Number.isFinite(unitCents) || unitCents < 1) return;
+    if (!Number.isInteger(deliveryDays) || deliveryDays < 1 || deliveryDays > 365) {
+      setNotice("Delivery must be a whole number of days, from 1 to 365.");
+      return;
+    }
     void act(async () => {
       await client.quote(current.sourcingId, {
         quoteNumber: `Q-${Date.now().toString(36).toUpperCase()}`,
@@ -304,24 +313,27 @@ function LiveSeat({ token }: { token: string | null }) {
         unitCents,
         incoterm: current.incoterm,
         port: current.port,
+        deliveryDays,
         notes: "",
       });
-      return `Committed ${usd(unitCents)} a unit. This quote is binding.`;
+      return `Submitted: ${usd(unitCents)} a unit, delivered in ${deliveryDays} days. This is your final price and cannot be changed.`;
     });
   };
-  const settle = () => {
-    if (!deal) return;
+  // The shipping document number is typed, never made up: the inspector reads the same number off the
+  // shipment, and the two must match for the payment to be released.
+  const settle = (e: FormEvent) => {
+    e.preventDefault();
+    if (!deal || !bl.trim() || !vessel.trim() || !loading.trim()) return;
     void act(async () => {
       const draft = await client.settlementDraft(deal.dealId);
-      const stamp = Date.now().toString(36).toUpperCase();
       await client.settle(deal.dealId, {
         invoiceNumber: draft.suggested.invoiceNumber,
-        blNumber: `BL-${stamp}`,
-        vessel: "MV DEMO",
-        portOfLoading: "Shenzhen",
+        blNumber: bl.trim(),
+        vessel: vessel.trim(),
+        portOfLoading: loading.trim(),
         remarks: draft.suggested.remarks,
       });
-      return "Sent. Surety Verify is checking your documents.";
+      return "Sent. An inspector now checks the shipment, and Surety checks your paperwork against the order.";
     });
   };
 
@@ -332,10 +344,11 @@ function LiveSeat({ token }: { token: string | null }) {
           {error}
         </p>
       ) : null}
-      {!current ? <Waiting>You have not been invited to a sourcing yet.</Waiting> : null}
+      {!current ? <Waiting>You have not been invited to a purchase yet. This page updates by itself.</Waiting> : null}
       {current ? (
         <p className="fine">
-          Sourcing {current.ref}: {current.quantity} x {current.goods}, {current.incoterm} {current.port}.
+          The buyer wants {current.quantity} x {current.goods}, {current.incoterm} {current.port}.
+          {current.committedQuote ? ` Your final price: ${usd(current.committedQuote.unitCents)} a unit${current.committedQuote.deliveryDays ? `, ${current.committedQuote.deliveryDays} days` : ""}.` : ""}
         </p>
       ) : null}
       <ol className="thread seat-thread">
@@ -373,13 +386,17 @@ function LiveSeat({ token }: { token: string | null }) {
       {current && !current.committed && current.state === "OPEN" ? (
         <form className="composer" onSubmit={commit}>
           <label className="field">
-            <span>Binding unit price in USD for {current.quantity} units</span>
-            <input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="114.00" />
+            <span>Your final price, a unit, in USD, for {current.quantity} units</span>
+            <input type="text" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="114.00" />
           </label>
-          <button type="submit" className="btn" disabled={busy || !price}>
-            Commit quote
+          <label className="field">
+            <span>Delivered in how many days</span>
+            <input type="text" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} placeholder="21" />
+          </label>
+          <button type="submit" className="btn" disabled={busy || !price || !days}>
+            Submit final price
           </button>
-          <p className="fine">Surety fills in your approved wallet and computes the total. A committed quote cannot be changed.</p>
+          <p className="fine">Chat is only talk. This form is what counts, and it cannot be changed once sent. Surety fills in your approved wallet and works out the total.</p>
         </form>
       ) : null}
       {deal ? (
@@ -395,9 +412,25 @@ function LiveSeat({ token }: { token: string | null }) {
           </h3>
           <p className="fine">Deal {deal.ref}.</p>
           {deal.jobState === "LOCKED" ? (
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={settle}>
-              Confirm invoice and shipping details
-            </button>
+            <form className="composer" onSubmit={settle}>
+              <p className="fine">The money is locked for you. Ship, then send your shipping details. Surety fills in the invoice from the deal.</p>
+              <label className="field">
+                <span>Shipping document (B/L) number, exactly as printed</span>
+                <input type="text" value={bl} onChange={(e) => setBl(e.target.value)} maxLength={120} autoCapitalize="characters" autoComplete="off" spellCheck={false} />
+              </label>
+              <label className="field">
+                <span>Vessel</span>
+                <input type="text" value={vessel} onChange={(e) => setVessel(e.target.value)} maxLength={120} placeholder="MSC AURORA V.214E" />
+              </label>
+              <label className="field">
+                <span>Port of loading</span>
+                <input type="text" value={loading} onChange={(e) => setLoading(e.target.value)} maxLength={120} placeholder="Shenzhen (Yantian)" />
+              </label>
+              <button type="submit" className="btn btn-primary" disabled={busy || !bl.trim() || !vessel.trim() || !loading.trim()}>
+                Send shipping details
+              </button>
+              <p className="fine">An inspector reads the same number off the shipment. If the two differ, you are not paid.</p>
+            </form>
           ) : null}
         </section>
       ) : null}
@@ -426,7 +459,7 @@ export function Supplier({
         <div className="seg" role="group" aria-label="Seat mode">
           {(["replay", "practice", "live"] as const).map((m) => (
             <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}>
-              {m === "replay" ? "Recorded run" : m === "practice" ? "Practice" : "Live"}
+              {m === "replay" ? "Recorded" : m === "practice" ? "Practice" : "Live"}
             </button>
           ))}
         </div>

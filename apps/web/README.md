@@ -10,6 +10,19 @@ pnpm web          # http://localhost:5173, replaying the recorded run. No backen
 pnpm web:build    # static site in apps/web/dist, deployable anywhere
 ```
 
+## Live first
+
+The app opens live: it polls the newest purchase every 2 seconds and shows it as it happens. Nothing on the live screen is paced by a script.
+
+- **Live** needs the Surety API and the dev server: `API_TOKEN_VIEW=<token> SURETY_API_URL=http://127.0.0.1:4200 pnpm web`. The view token is added by the dev proxy and never reaches the browser.
+- **Recorded** is the backup, always badged "Recorded". If the backend cannot be reached on load, the app shows the recording and says so. `?mode=recorded` opens it directly.
+- **Simulated feed** (`?sim=6`) plays a recorded run through the live path at six times speed, for testing without a backend. It is always badged "Simulated feed" and is not for the stage.
+- **The main screen:** one sentence on what is happening, three numbers worked out from the record (price moved, suppliers removed, money locked or paid), a link to testnet.xrpl.org for every lock, payment and refund, a thin strip of the nine steps, and the conversations: one per supplier, plus the Lead agent's decision and the inspector. It follows whichever conversation spoke last. A held message shows that it was held and why, never its text; the text is in the Control room.
+- **Judge's seat:** the QR code on the main screen opens the live supplier seat when given that supplier's token. The quote form sends `deliveryDays`, and the settlement form takes the real shipping document number, because the inspector must read the same one.
+- **Inspector's page** (`#/inspector?t=<token>`): the queue without any B/L number, type the number, read it back, then send. Its QR code is in the Control room, not on the main screen.
+- **Start a purchase:** shown when live has no purchase. PROVISIONAL: it calls `POST /demo/start`, which is this app's proposal and not in the API yet; until then it says to start from the terminal.
+- **Not run against a real backend.** All of this is unit-tested against the record shape and exercised on the simulated feed only.
+
 ## Views
 
 - **Buy** (`#/`): the business user's view and the demo's first screen. Under the money rail: the deal in nine steps, the negotiation as one conversation (the same line sent to every supplier is one bubble; a held message shows only that it was held), the quotes, the Lead's decision with its reason, Surety Verify and the receipt. No scores or rule names here; those are in the Control room.

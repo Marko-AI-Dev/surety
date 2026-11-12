@@ -1,12 +1,13 @@
-import { useMemo, useState } from "react";
-import { CHAT_THRESHOLDS, DOCUMENTED_LIMITS, RECORDED_RUN_FILE } from "../data/evidence";
-import { ruleOf, shortAddress, usd, utcTime } from "../data/format";
+import { useState } from "react";
+import { DOCUMENTED_LIMITS, RECORDED_RUN_FILE } from "../data/evidence";
+import { shortAddress, usd, utcTime } from "../data/format";
 import { verdictPlain } from "../data/plain";
-import { QR_MAX_BYTES, qrMatrix, qrPath } from "../data/qr";
-import { type InviteView, type MessageView, type RunView, negotiatorEyes } from "../data/timeline";
+import type { RunView } from "../data/timeline";
 import type { SourcingRecord } from "../data/types";
-import { Arc, useMedia } from "./Spatial";
-import { Cards, CardMark, Chip, Meter, More, Panel, Term, Waiting } from "./bits";
+import { Conversations } from "./Conversations";
+import { SeatQr } from "./SeatQr";
+import { Arc } from "./Spatial";
+import { Cards, CardMark, Chip, More, Panel, Term, Waiting } from "./bits";
 
 const CHECK_LABELS: Record<string, string> = {
   crookOut: "The crook is out of the sourcing",
@@ -18,214 +19,6 @@ const CHECK_LABELS: Record<string, string> = {
   treasuryDownByExactlyTotal: "The treasury is down by exactly the deal total",
   everyLeadDecisionHasReason: "Every Lead decision has a reason",
 };
-
-// What Surety did with a supplier message: one plain sentence, with the scores and rule names under "Why".
-function Verdict({ m }: { m: MessageView }) {
-  const s = m.screen;
-  const rule = ruleOf(s?.reasonCodes);
-  const plain = verdictPlain(m);
-  return (
-    <div className="screen" data-verdict={m.delivered ? "deliver" : rule ? "red" : (m.card ?? "held")}>
-      <p className="screen-head">
-        {m.card ? <CardMark card={m.card} /> : null}
-        {plain.text}
-      </p>
-      <More label="Why">
-        {rule ? (
-          <p className="screen-detail">
-            Stopped by a fixed rule (<code>{rule}</code>): {s?.rules?.results.find((x) => x.id === rule)?.detail}. The model was not asked.
-          </p>
-        ) : (
-          <>
-            <p className="screen-detail">
-              A model scored the message{s?.samples ? `, ${s.samples.length} times because the first answer was close to the line` : ""}. To be delivered it must read as
-              ordinary business and must not try to steer the agent.
-            </p>
-            <Meter label="Ordinary" value={s?.satisfaction} threshold={CHAT_THRESHOLDS.deliverMinOrdinary} good="above" />
-            <Meter label="Steering" value={s?.injectionRisk} threshold={CHAT_THRESHOLDS.deliverMaxSteering} good="below" />
-            {s?.samples ? <p className="screen-detail">Steering each time: {s.samples.map((x) => x.injectionRisk.toFixed(2)).join(", ")}. A card at {CHAT_THRESHOLDS.yellowMinSteering.toFixed(2)} or more.</p> : null}
-          </>
-        )}
-      </More>
-    </div>
-  );
-}
-
-// One supplier's conversation, as the operator or as the Negotiator saw it.
-function Thread({ view, inv, eyes }: { view: RunView; inv: InviteView; eyes: "operator" | "negotiator" }) {
-  const mine = view.messages.filter((m) => m.supplier === inv.address);
-  const inbox = negotiatorEyes(view.messages).filter((i) => i.supplier === inv.address);
-  if (inv.invited && mine.length === 0) return <Waiting>No messages yet.</Waiting>;
-  return (
-    <ol className="thread">
-      {eyes === "operator"
-        ? mine.map((m) => (
-            <li key={m.index} className="msg" data-kind={m.kind} data-held={m.kind === "from_supplier" && !m.delivered}>
-              <p className="msg-meta">
-                {m.kind === "to_supplier" ? "Negotiator" : m.kind === "report" ? "Negotiator's report to the Lead" : inv.name}
-                <time>{utcTime(m.atMs)}</time>
-              </p>
-              {m.kind === "report" && m.offer ? (
-                <p className="msg-body">
-                  <span className="num">{usd(m.offer.unitCents)}</span> a unit, {m.offer.quantity} units, {m.offer.deliveryDays} days. {m.body}
-                </p>
-              ) : (
-                <p className="msg-body">{m.body}</p>
-              )}
-              {m.kind === "from_supplier" ? <Verdict m={m} /> : null}
-            </li>
-          ))
-        : inbox.map((i) => (
-            <li key={i.index} className="msg" data-kind={i.kind} data-held={"withheld" in i}>
-              <p className="msg-meta">
-                {i.kind === "to_supplier" ? "Negotiator" : inv.name}
-                <time>{utcTime(i.atMs)}</time>
-              </p>
-              {"withheld" in i ? (
-                <p className="msg-body withheld">Withheld by Surety. The Negotiator sees only this line{i.card ? ` and a ${i.card} card` : ""}.</p>
-              ) : (
-                <p className="msg-body">{i.text}</p>
-              )}
-            </li>
-          ))}
-    </ol>
-  );
-}
-
-function LaneMeta({ inv, eyes }: { inv: InviteView; eyes: "operator" | "negotiator" }) {
-  if (!inv.invited) return <>Not invited yet</>;
-  return (
-    <>
-      <Chip tone={inv.status === "out" ? "stop" : "plain"}>{inv.status === "out" ? "Removed" : "Active"}</Chip>
-      <Cards {...inv.cards} />
-      {inv.quote && eyes === "operator" ? <Chip tone="money">Final price {usd(inv.quote.unitCents)}</Chip> : null}
-      {inv.quote && eyes === "negotiator" ? <Chip tone="plain">Final price in</Chip> : null}
-    </>
-  );
-}
-
-// Four conversations do not fit side by side on a laptop at a size anyone can read. So the pane shows
-// all four suppliers as a short list (who is in, who is out, cards, quotes, how many messages and how
-// many were held) and one conversation at full reading width beside it. "Side by side" is still one
-// click away for a wide screen.
-function Lanes({ view, eyes }: { view: RunView; eyes: "operator" | "negotiator" }) {
-  const [pick, setPick] = useState<string | null>(null);
-  const [sideBySide, setSideBySide] = useState(false);
-  const narrow = useMedia("(max-width: 760px)");
-  const chosen = view.invites.find((i) => i.address === pick) ?? view.invites[0];
-  const counts = (address: string) => {
-    const from = view.messages.filter((m) => m.supplier === address && m.kind === "from_supplier");
-    const all = view.messages.filter((m) => m.supplier === address && m.kind !== "report");
-    return { all: all.length, held: from.filter((m) => !m.delivered).length };
-  };
-
-  if (sideBySide && !narrow) {
-    return (
-      <div className="lanes-wrap">
-        <p className="lanes-switch">
-          <button type="button" className="btn" onClick={() => setSideBySide(false)}>
-            One at a time
-          </button>
-        </p>
-        <div className="lanes">
-          {view.invites.map((inv) => (
-            <article key={inv.address} className="lane" data-status={inv.status} data-invited={inv.invited}>
-              <header className="lane-head">
-                <h3>{inv.name}</h3>
-                <p className="lane-meta">
-                  <LaneMeta inv={inv} eyes={eyes} />
-                </p>
-                <p className="mono lane-wallet">{shortAddress(inv.address)}</p>
-              </header>
-              <Thread view={view} inv={inv} eyes={eyes} />
-            </article>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="lanes-wrap">
-      <div className="lane-pick">
-        <ul className="lane-list" aria-label="Suppliers in this negotiation">
-          {view.invites.map((inv) => {
-            const c = counts(inv.address);
-            return (
-              <li key={inv.address}>
-                <button type="button" className="lane-row" aria-pressed={chosen?.address === inv.address} data-status={inv.status} onClick={() => setPick(inv.address)}>
-                  <span className="lane-row-name">{inv.name}</span>
-                  <span className="lane-meta">
-                    <LaneMeta inv={inv} eyes={eyes} />
-                  </span>
-                  <span className="lane-row-count">
-                    {c.all === 1 ? "1 message" : `${c.all} messages`}
-                    {c.held > 0 ? <span className="lane-row-held">, {c.held} held</span> : null}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        {narrow ? null : (
-          <button type="button" className="btn lanes-all" onClick={() => setSideBySide(true)}>
-            Side by side
-          </button>
-        )}
-      </div>
-      {chosen ? (
-        <article className="lane lane-solo" data-status={chosen.status} data-invited={chosen.invited} aria-label={`Conversation with ${chosen.name}`}>
-          <header className="lane-head">
-            <h3>{chosen.name}</h3>
-            <p className="mono lane-wallet">{shortAddress(chosen.address)}</p>
-          </header>
-          <Thread view={view} inv={chosen} eyes={eyes} />
-        </article>
-      ) : null}
-    </div>
-  );
-}
-
-// The supplier seat as a QR code. A phone cannot open "localhost", so the address is editable: put
-// in this machine's network address, or the hosted one. The code is drawn here, in the browser, by
-// src/data/qr.ts; nothing is sent to a QR service. Always dark on white, whatever the theme.
-function SeatQr() {
-  const [base, setBase] = useState(() => `${location.origin}${location.pathname}`);
-  const url = `${base.trim().replace(/#.*$/, "")}#/supplier`;
-  const local = /\/\/(localhost|127\.0\.0\.1|\[::1\])([:/]|$)/.test(url);
-  const code = useMemo(() => {
-    if (new TextEncoder().encode(url).length > QR_MAX_BYTES) return null;
-    return qrPath(qrMatrix(url));
-  }, [url]);
-  return (
-    <div className="seat-qr">
-      {code ? (
-        <svg className="qr" viewBox={`0 0 ${code.size} ${code.size}`} role="img" aria-label={`QR code for ${url}`} shapeRendering="crispEdges">
-          <rect width={code.size} height={code.size} fill="#ffffff" />
-          <path d={code.d} fill="#000000" />
-        </svg>
-      ) : (
-        <Waiting>That address is too long for the QR code. Use a shorter one.</Waiting>
-      )}
-      <div className="seat-qr-side">
-        <label className="field">
-          <span>Address phones should open</span>
-          <input type="url" value={base} onChange={(e) => setBase(e.target.value)} spellCheck={false} autoCapitalize="off" />
-        </label>
-        <p className="seat-url mono">{url}</p>
-        {local ? (
-          <p className="fine" data-tone="held">
-            A phone cannot reach "localhost". Replace it with this machine's network address (start the app with <code>pnpm web --host</code>) or the hosted
-            address.
-          </p>
-        ) : null}
-        <p className="fine">
-          Practice mode needs no backend and runs the bouncer's real code rules. <a href="#/supplier">Open the seat here</a>
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export function Control({ record, view, replaying, flat }: { record: SourcingRecord; view: RunView; replaying: boolean; flat: boolean }) {
   const [eyes, setEyes] = useState<"operator" | "negotiator">("operator");
@@ -300,7 +93,11 @@ export function Control({ record, view, replaying, flat }: { record: SourcingRec
       </Panel>
 
       <Panel title="Let someone play a supplier" note="Scan to open the supplier seat on a phone.">
-        <SeatQr />
+        <SeatQr page="supplier" tokenLabel="Supplier token for the judge's seat" tokenHelp="The code now opens the live seat as that supplier." />
+      </Panel>
+
+      <Panel title="The inspector's phone" note="The second key. Scan this with the inspector's own phone, never on the big screen.">
+        <SeatQr page="inspector" tokenLabel="Inspector token" tokenHelp="The code now opens the inspector's page. Whoever scans it can confirm or refuse a shipment." />
       </Panel>
     </>
   );
@@ -410,7 +207,7 @@ export function Control({ record, view, replaying, flat }: { record: SourcingRec
               </button>
             </div>
           ),
-          body: view.opened ? <Lanes view={view} eyes={eyes} /> : <Waiting>The sourcing has not opened yet.</Waiting>,
+          body: view.opened ? <Conversations record={record} view={view} eyes={eyes} /> : <Waiting>The purchase has not opened yet.</Waiting>,
         },
         { id: "audit", title: "Audit", note: "What was stopped, every step in order, and the checks on the whole run.", body: audit },
       ]}

@@ -1,31 +1,43 @@
 import { useEffect, useState } from "react";
+import { dealStages } from "./data/buyer";
 import { RECORDED_RUN_FILE } from "./data/evidence";
+import { headline } from "./data/livescreen";
 import { GLOSSARY, HOW_IT_WORKS, statusLine } from "./data/plain";
 import { type Mode, useRun } from "./run";
-import { dealStages } from "./data/buyer";
 import { AttackLab } from "./views/AttackLab";
-import { Business, Stages } from "./views/Business";
+import { Business, LedgerLinks, Numbers, Stages } from "./views/Business";
 import { Control } from "./views/Control";
+import { Inspector } from "./views/Inspector";
 import { MoneyRail } from "./views/MoneyRail";
 import { ReplayBar } from "./views/ReplayBar";
 import { Detail, useFlat } from "./views/Spatial";
-import { More } from "./views/bits";
+import { Start } from "./views/Start";
 import { type SeatMode, Supplier } from "./views/Supplier";
-import { Waiting } from "./views/bits";
+import { More, Waiting } from "./views/bits";
 
-type Route = "buy" | "control" | "attack" | "supplier";
-// `short` is the label on a phone, where the four tabs share one row and never scroll.
-const ROUTES: { id: Route; hash: string; label: string; short: string }[] = [
-  { id: "buy", hash: "#/", label: "Buy", short: "Buy" },
-  { id: "control", hash: "#/control", label: "Control room", short: "Control" },
-  { id: "attack", hash: "#/attack", label: "Attack lab", short: "Attacks" },
-  { id: "supplier", hash: "#/supplier", label: "Supplier seat", short: "Supplier" },
+type Route = "buy" | "control" | "attack" | "supplier" | "inspector";
+// `short` is the label on a phone, where the tabs share one row and never scroll. The inspector's
+// page is reached by its own link, not from the bar.
+const ROUTES: { id: Route; hash: string; label: string; short: string; nav: boolean }[] = [
+  { id: "buy", hash: "#/", label: "Purchase", short: "Purchase", nav: true },
+  { id: "control", hash: "#/control", label: "Control room", short: "Control", nav: true },
+  { id: "attack", hash: "#/attack", label: "Attack lab", short: "Attacks", nav: true },
+  { id: "supplier", hash: "#/supplier", label: "Supplier seat", short: "Supplier", nav: true },
+  { id: "inspector", hash: "#/inspector", label: "Inspector", short: "Inspector", nav: false },
 ];
 
 function parseHash(hash: string): { route: Route; token: string | null } {
   const [path = "", query = ""] = hash.replace(/^#/, "").split("?");
   const route = ROUTES.find((r) => r.hash === `#${path}`)?.id ?? "buy";
   return { route, token: new URLSearchParams(query).get("t") };
+}
+
+// The page's own query: ?mode=recorded opens on the recorded run; ?sim=6 feeds a recorded run through
+// the live path at six times speed, for testing without a backend.
+function startup(): { mode: Mode; sim: number | null } {
+  const q = new URLSearchParams(location.search);
+  const sim = q.has("sim") ? Math.min(60, Math.max(1, Number(q.get("sim")) || 6)) : null;
+  return { mode: q.get("mode") === "recorded" ? "replay" : "live", sim };
 }
 
 // Light is the default whatever the device prefers; dark is a choice, remembered on this device.
@@ -41,27 +53,33 @@ function storedTheme(): Theme {
 
 export function App() {
   const [{ route }, setLocation] = useState(() => parseHash(location.hash));
-  // The supplier token arrives after the # and is kept in memory only. It is removed from the address
-  // bar at once, so it is not left in history, and it is never written to storage.
-  const [token, setToken] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>("replay");
+  // A supplier's or the inspector's token arrives after the # and is kept in memory only. It is removed
+  // from the address bar at once, so it is not left in history, and it is never written to storage.
+  const [supplierToken, setSupplierToken] = useState<string | null>(null);
+  const [inspectorToken, setInspectorToken] = useState<string | null>(null);
+  const [boot] = useState(startup);
+  const [mode, setMode] = useState<Mode>(boot.mode);
+  // True once a person has picked a mode: after that the app never switches by itself.
+  const [chose, setChose] = useState(boot.mode === "replay");
+  const [fellBack, setFellBack] = useState(false);
   const [theme, setTheme] = useState<Theme>(storedTheme);
-  const [seatMode, setSeatMode] = useState<SeatMode>("replay");
+  const [seatMode, setSeatMode] = useState<SeatMode>("practice");
   // Flat: no depth, no tilt, solid panels. On for reduced motion and narrow screens, or by the button.
   const [userFlat, setUserFlat] = useState(false);
   const [help, setHelp] = useState(false);
   const flatWhy = useFlat(userFlat);
   const flat = flatWhy !== null;
-  const run = useRun(mode);
+  const run = useRun(mode, boot.sim);
 
   useEffect(() => {
     const read = () => {
       const next = parseHash(location.hash);
-      if (next.token) {
-        setToken(next.token);
+      if (next.token && next.route === "supplier") {
+        setSupplierToken(next.token);
         setSeatMode("live");
-        history.replaceState(null, "", `${location.pathname}${location.search}#/supplier`);
       }
+      if (next.token && next.route === "inspector") setInspectorToken(next.token);
+      if (next.token) history.replaceState(null, "", `${location.pathname}${location.search}#/${next.route}`);
       setLocation((cur) => {
         if (cur.route !== next.route) scrollTo(0, 0);
         return { route: next.route, token: null };
@@ -85,9 +103,28 @@ export function App() {
     }
   }, [theme, flat, flatWhy]);
 
+  // With no backend to talk to (a static copy of the site, or the API not started), show the recorded
+  // run and say so. Only before a person has chosen, and only if live never connected.
+  const liveDown = mode === "live" && run.live?.status === "error" && !run.live.everConnected;
+  useEffect(() => {
+    if (liveDown && !chose) {
+      setMode("replay");
+      setFellBack(true);
+    }
+  }, [liveDown, chose]);
+
+  const pick = (m: Mode) => {
+    setChose(true);
+    setFellBack(false);
+    setMode(m);
+  };
+
   const { record, view, replay } = run;
   const current = replay && view ? (view.trail[view.trail.length - 1] ?? null) : null;
-  const seat = route === "supplier";
+  const phonePage = route === "supplier" || route === "inspector";
+  const board = route === "buy" || route === "control";
+  const simulated = mode === "live" && run.live?.simulated === true;
+  const status = record && view ? statusLine(record, view) : null;
 
   return (
     <div className="app" data-route={route}>
@@ -100,7 +137,7 @@ export function App() {
           <span className="nav-short">Test, no real money</span>
         </p>
         <nav aria-label="Views">
-          {ROUTES.map((r) => (
+          {ROUTES.filter((r) => r.nav).map((r) => (
             <a key={r.id} href={r.hash} aria-current={route === r.id ? "page" : undefined}>
               <span className="nav-full">{r.label}</span>
               <span className="nav-short">{r.short}</span>
@@ -109,59 +146,84 @@ export function App() {
         </nav>
         <div className="top-tools">
           <div className="seg" role="group" aria-label="Data source">
-            <button type="button" aria-pressed={mode === "replay"} onClick={() => setMode("replay")} title="Play back the recorded test purchase">
-              Recording
-            </button>
-            <button type="button" aria-pressed={mode === "live"} onClick={() => setMode("live")} title="Watch a purchase as it happens. Needs the Surety backend running">
+            <button type="button" aria-pressed={mode === "live"} onClick={() => pick("live")} title="Watch a purchase as it happens. Needs the Surety backend running">
               Live
             </button>
+            <button type="button" aria-pressed={mode === "replay"} onClick={() => pick("replay")} title="Play back a recorded test purchase">
+              Recorded
+            </button>
           </div>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
-            aria-pressed={theme === "dark"}
-          >
+          <button type="button" className="btn" onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} aria-pressed={theme === "dark"}>
             Dark
           </button>
-          <button type="button" className="btn flat-btn" onClick={() => setUserFlat((v) => !v)} aria-pressed={flatWhy === "user" || flatWhy === "motion"} disabled={flatWhy === "motion"} title={flatWhy === "motion" ? "On because this device asks for reduced motion" : "Turn off the 3D layout and the glass"}>
+          <button
+            type="button"
+            className="btn flat-btn"
+            onClick={() => setUserFlat((v) => !v)}
+            aria-pressed={flatWhy === "user" || flatWhy === "motion"}
+            disabled={flatWhy === "motion"}
+            title={flatWhy === "motion" ? "On because this device asks for reduced motion" : "Turn off the 3D layout and the glass"}
+          >
             Flat
           </button>
         </div>
       </header>
 
-      {mode === "replay" && !seat && route !== "attack" ? (
-        <p className="source-banner">
-          <span title={`Every message, amount and transaction comes from ${RECORDED_RUN_FILE}`}>
-            You are watching a recording of a real test purchase made by AI agents on 9 Nov 2026. No real money is involved.
-          </span>{" "}
+      {/* What you are looking at. A recording and a simulated feed are always badged; live never is. */}
+      {!phonePage && route !== "attack" ? (
+        <p className="source-banner" data-tone={mode === "live" && run.live?.status === "error" ? "stop" : "plain"}>
+          {mode === "replay" ? (
+            <>
+              <span className="badge" data-kind="recorded">
+                Recorded
+              </span>
+              <span title={`Every message, amount and transaction comes from ${RECORDED_RUN_FILE}`}>
+                {fellBack ? "The live backend is not reachable, so this is a recording of " : "This is a recording of "}a real test purchase made by AI agents on 9 Nov 2026.
+              </span>
+            </>
+          ) : simulated ? (
+            <>
+              <span className="badge" data-kind="simulated">
+                Simulated feed
+              </span>
+              <span>A recorded run played through the live screen for testing. This is not live.</span>
+            </>
+          ) : run.live?.status === "error" ? (
+            <span>
+              {run.live.everConnected ? "Lost the connection to the Surety backend. Showing the last state it sent. " : "Cannot reach the Surety backend. "}
+              {run.live.message}
+            </span>
+          ) : (
+            <>
+              <span className="badge" data-kind="live">
+                Live
+              </span>
+              <span>{run.live?.status === "connecting" ? "Connecting to the Surety backend." : "This purchase is happening now on the XRP test ledger. No real money is involved."}</span>
+            </>
+          )}{" "}
           <button type="button" className="link-btn" onClick={() => setHelp(true)}>
             How it works
           </button>
         </p>
       ) : null}
-      {mode === "live" && run.live ? (
-        <p className="source-banner" data-tone={run.live.status === "error" ? "stop" : "plain"}>
-          {run.live.status === "error"
-            ? `Live mode cannot reach the Surety API: ${run.live.message} Start the API and run the dev server with API_TOKEN_VIEW set, or switch to the recorded run.`
-            : run.live.status === "connecting"
-              ? "Connecting to the Surety API."
-              : (run.live.message ?? `Live: sourcing ${record?.sourcing.ref ?? ""}, refreshed every 2 seconds.`)}
-        </p>
-      ) : null}
 
-      {record && view && !seat && route !== "attack" ? (
+      {record && view && status && board ? (
         <section className="dealbar glass" aria-label="Where the money is, and where the deal stands">
-          {(() => {
-            const s = statusLine(record, view);
-            return (
-              <p className="now" data-tone={s.tone} aria-live="polite">
-                <strong>{s.now}</strong> <span>{s.detail}</span>
-              </p>
-            );
-          })()}
-          <MoneyRail record={record} view={view} />
-          <Stages stages={dealStages(record, view)} />
+          <p className="now" data-tone={status.tone} aria-live="polite">
+            <strong>{status.now}</strong> <span>{status.detail}</span>
+          </p>
+          {route === "buy" ? (
+            <>
+              <Numbers h={headline(record, view)} />
+              <LedgerLinks record={record} view={view} />
+              <Stages stages={dealStages(record, view)} thin />
+            </>
+          ) : (
+            <>
+              <MoneyRail record={record} view={view} />
+              <Stages stages={dealStages(record, view)} />
+            </>
+          )}
         </section>
       ) : null}
 
@@ -169,9 +231,15 @@ export function App() {
         {route === "attack" ? (
           <AttackLab />
         ) : route === "supplier" ? (
-          <Supplier record={record} view={view} token={token} mode={seatMode} setMode={setSeatMode} />
+          <Supplier record={mode === "replay" ? record : null} view={mode === "replay" ? view : null} token={supplierToken} mode={seatMode} setMode={setSeatMode} />
+        ) : route === "inspector" ? (
+          <Inspector token={inspectorToken} />
         ) : !record || !view ? (
-          <Waiting>{mode === "live" ? "No sourcing to show yet. When the Lead opens one it appears here." : "Loading the recorded run."}</Waiting>
+          mode === "live" && run.live?.status === "ok" && !simulated ? (
+            <Start waiting="No purchase is running." />
+          ) : (
+            <Waiting>{mode === "live" ? (simulated ? "The simulated purchase is about to open." : "Connecting to the Surety backend.") : "Loading the recorded run."}</Waiting>
+          )
         ) : route === "control" ? (
           <Control record={record} view={view} replaying={mode === "replay"} flat={flat} />
         ) : (
@@ -179,7 +247,8 @@ export function App() {
         )}
       </main>
 
-      {replay && route !== "attack" && !(seat && seatMode !== "replay") ? <ReplayBar replay={replay} current={current} /> : null}
+      {replay && board ? <ReplayBar replay={replay} current={current} /> : null}
+      {replay && route === "supplier" && seatMode === "replay" ? <ReplayBar replay={replay} current={current} /> : null}
 
       {help ? (
         <Detail title="How Surety works" onClose={() => setHelp(false)}>

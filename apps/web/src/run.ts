@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { recordedRun } from "./data/evidence";
-import { ApiError, createLiveSource } from "./data/live";
+import { ApiError, createLiveSource, createSimSource } from "./data/live";
 import { type RunView, type Step, buildTimeline, timelineBounds, viewAt } from "./data/timeline";
 import type { SourcingRecord } from "./data/types";
 
@@ -28,7 +28,7 @@ export interface Run {
   view: RunView | null;
   steps: Step[];
   replay: ReplayControls | null;
-  live: { status: "connecting" | "ok" | "error"; message: string | null; updatedAt: number | null } | null;
+  live: { status: "connecting" | "ok" | "error"; message: string | null; updatedAt: number | null; simulated: boolean; everConnected: boolean } | null;
 }
 
 const TICK_MS = 100;
@@ -99,39 +99,43 @@ function useReplay(active: boolean): { record: SourcingRecord; steps: Step[]; co
   };
 }
 
-function useLive(active: boolean) {
+// `sim` is a speed for the simulated feed (a recorded run through the live path), or null for the
+// real API. The simulated feed is for testing and is always badged.
+function useLive(active: boolean, sim: number | null) {
   const [record, setRecord] = useState<SourcingRecord | null>(null);
-  const [state, setState] = useState<NonNullable<Run["live"]>>({ status: "connecting", message: null, updatedAt: null });
+  const [asOf, setAsOf] = useState<number>(() => Date.now());
+  const [state, setState] = useState<NonNullable<Run["live"]>>({ status: "connecting", message: null, updatedAt: null, simulated: sim !== null, everConnected: false });
   useEffect(() => {
     if (!active) return;
     let stopped = false;
-    const source = createLiveSource((url, init) => fetch(url, init));
+    const source = sim !== null ? createSimSource(recordedRun, { speed: sim }) : createLiveSource((url, init) => fetch(url, init));
     const poll = async () => {
       try {
         const next = await source.latest();
         if (stopped) return;
         setRecord(next);
-        setState({ status: "ok", message: next ? null : "No sourcing has been opened yet.", updatedAt: Date.now() });
+        setAsOf(source.now());
+        setState({ status: "ok", message: next ? null : "No purchase has been started yet.", updatedAt: Date.now(), simulated: source.simulated, everConnected: true });
       } catch (e) {
         if (stopped) return;
         const message = e instanceof ApiError ? `${e.message} (${e.code})` : "The Surety API is not reachable.";
-        setState((s) => ({ status: "error", message, updatedAt: s.updatedAt }));
+        setState((s) => ({ ...s, status: "error", message }));
       }
     };
     void poll();
-    const id = setInterval(() => void poll(), 2000);
+    const id = setInterval(() => void poll(), sim !== null ? 1000 : 2000);
     return () => {
       stopped = true;
       clearInterval(id);
     };
-  }, [active]);
-  return { record, state };
+  }, [active, sim]);
+  return { record, state, asOf };
 }
 
-export function useRun(mode: Mode): Run {
+export function useRun(mode: Mode, sim: number | null = null): Run {
   const replay = useReplay(mode === "replay");
-  const live = useLive(mode === "live");
-  const liveSteps = useMemo(() => (live.record ? buildTimeline(live.record) : []), [live.record]);
+  const live = useLive(mode === "live", sim);
+  const liveSteps = useMemo(() => (live.record ? buildTimeline(live.record, { now: live.asOf }) : []), [live.record, live.asOf]);
 
   if (mode === "replay") {
     return {

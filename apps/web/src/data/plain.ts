@@ -33,12 +33,24 @@ export function statusLine(record: SourcingRecord, view: RunView): StatusLine {
     };
   }
   if (view.refunded) {
-    return { now: `Refunded. ${total} is back in your treasury.`, detail: "The paperwork did not pass, so the ledger returned the money at the deadline.", tone: "stop" };
+    const why =
+      view.inspection === "refused"
+        ? "The inspector did not confirm the shipment, so the ledger returned the money at the deadline."
+        : !view.documents
+          ? "The supplier sent no paperwork before the deadline, so the ledger returned the money."
+          : view.inspection === "waiting"
+            ? "No inspector confirmed the shipment before the deadline, so the ledger returned the money."
+            : "The paperwork did not pass, so the ledger returned the money at the deadline.";
+    return { now: `Refunded. ${total} is back in your treasury.`, detail: why, tone: "stop" };
   }
   if (view.verified) {
     return record.verify?.outcome === "APPROVE"
       ? { now: `The paperwork passed. ${total} is being released to ${supplier}.`, detail: "Only Surety's signer can release it, and only after this check.", tone: "money" }
-      : { now: "The paperwork did not pass.", detail: `Your ${total} stays locked and the ledger returns it to you at the deadline.`, tone: "stop" };
+      : {
+          now: view.inspection === "refused" ? "The inspector did not confirm the shipment." : "The paperwork did not pass.",
+          detail: `Nothing is paid. Your ${total} stays locked and the ledger returns it to you at the deadline.`,
+          tone: "stop",
+        };
   }
   if (view.documents) {
     return {

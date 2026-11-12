@@ -50,8 +50,20 @@ export function openedAt(r: SourcingRecord): number {
   return Date.parse(r.sourcing.negotiationEndsAt) - r.sourcing.brief.negotiationSeconds * SECOND;
 }
 
-export function buildTimeline(r: SourcingRecord): Step[] {
+// When the job reached a state, from the record's own event log, when it has one. Live records and
+// newer evidence carry it; then the lock, the documents, the check and the payout have real times.
+function eventAt(r: SourcingRecord, to: string[]): number | null {
+  const e = (r.events ?? []).find((x) => to.includes(x.to));
+  const at = e ? Date.parse(e.at) : Number.NaN;
+  return Number.isFinite(at) ? at : null;
+}
+
+// `now` is the clock of a run still in progress. A recorded run has none: every step is in the past.
+export function buildTimeline(r: SourcingRecord, opts: { now?: number } = {}): Step[] {
   const steps: Step[] = [];
+  // Place a step at its recorded time when there is one, never before the step that precedes it.
+  const place = (cursor: number, real: number | null, gapSeconds: number) =>
+    real === null ? { at: cursor + gapSeconds * SECOND, timed: false } : { at: Math.max(cursor, real), timed: true };
   const t0 = openedAt(r);
   const closeAt = Date.parse(r.sourcing.negotiationEndsAt);
   const g = r.sourcing.brief.goods;
@@ -120,7 +132,10 @@ export function buildTimeline(r: SourcingRecord): Step[] {
       detail: `${dollars(inv.quote.unitCents)} a unit, ${dollars(inv.quote.totalCents)} in total`,
     });
   }
-  steps.push({ id: "closed", at: closeAt, timed: true, kind: "closed", title: "The negotiation ended" });
+  // In a live run the negotiation has ended only once its time is up or the Lead has decided.
+  if (opts.now === undefined || opts.now >= closeAt || r.sourcing.state !== "OPEN") {
+    steps.push({ id: "closed", at: closeAt, timed: true, kind: "closed", title: "The negotiation ended" });
+  }
 
   cursor = Math.max(cursor, closeAt);
   // Declined deals first, the accepted one last: a decline reopens the sourcing for the next supplier.
@@ -150,22 +165,25 @@ export function buildTimeline(r: SourcingRecord): Step[] {
 
   if (accepted && r.create) {
     const who = nameOf(r, accepted.supplier.address);
-    cursor += GAP.lock * SECOND;
+    const lockedAt = place(cursor, eventAt(r, ["LOCKED"]), GAP.lock);
+    cursor = lockedAt.at;
     steps.push({
       id: "locked",
       at: cursor,
-      timed: false,
+      timed: lockedAt.timed,
       kind: "locked",
       supplier: accepted.supplier.address,
       title: `${dollars(Number(r.job?.amount.cents ?? accepted.quote?.totalCents ?? 0))} was locked on the ledger`,
       detail: `Ledger ${r.create.ledgerIndex}, ${r.create.result}`,
     });
-    if (r.verify) {
-      cursor += GAP.documents * SECOND;
+    const deliveredAt = eventAt(r, ["DELIVERED"]);
+    if (r.verify || deliveredAt !== null) {
+      const documentsAt = place(cursor, deliveredAt, GAP.documents);
+      cursor = documentsAt.at;
       steps.push({
         id: "documents",
         at: cursor,
-        timed: false,
+        timed: documentsAt.timed,
         kind: "documents",
         supplier: accepted.supplier.address,
         title: `${who} sent its invoice and shipping document`,
@@ -182,33 +200,38 @@ export function buildTimeline(r: SourcingRecord): Step[] {
           detail: r.inspection.inspector ?? undefined,
         });
       }
-      cursor += GAP.verify * SECOND;
-      steps.push({
-        id: "verified",
-        at: cursor,
-        timed: false,
-        kind: "verified",
-        title: r.verify.outcome === "APPROVE" ? "The paperwork check passed" : "The paperwork check did not pass",
-        detail: r.verify.policyVersion,
-      });
+      if (r.verify) {
+        const verifiedAt = place(cursor, eventAt(r, ["APPROVED", "REJECTED_AWAITING_EXPIRY", "REVIEW_REQUIRED"]), GAP.verify);
+        cursor = verifiedAt.at;
+        steps.push({
+          id: "verified",
+          at: cursor,
+          timed: verifiedAt.timed,
+          kind: "verified",
+          title: r.verify.outcome === "APPROVE" ? "The paperwork check passed" : "The paperwork check did not pass",
+          detail: r.verify.policyVersion,
+        });
+      }
     }
     if (r.finish?.validated && r.finish.result === "tesSUCCESS") {
-      cursor += GAP.settle * SECOND;
+      const paidAt = place(cursor, eventAt(r, ["PAID"]), GAP.settle);
+      cursor = paidAt.at;
       steps.push({
         id: "paid",
         at: cursor,
-        timed: false,
+        timed: paidAt.timed,
         kind: "paid",
         supplier: accepted.supplier.address,
         title: `${who} was paid`,
         detail: `Ledger ${r.finish.ledgerIndex}, ${r.finish.result}`,
       });
     } else if (r.cancel?.validated && r.cancel.result === "tesSUCCESS") {
-      cursor += GAP.settle * SECOND;
+      const refundedAt = place(cursor, eventAt(r, ["REFUNDED"]), GAP.settle);
+      cursor = refundedAt.at;
       steps.push({
         id: "refunded",
         at: cursor,
-        timed: false,
+        timed: refundedAt.timed,
         kind: "refunded",
         title: "The ledger refunded the buyer after the deadline",
         detail: `Ledger ${r.cancel.ledgerIndex}, ${r.cancel.result}`,

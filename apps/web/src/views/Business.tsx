@@ -1,89 +1,21 @@
 import { useState } from "react";
-import { type FeedItem, type Stage, buyerFeed } from "../data/buyer";
+import type { Stage } from "../data/buyer";
 import { TRADE_RULES, TRADE_THRESHOLDS } from "../data/evidence";
-import { shortAddress, usd, utcTime } from "../data/format";
+import { shortAddress, usd } from "../data/format";
+import type { Headline } from "../data/livescreen";
 import type { InviteView, RunView } from "../data/timeline";
-import type { SourcingRecord } from "../data/types";
+import type { LedgerTx, SourcingRecord } from "../data/types";
+import { Conversations } from "./Conversations";
+import { SeatQr } from "./SeatQr";
 import { Arc, Detail } from "./Spatial";
-import { CardMark, Cards, Chip, Meter, More, Panel, Term, TxLink, Waiting } from "./bits";
+import { Cards, Chip, Meter, More, Panel, Term, TxLink, Waiting } from "./bits";
 
-// The buyer's view, and the demo's first screen. Three panes on the arc: the quotes, the negotiation
-// (in front to begin with) and the settlement. Scores, rule ids and held text live in the Control room.
+// The main screen: one purchase, as it happens. Three panes on the arc: the brief and the prices, the
+// conversations (in front), and the decision and payment. The same screen plays a recorded run.
 
-function Bubble({ item }: { item: FeedItem }) {
-  if (item.kind === "negotiator") {
-    return (
-      <li className="bubble" data-side="us">
-        <p className="bubble-who">
-          Your Negotiator to {item.to.length > 2 ? `${item.to.length} suppliers` : item.to.join(" and ")}
-          <time>{utcTime(item.atMs)}</time>
-        </p>
-        <p className="bubble-text">{item.text}</p>
-      </li>
-    );
-  }
-  if (item.kind === "supplier") {
-    return (
-      <li className="bubble" data-side="them">
-        <p className="bubble-who">
-          {item.name}
-          <time>{utcTime(item.atMs)}</time>
-        </p>
-        <p className="bubble-text">{item.text}</p>
-      </li>
-    );
-  }
-  if (item.kind === "held") {
-    return (
-      <li className="feed-note" data-tone={item.card === "red" || item.removed ? "stop" : "held"}>
-        {item.card ? <CardMark card={item.card} /> : null}
-        <span>
-          <strong>Surety held a message from {item.name.replace(/\.$/, "")}.</strong> Your agents never read it.
-          {item.removed ? " That supplier is now out of this purchase." : ""}
-        </span>
-      </li>
-    );
-  }
+export function Stages({ stages, thin }: { stages: Stage[]; thin?: boolean }) {
   return (
-    <li className="feed-note" data-tone={item.overMaximum ? "held" : "money"}>
-      <span>
-        <strong>{item.name}</strong> submitted a final price of <span className="num">{usd(item.unitCents)}</span> a unit.
-        {item.overMaximum ? " That is over your limit." : ""}
-      </span>
-    </li>
-  );
-}
-
-// A pane holds what it shows and never scrolls inside itself. The conversation shows its newest
-// messages; the earlier ones open in place, and the pane grows to hold them.
-export const FEED_TAIL = 6;
-
-function Feed({ items, opened, only }: { items: FeedItem[]; opened: boolean; only: boolean }) {
-  const [all, setAll] = useState(false);
-  const hidden = all ? 0 : Math.max(0, items.length - FEED_TAIL);
-  const shown = hidden > 0 ? items.slice(hidden) : items;
-  return (
-    <ol className="feed" aria-label="Messages, oldest first">
-      {items.length === 0 ? (
-        <li className="feed-empty">{!opened ? "The Lead has not opened the sourcing yet." : only ? "No messages with this supplier yet." : "Your Negotiator has not started talking yet."}</li>
-      ) : null}
-      {items.length > FEED_TAIL ? (
-        <li className="feed-more">
-          <button type="button" className="btn" aria-expanded={all} onClick={() => setAll((v) => !v)}>
-            {all ? "Show only the latest" : `Show ${hidden} earlier`}
-          </button>
-        </li>
-      ) : null}
-      {shown.map((i) => (
-        <Bubble key={i.key} item={i} />
-      ))}
-    </ol>
-  );
-}
-
-export function Stages({ stages }: { stages: Stage[] }) {
-  return (
-    <ol className="stages" aria-label="The deal, step by step">
+    <ol className="stages" data-thin={thin || undefined} aria-label="The deal, step by step">
       {stages.map((s, i) => (
         <li key={s.id} className="stage" data-state={s.state} aria-current={s.state === "now" ? "step" : undefined}>
           <span className="stage-dot" aria-hidden="true">
@@ -97,21 +29,99 @@ export function Stages({ stages }: { stages: Stage[] }) {
   );
 }
 
+const PRIORITY: Record<string, string> = { price: "The lowest price", speed: "The fastest delivery", balanced: "A balance of price and speed" };
+
+// The three numbers on top, worked out from the record: how far the price moved, how many crooks were
+// removed, and where the money is.
+export function Numbers({ h }: { h: Headline }) {
+  const moved = h.movedCents ?? 0;
+  return (
+    <dl className="numbers">
+      <div data-tone={moved > 0 ? "ok" : "plain"}>
+        <dt>Price per unit</dt>
+        <dd className="num">
+          {h.openingBestCents === null ? (
+            <span className="nil">No offer yet</span>
+          ) : (
+            <>
+              {h.bestNowCents !== null && h.bestNowCents !== h.openingBestCents ? <s>{usd(h.openingBestCents)}</s> : null} {usd(h.bestNowCents ?? h.openingBestCents)}
+            </>
+          )}
+        </dd>
+        <dd className="numbers-note">
+          {h.openingBestCents === null
+            ? "Best opening offer against best offer now"
+            : moved > 0
+              ? `Negotiated down ${usd(moved)} a unit, ${usd(h.movedTotalCents ?? 0, { decimals: false })} on the order`
+              : moved < 0
+                ? `Best offer is ${usd(-moved)} a unit above the opening one`
+                : "Best offer so far. No movement yet"}
+        </dd>
+      </div>
+      <div data-tone={h.ejected > 0 ? "stop" : "plain"}>
+        <dt>Suppliers removed</dt>
+        <dd className="num">{h.ejected}</dd>
+        <dd className="numbers-note">{h.ejected > 0 ? "For trying to trick the agents or redirect the money" : "For trying to trick the agents. None so far"}</dd>
+      </div>
+      <div data-tone={h.money.state === "paid" ? "ok" : h.money.state === "locked" ? "money" : h.money.state === "refunded" ? "stop" : "plain"}>
+        <dt>{h.money.state === "paid" ? "Paid to the supplier" : h.money.state === "refunded" ? "Refunded to you" : h.money.state === "locked" ? "Locked on the ledger" : "Money moved"}</dt>
+        <dd className="num">{usd(h.money.cents)}</dd>
+        <dd className="numbers-note">
+          {h.money.tx ? (
+            <a href={h.money.tx.explorer} target="_blank" rel="noreferrer">
+              See it on the XRP Ledger, ledger {h.money.tx.ledgerIndex}
+            </a>
+          ) : (
+            "Nothing has left your treasury"
+          )}
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+// Every move of the money, as a link to the public test ledger.
+export function LedgerLinks({ record, view }: { record: SourcingRecord; view: RunView }) {
+  const links: { label: string; tx: LedgerTx }[] = [];
+  if (view.locked && record.create) links.push({ label: "Lock", tx: record.create });
+  if (view.paid && record.finish) links.push({ label: "Payment", tx: record.finish });
+  if (view.refunded && record.cancel) links.push({ label: "Refund", tx: record.cancel });
+  return (
+    <p className="ledger-links">
+      <span className="ledger-links-name">XRP Ledger escrow</span>
+      {links.length === 0 ? (
+        <span className="ledger-links-none">No transaction yet. Each lock, payment and refund will link to testnet.xrpl.org here.</span>
+      ) : (
+        links.map((l) => (
+          <a key={l.label} href={l.tx.explorer} target="_blank" rel="noreferrer" title={`${l.tx.txHash}, result ${l.tx.result}`}>
+            {l.label} <span className="mono">{l.tx.txHash.slice(0, 8)}</span> on testnet.xrpl.org
+          </a>
+        ))
+      )}
+    </p>
+  );
+}
+
 function SupplierDetail({ record, view, invite, onClose }: { record: SourcingRecord; view: RunView; invite: InviteView; onClose: () => void }) {
   const mine = view.messages.filter((m) => m.supplier === invite.address && m.kind === "from_supplier");
   const delivered = mine.filter((m) => m.delivered);
   const last = delivered[delivered.length - 1];
   const max = record.sourcing.brief.goods.maxUnitCents;
+  const days = record.invites.find((i) => i.address === invite.address)?.deliveryDays;
   return (
     <Detail title={invite.name} onClose={onClose}>
       <p className="detail-lead">
-        {invite.status === "out" ? <Chip tone="stop">Removed from this purchase</Chip> : invite.selected ? <Chip tone="ok">Selected</Chip> : <Chip tone="plain">In the negotiation</Chip>}{" "}
+        {invite.status === "out" ? <Chip tone="stop">Removed from this purchase</Chip> : invite.selected ? <Chip tone="ok">Chosen</Chip> : <Chip tone="plain">In the negotiation</Chip>}{" "}
         <Cards {...invite.cards} />
       </p>
       <dl className="detail-facts">
         <div>
           <dt>Approved wallet</dt>
           <dd className="mono">{shortAddress(invite.address)}</dd>
+        </div>
+        <div>
+          <dt>Final price</dt>
+          <dd className="num">{invite.quote ? `${usd(invite.quote.unitCents)} a unit` : "None yet"}</dd>
         </div>
         <div>
           <dt>Messages delivered</dt>
@@ -121,14 +131,11 @@ function SupplierDetail({ record, view, invite, onClose }: { record: SourcingRec
           <dt>Messages held by Surety</dt>
           <dd className="num">{mine.length - delivered.length}</dd>
         </div>
-        <div>
-          <dt>Committed quote</dt>
-          <dd className="num">{invite.quote ? `${usd(invite.quote.unitCents)} a unit` : "None"}</dd>
-        </div>
       </dl>
       {invite.quote ? (
         <p className="fine">
-          {usd(invite.quote.totalCents)} in total for {invite.quote.quantity} units. {invite.quote.unitCents > max ? "Over your maximum, so it cannot be locked." : "Within your brief."}
+          {usd(invite.quote.totalCents)} in total for {invite.quote.quantity} units{days ? `, delivered in ${days} days` : ""}.{" "}
+          {invite.quote.unitCents > max ? "Over your limit, so it cannot be locked." : "Within your limit."}
         </p>
       ) : null}
       {last ? (
@@ -145,28 +152,28 @@ function SupplierDetail({ record, view, invite, onClose }: { record: SourcingRec
 }
 
 export function Business({ record, view, replaying, flat }: { record: SourcingRecord; view: RunView; replaying: boolean; flat: boolean }) {
-  const [only, setOnly] = useState<string | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
   const b = record.sourcing.brief;
   const g = b.goods;
   const invited = view.invites.filter((i) => i.invited);
   const decision = view.accepted?.decision ?? null;
   const overruled = view.decisions.filter((d) => d.decision?.final === "decline");
-  const feed = buyerFeed(record, view);
-  const items = only ? feed.filter((i) => (i.kind === "negotiator" ? i.suppliers.includes(only) : i.supplier === only)) : feed;
   const picked = detail ? view.invites.find((i) => i.address === detail) : undefined;
+  const daysOf = (address: string) => (view.invites.find((i) => i.address === address)?.quote ? record.invites.find((i) => i.address === address)?.deliveryDays : null);
 
   const quoteNote = (i: InviteView): { tone: "ok" | "held" | "stop" | "plain"; text: string } => {
     if (i.status === "out") return { tone: "stop", text: "Removed" };
     if (!i.quote) return { tone: "plain", text: i.replied ? "Still talking" : "No reply" };
     if (i.quote.unitCents > g.maxUnitCents) return { tone: "held", text: "Over your limit" };
+    const days = daysOf(i.address);
+    if (b.latestDeliveryDays && days && days > b.latestDeliveryDays) return { tone: "held", text: "Too slow" };
     if (i.selected) return { tone: "ok", text: "Chosen" };
     return { tone: "plain", text: "Within your limit" };
   };
 
-  const quotes = (
+  const brief = (
     <>
-      <Panel title="Your brief" note={replaying ? undefined : `Sourcing ${record.sourcing.ref}`}>
+      <Panel title="Your brief" note={replaying ? undefined : `Purchase ${record.sourcing.ref}`}>
         <p className="brief-line">
           {g.quantity.toLocaleString("en-US")} x {g.description}, {b.incoterm} {b.port}
         </p>
@@ -183,6 +190,18 @@ export function Business({ record, view, replaying, flat }: { record: SourcingRe
             <dt>Most you can spend</dt>
             <dd className="num">{usd(g.quantity * g.maxUnitCents, { decimals: false })}</dd>
           </div>
+          {b.priority ? (
+            <div>
+              <dt>What matters most</dt>
+              <dd>{PRIORITY[b.priority] ?? b.priority}</dd>
+            </div>
+          ) : null}
+          {b.latestDeliveryDays ? (
+            <div>
+              <dt>Delivered within</dt>
+              <dd className="num">{b.latestDeliveryDays} days</dd>
+            </div>
+          ) : null}
         </dl>
       </Panel>
       <Panel title="Suppliers" note="Select one to see more about it.">
@@ -192,13 +211,17 @@ export function Business({ record, view, replaying, flat }: { record: SourcingRe
           <ul className="quote-rows">
             {invited.map((i) => {
               const n = quoteNote(i);
+              const days = daysOf(i.address);
               return (
                 <li key={i.address}>
                   <button type="button" className="quote-row" data-selected={i.selected} onClick={() => setDetail(i.address)}>
                     <span className="quote-name">
                       {i.name} <Cards {...i.cards} />
                     </span>
-                    <span className="quote-price num">{i.quote ? usd(i.quote.unitCents) : <span className="nil">No price yet</span>}</span>
+                    <span className="quote-price num">
+                      {i.quote ? usd(i.quote.unitCents) : <span className="nil">No price yet</span>}
+                      {days ? <span className="quote-days">{days} days</span> : null}
+                    </span>
                     <Chip tone={n.tone}>{n.text}</Chip>
                   </button>
                 </li>
@@ -212,24 +235,15 @@ export function Business({ record, view, replaying, flat }: { record: SourcingRe
           </p>
         ))}
       </Panel>
+      <Panel title="Play a supplier" note="Scan to join this purchase as a supplier from a phone. Haggle, or try to trick the Negotiator.">
+        <SeatQr
+          page="supplier"
+          tokenLabel="Supplier token for the judge's seat"
+          tokenHelp="The code now opens the live seat as that supplier. Whatever they send appears on this screen with Surety's verdict."
+        />
+      </Panel>
     </>
   );
-
-  const negotiation = <Feed items={items} opened={view.opened} only={only !== null} />;
-  const chips =
-    invited.length > 0 ? (
-      <div className="chips" role="group" aria-label="Show one supplier">
-        <button type="button" className="chip-btn" aria-pressed={only === null} onClick={() => setOnly(null)}>
-          All
-        </button>
-        {invited.map((i) => (
-          <button key={i.address} type="button" className="chip-btn" aria-pressed={only === i.address} data-out={i.status === "out"} onClick={() => setOnly(i.address)}>
-            {i.name.split(" ").slice(0, 2).join(" ")}
-            <Cards {...i.cards} />
-          </button>
-        ))}
-      </div>
-    ) : null;
 
   const settlement = (
     <>
@@ -253,6 +267,29 @@ export function Business({ record, view, replaying, flat }: { record: SourcingRe
         ))}
       </Panel>
       <Panel
+        title="Inspector"
+        note={
+          <>
+            The second key. <Term k="inspector">Who this is</Term>
+          </>
+        }
+      >
+        {view.inspection === "attested" ? (
+          <p className="verdict" data-tone="ok">
+            Confirmed the shipment.
+          </p>
+        ) : view.inspection === "refused" ? (
+          <p className="verdict" data-tone="stop">
+            Did not confirm the shipment. Nothing is paid.
+          </p>
+        ) : view.inspection === "waiting" ? (
+          <Waiting>{view.refunded ? "Gave no answer before the deadline, so nothing was paid." : "Waiting for a person to check the shipment and confirm it from a phone."}</Waiting>
+        ) : (
+          <Waiting>{view.locked ? "Not part of this purchase." : "Checks the shipment once the money is locked."}</Waiting>
+        )}
+        {record.inspection?.note && view.inspection !== "waiting" && view.inspection !== "none" ? <p className="fine">"{record.inspection.note}"</p> : null}
+      </Panel>
+      <Panel
         title="Paperwork check"
         note={
           <>
@@ -267,7 +304,7 @@ export function Business({ record, view, replaying, flat }: { record: SourcingRe
             </p>
             <p className="fine">
               {record.verify.outcome === "APPROVE"
-                ? "All 12 rules passed, and the free text showed no sign of a trick."
+                ? "Every rule passed, and the free text showed no sign of a trick."
                 : "Your money stays locked and the ledger returns it to you at the deadline."}
             </p>
             <More label="Show the checks">
@@ -281,7 +318,7 @@ export function Business({ record, view, replaying, flat }: { record: SourcingRe
               <Meter label="Consistency" value={record.verify.satisfaction} threshold={TRADE_THRESHOLDS.approveMinConsistency} good="above" />
               <Meter label="Trick score" value={record.verify.injectionRisk} threshold={TRADE_THRESHOLDS.approveMaxTrick} good="below" />
               <p className="fine">
-                The model is asked only when all 12 rules pass. It gives scores, not certainties. Recorded as {record.verify.reasonCodes.join(", ")} under{" "}
+                The model is asked only when every rule passes. It gives scores, not certainties. Recorded as {record.verify.reasonCodes.join(", ")} under{" "}
                 {record.verify.policyVersion}.
               </p>
             </More>
@@ -291,7 +328,7 @@ export function Business({ record, view, replaying, flat }: { record: SourcingRe
             {view.inspection === "waiting" ? "Waiting for the inspector to confirm the shipment." : "Checking the supplier's invoice and shipping document against your order."}
           </Waiting>
         ) : view.locked ? (
-          <Waiting>The money is locked. Waiting for the supplier's invoice and shipping document.</Waiting>
+          <Waiting>{view.refunded ? "No paperwork arrived before the deadline." : "The money is locked. Waiting for the supplier's invoice and shipping document."}</Waiting>
         ) : (
           <Waiting>Happens after the money is locked and the supplier sends its paperwork.</Waiting>
         )}
@@ -323,15 +360,14 @@ export function Business({ record, view, replaying, flat }: { record: SourcingRe
         flat={flat}
         initial={1}
         panes={[
-          { id: "quotes", title: "Suppliers and prices", note: "A price counts only once the supplier submits it on Surety's form.", body: quotes },
+          { id: "quotes", title: "Brief and prices", note: "A price counts only once the supplier submits it on Surety's form.", body: brief },
           {
             id: "negotiation",
-            title: "The negotiation",
+            title: "Conversations",
             note: `Your Negotiator asks each supplier for a better price, aiming for ${usd(g.targetUnitCents)}. Nothing said here can move money.`,
-            tools: chips,
-            body: negotiation,
+            body: <Conversations record={record} view={view} eyes="screen" />,
           },
-          { id: "settlement", title: "Decision and payment", note: "Who was chosen, whether the paperwork passed, and the proof.", body: settlement },
+          { id: "settlement", title: "Decision and payment", note: "Who was chosen, whether the shipment and paperwork passed, and the proof.", body: settlement },
         ]}
       />
       {picked ? <SupplierDetail record={record} view={view} invite={picked} onClose={() => setDetail(null)} /> : null}

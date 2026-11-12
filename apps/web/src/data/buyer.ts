@@ -110,7 +110,12 @@ export function dealStages(record: SourcingRecord, view: RunView): Stage[] {
       note: view.accepted ? `${view.accepted.supplier.name}` : declined ? "Nothing accepted yet" : "Your Lead agent picks one",
     },
     { id: "locked", label: "Money locked", state: step(view.locked, view.accepted !== null), note: view.locked ? "Held by the ledger" : "Held by the ledger, not by anyone" },
-    { id: "documents", label: "Paperwork", state: step(view.documents, view.locked), note: view.documents ? "Invoice and shipping document" : "Sent by the supplier" },
+    {
+      id: "documents",
+      label: "Paperwork",
+      state: view.refunded && !view.documents ? "stopped" : step(view.documents, view.locked),
+      note: view.documents ? "Invoice and shipping document" : view.refunded ? "Never arrived" : "Sent by the supplier",
+    },
     inspector,
     {
       id: "verify",

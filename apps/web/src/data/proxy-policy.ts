@@ -2,7 +2,8 @@
 // the buyer's maximum price and every held message. When the dev server is opened to the network so a
 // person can play a supplier from a phone, that token must not serve anyone but the operator's own
 // browser on this machine. So:
-//   - /api/supplier/* is passed through with the caller's own token and never gets the view token.
+//   - /api/supplier/* and /api/inspector/* are passed through with the caller's own token and never
+//     get the view token.
 //   - The operator's read routes get the view token only for a GET from this machine itself, and not
 //     when the request came through a tunnel or another proxy (those arrive from loopback too, but
 //     carry a forwarding header).
@@ -33,8 +34,12 @@ export function proxyDecision(req: ProxyRequest): ProxyDecision {
   const path = req.path.split("?")[0] ?? "";
   if (path === "/api/health") return "pass";
   if (path === "/api/supplier" || path.startsWith("/api/supplier/")) return "pass";
+  // The inspector's phone carries the inspector's own token, like a supplier's.
+  if (path.startsWith("/api/inspector/")) return "pass";
   const local = req.remoteAddress !== undefined && LOOPBACK.has(req.remoteAddress);
   const forwarded = FORWARDED.some((h) => req.headers[h] !== undefined);
   const read = req.method === "GET" && OPERATOR_READS.some((p) => p.test(path));
-  return local && !forwarded && read ? "inject" : "refuse";
+  // Starting a purchase is the one thing the operator's screen may ask for besides reading.
+  const start = req.method === "POST" && path === "/api/demo/start";
+  return local && !forwarded && (read || start) ? "inject" : "refuse";
 }

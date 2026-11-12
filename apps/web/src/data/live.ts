@@ -1,4 +1,6 @@
-import type { SourcingListItem, SourcingRecord } from "./types";
+import { recordUpTo, simSteps } from "./livescreen";
+import { timelineBounds } from "./timeline";
+import type { Inspection, SourcingListItem, SourcingRecord } from "./types";
 
 // Live mode. The operator views poll two read-only routes through the same-origin /api proxy, which
 // adds the view token on the server side. The supplier seat calls the supplier routes of docs/api.md
@@ -45,6 +47,10 @@ export interface LiveSource {
   record(id: string): Promise<SourcingRecord>;
   // The newest sourcing's record, or null when there is none yet.
   latest(): Promise<SourcingRecord | null>;
+  // The clock the run is on: the wall clock for a real run.
+  now(): number;
+  // True for the simulated feed, so the screen can never pass it off as live.
+  simulated: boolean;
 }
 
 export function createLiveSource(fetchFn: FetchFn, base = "/api"): LiveSource {
@@ -57,7 +63,46 @@ export function createLiveSource(fetchFn: FetchFn, base = "/api"): LiveSource {
       const first = (await list())[0];
       return first ? record(first.id) : null;
     },
+    now: () => Date.now(),
+    simulated: false,
   };
+}
+
+// A recorded run fed through the live path at a steady pace, for testing the live screen without a
+// backend. It starts a moment before the purchase opens and ends when the run does.
+export function createSimSource(recorded: SourcingRecord, opts: { speed?: number; clock?: () => number } = {}): LiveSource {
+  const steps = simSteps(recorded);
+  const { start, end } = timelineBounds(steps);
+  const clock = opts.clock ?? (() => Date.now());
+  const speed = opts.speed ?? 6;
+  const began = clock();
+  const now = () => Math.min(end, start + (clock() - began) * speed);
+  const record = async () => {
+    const r = recordUpTo(recorded, steps, now());
+    if (!r) throw new ApiError(404, "not_found", "no such resource");
+    return r;
+  };
+  return {
+    list: async () => (recordUpTo(recorded, steps, now()) ? [{ id: recorded.sourcing.id, ref: recorded.sourcing.ref, state: "OPEN" }] : []),
+    record,
+    latest: async () => recordUpTo(recorded, steps, now()),
+    now,
+    simulated: true,
+  };
+}
+
+// PROVISIONAL: what the start screen sends. The route is this app's proposal (POST /demo/start, from
+// this machine only, with the view token added by the dev proxy); it is not in the API yet.
+export interface StartBrief {
+  quantity: number;
+  targetUnitCents: number;
+  maxUnitCents: number;
+  priority: "price" | "speed" | "balanced";
+  latestDeliveryDays: number;
+  negotiationSeconds: number;
+}
+export function startPurchase(fetchFn: FetchFn, brief: StartBrief, base = "/api"): Promise<unknown> {
+  return call<unknown>(fetchFn, `${base}/demo/start`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(brief) });
 }
 
 export interface SupplierSourcing {
@@ -70,6 +115,8 @@ export interface SupplierSourcing {
   port: string;
   negotiationEndsAt: string;
   committed: boolean;
+  // Phase 4d: this supplier's own committed price and delivery time.
+  committedQuote?: { unitCents: number; deliveryDays: number | null } | null;
   dealId: string | null;
 }
 export interface ThreadItem {
@@ -92,6 +139,8 @@ export interface QuoteForm {
   unitCents: number;
   incoterm: string;
   port: string;
+  // Phase 4d: required by the API, 1 to 365.
+  deliveryDays: number;
   notes: string;
 }
 export interface SettlementForm {
@@ -123,3 +172,30 @@ export function createSupplierClient(fetchFn: FetchFn, token: string, base = "/a
 }
 
 export type SupplierClient = ReturnType<typeof createSupplierClient>;
+
+// The inspector's two routes (Phase 4d). The queue never carries the supplier's B/L number, so the
+// inspector's reading is its own.
+export interface InspectorDeal {
+  dealId: string;
+  poNumber: string;
+  goods: string;
+  quantity: number;
+  incoterm: string;
+  port: string;
+  supplierName: string;
+  jobState: string | null;
+}
+export interface AttestationForm {
+  blNumber: string;
+  outcome: "attested" | "refused";
+  note: string;
+}
+export function createInspectorClient(fetchFn: FetchFn, token: string, base = "/api") {
+  const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
+  return {
+    queue: () => call<InspectorDeal[]>(fetchFn, `${base}/inspector/deals`, { headers }),
+    attest: (dealId: string, form: AttestationForm) =>
+      call<Inspection>(fetchFn, `${base}/inspector/deals/${encodeURIComponent(dealId)}/attestation`, { method: "POST", headers, body: JSON.stringify(form) }),
+  };
+}
+export type InspectorClient = ReturnType<typeof createInspectorClient>;

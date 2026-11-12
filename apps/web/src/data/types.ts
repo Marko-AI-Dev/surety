@@ -32,7 +32,18 @@ export interface RecordInvite {
   status: "in" | "out";
   cards: Card[];
   quote: { unitCents: number; quantity: number; totalCents: number } | null;
+  // Phase 4d: the delivery time committed with the quote.
+  deliveryDays?: number | null;
   dealId: string | null;
+}
+
+// Phase 4d: Surety's ordering of the committed quotes for the buyer's priority.
+export interface RankingRow {
+  supplier: string;
+  unitCents: number;
+  deliveryDays: number | null;
+  eligible: boolean;
+  why: string;
 }
 
 export interface LedgerTx {
@@ -99,6 +110,9 @@ export interface SourcingRecord {
       port: string;
       deadlineSeconds: number;
       negotiationSeconds: number;
+      // Phase 4d: what the buyer cares about most, and the slowest delivery it accepts.
+      priority?: "price" | "speed" | "balanced";
+      latestDeliveryDays?: number | null;
     };
     negotiationEndsAt: string;
   };
@@ -116,6 +130,9 @@ export interface SourcingRecord {
   checks?: Record<string, boolean> | null;
   policy?: PolicyView | null;
   inspection?: Inspection | null;
+  ranking?: RankingRow[] | null;
+  // Phase 4d: notes on the run, such as a choice that went against the priority.
+  notes?: unknown[] | null;
   events?: { at: string; actor: string; from: string | null; to: string; reasonCodes: string[] }[] | null;
 }
 
