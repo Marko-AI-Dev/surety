@@ -33,7 +33,9 @@ export function headline(record: SourcingRecord, view: RunView): Headline {
   for (const i of view.invites) if (i.quote) latest.set(i.address, i.quote.unitCents);
   const out = new Set(view.invites.filter((i) => i.status === "out").map((i) => i.address));
   const standing = [...latest.entries()].filter(([address]) => !out.has(address)).sort((a, b) => a[1] - b[1]);
-  const winner = view.accepted?.supplier.address ?? null;
+  // The supplier the Lead chose; before the buyer answers, the one it recommends.
+  const asked = record.approval && record.approval.state !== "declined" ? record.approval.supplier : null;
+  const winner = view.accepted?.supplier.address ?? asked;
   const who = winner !== null && latest.has(winner) ? winner : (standing[0]?.[0] ?? null);
   const bestNowCents = who === null ? null : (latest.get(who) ?? null);
   const openingBestCents = who === null ? null : (first.get(who) ?? bestNowCents);

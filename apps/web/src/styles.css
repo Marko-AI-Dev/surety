@@ -2935,3 +2935,466 @@ blockquote {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ---------- the buyer's desk and the admin portal: one calm column of glass */
+.desk {
+  display: grid;
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+.desk-card {
+  padding: 26px 28px;
+}
+.desk-card h1 {
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 8px;
+}
+.desk-card h2 {
+  margin: 0 0 6px;
+}
+.desk-lead {
+  color: var(--muted);
+  font-size: 1.0625rem;
+  max-width: 62ch;
+  margin: 0 0 14px;
+}
+.desk-now[data-tone="ok"] h1 {
+  color: var(--ok);
+}
+.desk-now[data-tone="stop"] h1 {
+  color: var(--stop);
+}
+.desk-now[data-tone="money"] h1 {
+  color: var(--money);
+}
+.desk-facts {
+  padding: 16px 20px 18px;
+}
+.desk-brief {
+  color: var(--muted);
+  font-size: 0.9375rem;
+  margin: 0 8px 10px;
+}
+.desk-again {
+  text-align: center;
+  margin: 4px 0 0;
+}
+.btn-big {
+  font-size: 1.0625rem;
+  padding: 14px 24px;
+  min-height: 52px;
+}
+
+/* saying something: a box, a microphone and a button */
+.say {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 14px;
+}
+.say textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 52px;
+}
+.say textarea:focus-visible {
+  outline: 2px solid var(--money);
+  outline-offset: 1px;
+}
+.speak[aria-pressed="true"] {
+  background: var(--stop);
+  color: #fff;
+  border-color: transparent;
+}
+.example {
+  color: var(--muted);
+  margin: 0;
+}
+.talk {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.talk li {
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.talk li[data-who="you"] {
+  justify-self: end;
+  background: var(--surface-2);
+}
+.talk li[data-failed] {
+  border-color: var(--stop);
+}
+.talk li p {
+  margin: 2px 0 0;
+}
+.talk-who {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+.understood {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.understood ul {
+  margin: 6px 0 12px;
+  padding-left: 20px;
+}
+.understood li {
+  margin: 3px 0;
+}
+.ideas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+/* conversations as email threads, with the buyer copied in */
+.threads {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.thread-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.thread-list button {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+.thread-list button[aria-pressed="true"] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+.thread-last {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.thread {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.mail {
+  padding: 12px 16px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.mail[data-mine] {
+  background: var(--surface-2);
+}
+.mail[data-held] {
+  border-style: dashed;
+  border-color: var(--held);
+}
+.mail[data-held="stop"] {
+  border-color: var(--stop);
+}
+.mail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+.mail-head strong {
+  color: var(--text);
+}
+.mail-head time {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.mail-cc {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.mail-body,
+.mail-held {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mail-held {
+  color: var(--muted);
+}
+.my-notes {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 0.9375rem;
+}
+.nudge-title {
+  margin: 18px 0 0;
+}
+
+/* the review: the Lead agent comes to you */
+.review-from {
+  color: var(--money);
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+.review-lean {
+  font-size: 1.125rem;
+  max-width: 66ch;
+  margin: 0 0 16px;
+}
+.deals {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.deals li {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.deals li[data-pick] {
+  border-color: var(--money);
+  box-shadow: 0 0 0 1px var(--money);
+}
+.deals li[data-off] {
+  opacity: 0.75;
+}
+.deals p {
+  margin: 0;
+}
+.deal-price {
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 6px 0 2px;
+}
+.deal-terms {
+  color: var(--muted);
+}
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+/* the tracker: a parcel on its way */
+.track-bar {
+  margin: 6px 0 18px;
+}
+.track-line {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.track-fill {
+  display: block;
+  height: 100%;
+  background: var(--money);
+  border-radius: 999px;
+}
+.track-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 8px 0 0;
+}
+.track-ends span:last-child {
+  text-align: right;
+}
+.track-ends strong {
+  color: var(--text);
+}
+.track-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.track-steps li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+}
+.track-dot {
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: transparent;
+}
+.track-steps li[data-state="done"] .track-dot {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.track-steps li[data-state="now"] .track-dot {
+  border-color: var(--money);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--money) 22%, transparent);
+}
+.track-steps li[data-state="stopped"] .track-dot {
+  border-color: var(--stop);
+}
+.track-steps li[data-state="todo"] .track-label {
+  color: var(--muted);
+}
+.track-label {
+  font-weight: 600;
+  margin: 0;
+}
+.track-steps .fine {
+  margin: 0;
+}
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.soon {
+  font-size: 0.75rem;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+
+/* admin */
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
+  margin: 0 auto 14px;
+  max-width: 1040px;
+  border-radius: 999px;
+}
+.admin-nav a {
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+.admin-nav a[aria-current="page"] {
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+main > .desk-card {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.log li {
+  display: grid;
+  grid-template-columns: 78px minmax(120px, 190px) minmax(0, 1fr);
+  gap: 4px 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.log time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+}
+.log li[data-tone="held"] strong {
+  color: var(--held);
+}
+.log li[data-tone="stop"] strong {
+  color: var(--stop);
+}
+.log li[data-tone="ok"] strong {
+  color: var(--ok);
+}
+.log li[data-tone="money"] strong {
+  color: var(--money);
+}
+.display-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+}
+@media (max-width: 760px) {
+  .desk-card {
+    padding: 20px 18px;
+  }
+  .threads {
+    grid-template-columns: 1fr;
+  }
+  .say {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .say textarea {
+    grid-column: 1 / -1;
+  }
+  .talk li {
+    max-width: 100%;
+  }
+  .log li {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .log li span {
+    grid-column: 1 / -1;
+  }
+  .admin-nav {
+    border-radius: 22px;
+  }
+}
