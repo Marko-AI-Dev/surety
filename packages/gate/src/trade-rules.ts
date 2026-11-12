@@ -25,7 +25,10 @@ export const TRADE_RULE_IDS = [
   "shipment",
   "pay_to",
 ] as const;
-export type TradeRuleId = (typeof TRADE_RULE_IDS)[number];
+// The inspector's second key (Phase 4d). Only deals that froze inspection: "required" run it, after the
+// 12 rules; 4b deals never see it.
+export const INSPECTION_RULE_ID = "attested";
+export type TradeRuleId = (typeof TRADE_RULE_IDS)[number] | typeof INSPECTION_RULE_ID;
 
 export interface TradeRuleResult {
   id: TradeRuleId;
@@ -48,6 +51,23 @@ export interface TradeRulesInput {
   readerFields: TradeFields | null;
   // The escrow on the ledger: who it pays, in which asset and how much. A deal only ever locks TESTUSD.
   lock: { destination: string; amount: AssetAmount };
+  // Present for deals that need the inspector's attestation: the attestation, or null if none exists.
+  inspection?: { attestation: { outcome: "attested" | "refused"; blNumber: string } | null };
+}
+
+// The number as read off paper: case, spaces, hyphens and full-width forms don't matter.
+export function normalizeBlNumber(s: string): string {
+  return s.normalize("NFKC").toUpperCase().replace(/[\s-]/g, "");
+}
+
+function attestedCheck(f: TradeFields, inspection: NonNullable<TradeRulesInput["inspection"]>): string | undefined {
+  const a = inspection.attestation;
+  if (a === null) return "no inspector attestation";
+  if (a.outcome !== "attested") return "the inspector refused the bill of lading";
+  const documented = f.billOfLading.blNumber;
+  return normalizeBlNumber(a.blNumber) === normalizeBlNumber(documented)
+    ? undefined
+    : `the inspector read B/L ${a.blNumber}, the documents say ${documented}`;
 }
 
 const norm = (s: string) => s.trim().toLowerCase();
@@ -150,6 +170,7 @@ export function runTradeRules(input: TradeRulesInput): TradeRulesReport {
   };
   const skipRest = (): TradeRulesReport => {
     for (const id of TRADE_RULE_IDS) if (!results.some((r) => r.id === id)) results.push({ id, status: "skipped" });
+    if (input.inspection) results.push({ id: INSPECTION_RULE_ID, status: "skipped" });
     return { passed: false, results };
   };
 
@@ -179,6 +200,7 @@ export function runTradeRules(input: TradeRulesInput): TradeRulesReport {
     record("terms", terms(parsed, intent)),
     record("shipment", shipment(parsed)),
     record("pay_to", payTo(parsed, intent, lock)),
+    ...(input.inspection ? [record(INSPECTION_RULE_ID, attestedCheck(parsed, input.inspection))] : []),
   ].every(Boolean);
   return { passed: ok, results, parsed };
 }

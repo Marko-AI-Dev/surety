@@ -60,6 +60,9 @@ export interface DealsRepo {
   declineDeal(dealId: string, decision: QuoteDecision, event: DealEventInput): Promise<Deal>;
   // QUOTE_RECEIVED to ACCEPTED, creating the job. An already ACCEPTED deal returns its existing pair.
   acceptDeal(dealId: string, decision: QuoteDecision, job: NewJob, event: DealEventInput): Promise<{ deal: Deal; job: Job }>;
+  // A note in the deal's record that changes nothing: an event from and to its current state.
+  // A missing deal throws DealTransitionConflict.
+  addDealNote(dealId: string, event: DealEventInput): Promise<DealEvent>;
 }
 
 // Another deal already uses this purchase order number.

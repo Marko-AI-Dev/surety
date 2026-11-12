@@ -67,6 +67,7 @@ export function createMemorySourcingRepo(): SourcingRepo {
         invitedAt: now(),
         quote: null,
         quoteHash: null,
+        deliveryDays: null,
         dealId: null,
       };
       invites.set(key(sourcingId, supplier.address), invite);
@@ -112,14 +113,15 @@ export function createMemorySourcingRepo(): SourcingRepo {
       return messages.filter((m) => m.supplier === address && m.card !== null && Date.parse(m.createdAt) > after).map((x) => copy(x));
     },
 
-    async commitQuote(sourcingId, address, quote, quoteHash) {
+    async commitQuote(sourcingId, address, quote, quoteHash, deliveryDays) {
       const invite = mustInvite(sourcingId, address);
       if (invite.quoteHash !== null) {
-        if (invite.quoteHash === quoteHash) return copy(invite);
+        if (invite.quoteHash === quoteHash && invite.deliveryDays === deliveryDays) return copy(invite);
         throw new CommittedQuoteConflict(sourcingId, address);
       }
       invite.quote = copy(quote);
       invite.quoteHash = quoteHash;
+      invite.deliveryDays = deliveryDays;
       return copy(invite);
     },
 

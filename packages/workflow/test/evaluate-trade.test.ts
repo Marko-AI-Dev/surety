@@ -11,6 +11,7 @@ import {
 import {
   type DealsRepo,
   type Job,
+  type InspectionRepo,
   type JobsRepo,
   createMemoryRepo,
   decideQuote,
@@ -27,7 +28,7 @@ import { SUPPLIER, intent as baseIntent, presets, quote } from "../../../scripts
 const CLOSE = 800_000_000;
 const GATE_SECRET = "gate-secret-for-trade-tests-0123456789abcdef";
 
-let repo: JobsRepo & DealsRepo;
+let repo: JobsRepo & DealsRepo & InspectionRepo;
 let signer: FakeSigner;
 let closeTime: number;
 let pos = 0;

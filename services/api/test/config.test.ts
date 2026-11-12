@@ -14,6 +14,7 @@ const base = {
   API_TOKEN_SOURCING: token("b"),
   API_TOKEN_NEGOTIATOR: token("c"),
   API_TOKEN_VIEW: token("d"),
+  API_TOKEN_INSPECTOR: token("f"),
   API_SUPPLIER_TOKENS: JSON.stringify({ [SUPPLIER]: token("e") }),
 };
 
@@ -24,7 +25,8 @@ describe("loadApiConfig", () => {
       host: "127.0.0.1",
       port: 4200,
       directoryFile: "fixtures/sourcing/directory.json",
-      tokens: { lead: token("a"), sourcing: token("b"), negotiator: token("c"), view: token("d") },
+      tokens: { lead: token("a"), sourcing: token("b"), negotiator: token("c"), view: token("d"), inspector: token("f") },
+      inspectorName: "Port inspector (demo)",
       supplierTokens: { [SUPPLIER]: token("e") },
     });
     expect(loadApiConfig({ ...base, API_HOST: "0.0.0.0", API_PORT: "4300" })).toMatchObject({ host: "0.0.0.0", port: 4300 });
@@ -44,6 +46,29 @@ describe("loadApiConfig", () => {
     } catch (e) {
       expect(String(e)).not.toContain(token("a"));
     }
+  });
+
+  it("loadApiConfig refuses a missing, short or duplicated API_TOKEN_INSPECTOR without printing it", () => {
+    const { API_TOKEN_INSPECTOR: _i, ...missing } = base;
+    expect(() => loadApiConfig(missing)).toThrow(/API_TOKEN_INSPECTOR is not set/);
+    const short = "q".repeat(31);
+    expect(() => loadApiConfig({ ...base, API_TOKEN_INSPECTOR: short })).toThrow(/API_TOKEN_INSPECTOR must be at least 32/);
+    expect(() => loadApiConfig({ ...base, API_TOKEN_INSPECTOR: token("a") })).toThrow(/distinct/);
+    expect(() => loadApiConfig({ ...base, API_TOKEN_INSPECTOR: token("e") })).toThrow(/distinct/);
+    for (const bad of [short, token("a"), token("e")]) {
+      let message = "";
+      try {
+        loadApiConfig({ ...base, API_TOKEN_INSPECTOR: bad });
+      } catch (e) {
+        message = String(e);
+      }
+      expect(message).not.toBe("");
+      expect(message).not.toContain(bad);
+    }
+  });
+
+  it("reads the inspector's display name from API_INSPECTOR_NAME", () => {
+    expect(loadApiConfig({ ...base, API_INSPECTOR_NAME: "Durban port inspector" }).inspectorName).toBe("Durban port inspector");
   });
 
   it("refuses missing settings by name and bad supplier tokens", () => {

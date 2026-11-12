@@ -79,6 +79,26 @@ The buyer's purchasing team is three AI agents on [Paperclip](https://github.com
 
 The treasury ended exactly $45,600.00 lower. All eight run checks passed. Decision-model cost for the run: $0.0003. The bouncer's chat questions were chosen on 24 labelled supplier messages: every manipulative one held, 11 of 12 honest ones delivered ([`docs/research/08-chat-calibration.md`](docs/research/08-chat-calibration.md)). The API is documented in [`docs/api.md`](docs/api.md).
 
+### Negotiation with leverage, the buyer's priority and the inspector's second key (Phase 4d, 10 Nov 2026)
+
+A sourcing deal now pays only when two independent parties agree: the supplier's documents pass Surety Verify, and a person acting as the inspector attests the bill of lading number read off the shipment. Before that, the agents really negotiate: the Negotiator plays anonymised competing offers against each other over several rounds, suppliers answer with code-set prices and delivery trade-offs, every committed quote carries its delivery days, and the Lead chooses by the buyer's priority.
+
+**Run A, paid** ([evidence](evidence/sourcing-2026-11-10T17-11-48-091Z.json)). Brief: 400 panels, target $110, maximum $120, priority balanced, latest delivery 30 days.
+
+| Step | What happened |
+|---|---|
+| Leverage | Five rounds of "another approved supplier offered $X with N days". Brightway went $118, then $122 for a 16-day rush, $116, $113, $111 in 21 days. Sunpeak went $126, $117, $116, offered $112 for 21 days, and committed $116 in 14 days |
+| Ranking | Balanced priority ranked Sunpeak first ($116 in 14 days over $111 in 21). The Lead followed it: "First eligible in Surety ranking for balanced priority" |
+| Lock | $46,400 TESTUSD: [CA12F7D9…](https://testnet.xrpl.org/transactions/CA12F7D91C49F025935B9BC732BF2236AF97634CBA2DFC13254316E27BFBE68E) |
+| Inspector | Attested B/L SZXDUR-77290, "400 cartons counted, seal intact", from a queue that never shows the supplier's B/L number |
+| Release | Surety Verify: rules including `attested` pass, 0.96 consistency, 0.06 trick score. Paid: [9DFBB357…](https://testnet.xrpl.org/transactions/9DFBB35742CDE9FABE6BDC0EBAF5EC8127D77E50CBF6FCD991B6A36B1EA68B73). The treasury ended exactly $46,400.00 lower |
+
+**Run B, the inspector refuses** ([evidence](evidence/sourcing-2026-11-10T17-33-34-735Z.json)). Brief as above with priority price. The bouncer carded Coastline out (yellow, then red). Brightway came down to $111 in 21 days and was first for price; $44,400 locked: [B2AAE2DE…](https://testnet.xrpl.org/transactions/B2AAE2DE6C58B8E8FE49BE08E34382F111FDB3AF9C905CE419DCD239EEB963C3). The inspector refused ("Seal broken, 380 cartons counted"). Surety Verify failed rule `attested` with no model call, and the escrow was cancelled at the ledger deadline: [E1FCDE43…](https://testnet.xrpl.org/transactions/E1FCDE43237E76B535EB97D33159A5804AEF6584616D40B58B871CEB4DC519A1). The treasury ended exactly where it started.
+
+**The inspector never answers** ([evidence](evidence/sourcing-2026-11-10T17-02-35-960Z.json)). In an earlier run nobody attested: the delivered deal waited unjudged, was held at the decision cutoff (`inspection_missing`) and refunded. Its evidence was gathered with the refusal checks, so three read false by design: `refusedAttestationRefunded` (the reason is `inspection_missing`, not a refusal), and `negotiationMovedPrice` and `strangerSuggestedNotInvited` (a 120-second window and a brief without the stranger, both fixed for runs A and B). Refund: [C1CCD8EA…](https://testnet.xrpl.org/transactions/C1CCD8EAE8A1A91AAF27167B5158FF2A134BBBB87AC8CF50FCDECBDFC4ED55E8).
+
+All 12 checks pass for run A and all 11 for run B. Decision-model cost across the four runs of the day: $0.0015.
+
 ## How it works
 
 See [`docs/architecture.md`](docs/architecture.md) for the diagram and trust boundaries. In short:
@@ -97,7 +117,7 @@ Requires Node 24 and pnpm 10.
 
 ```bash
 pnpm install
-pnpm test                 # 841 unit tests, no Docker needed, no network
+pnpm test                 # 968 unit tests, no Docker needed, no network
 pnpm typecheck
 pnpm check:boundaries     # lint: flags key-handling code outside the signer
 
@@ -129,7 +149,12 @@ SUPPLIER_API_URL=http://<WSL gateway>:4200 pnpm suppliers   # the supplier agent
 pnpm paperclip:team                         # the Lead, Sourcing and Negotiator agents in Paperclip, tokens as Paperclip secrets
 pnpm sourcing:status                        # watch the latest sourcing: invites, cards, quotes and the screened chat
 pnpm supplier:clear <wallet> "<note>"       # the operator clears a supplier's cards
-pnpm evidence:sourcing <sourcingId> --before <cents>   # gathers a run into evidence/ and checks it
+pnpm evidence:sourcing <sourcingId> --before <cents> --expect paid|refunded   # gathers a run into evidence/ and checks it
+
+# The inspector's second key (Phase 4d)
+pnpm api:tokens --add-missing               # adds the inspector's token to .env.api without changing the others, and writes .env.suppliers
+pnpm inspector:attest                       # the inspector's queue (no B/L numbers shown)
+pnpm inspector:attest <dealId> <blNumber> attested "400 cartons counted, seal intact"   # or refused
 ```
 
 ## Status
@@ -137,7 +162,7 @@ pnpm evidence:sourcing <sourcingId> --before <cents>   # gathers a run into evid
 1. Isolated signer and testnet escrow: **done**
 2. Durable job state and an expiry worker that survives restarts: **done**
 3. Deterministic checks and the Jev evaluator: **done**
-4. Operator spending limits and TESTUSD in the signer: **done** (Phase 4a). Deals with the Policy step, the quote step, trade-document rules and Surety Verify: **done** (Phase 4b). The agent team on Paperclip, sourcing and negotiation, the bouncer, supplier forms and the API: **done** (Phase 4c)
+4. Operator spending limits and TESTUSD in the signer: **done** (Phase 4a). Deals with the Policy step, the quote step, trade-document rules and Surety Verify: **done** (Phase 4b). The agent team on Paperclip, sourcing and negotiation, the bouncer, supplier forms and the API: **done** (Phase 4c). Negotiation with leverage, delivery days, the buyer's priority and the inspector's second key: **done** (Phase 4d)
 5. The web app: a normal view for the business user and an admin view (Control room and Attack lab), with ledger-linked receipts
 
 Plan: [`docs/step1-plan-review.md`](docs/step1-plan-review.md). Disclosures: [`PRIOR_WORK.md`](PRIOR_WORK.md).

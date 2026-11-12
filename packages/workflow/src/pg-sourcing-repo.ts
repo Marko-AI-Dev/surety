@@ -1,6 +1,6 @@
 import type postgres from "postgres";
 import type { Row } from "postgres";
-import type { SourcingBrief, SupplierQuote } from "@surety/contracts";
+import { SourcingBriefSchema, type SupplierQuote } from "@surety/contracts";
 import type { SourcingState } from "./sourcing-states";
 import {
   CommittedQuoteConflict,
@@ -20,7 +20,8 @@ function toSourcing(r: Row): Sourcing {
   return {
     id: r.id,
     ref: r.ref,
-    brief: r.brief as SourcingBrief,
+    // Parsed on read, so a brief stored before Phase 4d gains its defaults (priority balanced).
+    brief: SourcingBriefSchema.parse(r.brief),
     state: r.state as SourcingState,
     negotiationEndsAt: iso(r.negotiation_ends_at),
     selectedSupplier: r.selected_supplier ?? null,
@@ -37,6 +38,7 @@ function toInvite(r: Row): Invite {
     invitedAt: iso(r.invited_at),
     quote: (r.quote as SupplierQuote | null) ?? null,
     quoteHash: r.quote_hash ?? null,
+    deliveryDays: r.delivery_days ?? null,
     dealId: r.deal_id ?? null,
   };
 }
@@ -148,16 +150,16 @@ export function createPgSourcingRepo(sql: postgres.Sql): SourcingRepo {
       return rows.map(toMessage);
     },
 
-    async commitQuote(sourcingId, address, quote, quoteHash) {
+    async commitQuote(sourcingId, address, quote, quoteHash, deliveryDays) {
       return inTx(async (q) => {
         const [row] = await q`select * from sourcing_suppliers where sourcing_id = ${sourcingId} and address = ${address} for update`;
         if (!row) throw new Error(`supplier ${address} is not invited to sourcing ${sourcingId}`);
         if (row.quote_hash !== null) {
-          if (row.quote_hash === quoteHash) return toInvite(row);
+          if (row.quote_hash === quoteHash && row.delivery_days === deliveryDays) return toInvite(row);
           throw new CommittedQuoteConflict(sourcingId, address);
         }
         const [updated] = await q`
-          update sourcing_suppliers set quote = ${j(quote)}, quote_hash = ${quoteHash}
+          update sourcing_suppliers set quote = ${j(quote)}, quote_hash = ${quoteHash}, delivery_days = ${deliveryDays}
           where sourcing_id = ${sourcingId} and address = ${address}
           returning *`;
         if (!updated) throw new Error("update of sourcing_suppliers returned no row");

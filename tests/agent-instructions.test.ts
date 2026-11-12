@@ -50,3 +50,69 @@ describe("the buyer team's Paperclip instructions", () => {
     }
   });
 });
+
+describe("the inspector's key stays with a person", () => {
+  it("neither paperclip-team.ts, the supplier agents nor any instruction file mentions API_TOKEN_INSPECTOR or an /inspector route", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const agentCode = [
+      "scripts/paperclip-team.ts",
+      ...readdirSync(resolve(root, "services/supplier-agents/src")).map((f) => `services/supplier-agents/src/${f}`),
+    ];
+    const sources: [string, string][] = [
+      ...agentCode.map((f): [string, string] => [f, readFileSync(resolve(root, f), "utf8")]),
+      ...Object.entries(files),
+    ];
+    expect(sources.length).toBeGreaterThanOrEqual(9);
+    for (const [name, text] of sources) {
+      expect(text, name).not.toMatch(/API_TOKEN_INSPECTOR|\/inspector\b|inspector:attest/);
+    }
+  });
+});
+
+describe("negotiation with leverage (Phase 4d)", () => {
+  const negotiator = files["negotiator.md"] ?? "";
+  const lead = files["lead.md"] ?? "";
+
+  it("the negotiator is told to use anonymised competing offers from offers", () => {
+    expect(negotiator).toMatch(/another approved supplier/i);
+    expect(negotiator).toMatch(/`offers`/);
+    expect(negotiator).toMatch(/never name/i);
+    expect(negotiator).toMatch(/never invent/i);
+  });
+
+  it("the negotiator is told never to quote a held message", () => {
+    expect(negotiator).toMatch(/never (quote|repeat)[^.]*withheld/i);
+  });
+
+  it("the negotiator reads the buyer's priority", () => {
+    expect(negotiator).toMatch(/`priority`/);
+    expect(negotiator).toMatch(/speed/);
+  });
+
+  it("the lead is told to follow the ranking or give its reason", () => {
+    expect(lead).toMatch(/`ranking`/);
+    expect(lead).toMatch(/reason/);
+    expect(lead).toMatch(/priority/);
+  });
+
+  it("the API skill shows the brief's priority and latest delivery days", () => {
+    expect(files["surety-api.md"]).toMatch(/"priority"/);
+    expect(files["surety-api.md"]).toMatch(/"latestDeliveryDays"/);
+  });
+});
+
+describe("no agent process is started with role tokens (final review, 10 Nov)", () => {
+  it("the supplier agents load .env.suppliers, never .env.api", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const pkg = JSON.parse(readFileSync(resolve(root, "services/supplier-agents/package.json"), "utf8")) as { scripts: Record<string, string> };
+    for (const [name, script] of Object.entries(pkg.scripts)) expect(script, name).not.toMatch(/\.env\.api/);
+    expect(pkg.scripts.start).toMatch(/--env-file=\.\.\/\.\.\/\.env\.suppliers/);
+  });
+
+  it("the inspector's terminal stand-in loads only .env.api, not the services' .env", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as { scripts: Record<string, string> };
+    expect(pkg.scripts["inspector:attest"]).toMatch(/--env-file=\.env\.api/);
+    expect(pkg.scripts["inspector:attest"]).not.toMatch(/--env-file=\.env(\s|$)/);
+  });
+});

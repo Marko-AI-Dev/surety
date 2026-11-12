@@ -23,6 +23,8 @@ export interface Invite {
   invitedAt: string;
   quote: SupplierQuote | null;
   quoteHash: string | null;
+  // The committed quote's delivery days (Phase 4d), stored beside it; null before a commit and for 4c rows.
+  deliveryDays: number | null;
   dealId: string | null;
 }
 
@@ -82,8 +84,8 @@ export interface SourcingRepo {
   listQuarantined(limit: number): Promise<SourcingMessage[]>;
   // Messages carrying a card for this supplier across sourcings, after `since` when given; oldest first.
   listCards(address: string, since: Date | null): Promise<SourcingMessage[]>;
-  // Same hash: the invite unchanged. A different quote: CommittedQuoteConflict (a QuoteConflict).
-  commitQuote(sourcingId: string, address: string, quote: SupplierQuote, quoteHash: string): Promise<Invite>;
+  // Same hash and days: the invite unchanged. Anything else: CommittedQuoteConflict (a QuoteConflict).
+  commitQuote(sourcingId: string, address: string, quote: SupplierQuote, quoteHash: string, deliveryDays: number): Promise<Invite>;
   // Once per invite: the same deal again returns it unchanged, another deal is an InviteConflict.
   attachDeal(sourcingId: string, address: string, dealId: string): Promise<Invite>;
   // OPEN to SELECTED once; otherwise SourcingConflict. The lead's decision claims the sourcing with

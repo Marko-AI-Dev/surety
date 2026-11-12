@@ -99,6 +99,16 @@ A sourcing sits in front of a deal: the buyer's brief, the invited suppliers, th
 
 What the ledger does not do: it does not understand the work. A compromised gate or signer could still release wrongly. That is why the gate is layered (rules first, then Jev, both fail closed) and why every release carries a binding to the exact job, deliverable and policy version.
 
+## Negotiation, the buyer's priority and the inspector's second key (Phase 4d)
+
+- **The inspector is a second, independent key held by a person, never an agent.** A sourcing deal's job freezes `inspection: "required"`. The inspector has its own role and token (`GET /inspector/deals`, `POST /inspector/deals/:id/attestation`), which no agent's code or instructions mention (a test pins this). Its queue shows the order (PO, goods, quantity, terms, supplier) and never the B/L number the supplier submitted, so its reading off the shipment is independent. One attestation per deal, append-only, no corrections; its note is display text and never reaches a model.
+- **Surety Verify gains the rule `attested`.** It passes only when the attestation is `attested` and its B/L number matches the delivered documents (case, spaces and hyphens folded). A refusal or a different number fails the rule: declined with no model call, refunded at the deadline.
+- **The worker waits, then fails closed.** A delivered deal that needs the inspector and has no attestation stays `DELIVERED`, unjudged and with no model call, until one arrives. At the decision cutoff (ledger time, 30 seconds before the deadline) it is held with `inspection_missing` and refunds at the deadline. 4b deals keep exactly their 12 rules.
+- **Committed quotes carry delivery days,** stored beside the quote on the invite, so the deal's `SupplierQuote` and its hash are unchanged. Verify does not check the days; the ranking uses them.
+- **The buyer's priority** (`price`, `speed` or `balanced`, with an optional latest delivery) is in the brief. Surety ranks the committed quotes for it in exact integers and shows the ranking to the lead only, because it uses the maximum. The lead may choose another quote; Surety then records a deal note `off_priority` with the best quote, the chosen one and the lead's reason. It never blocks.
+- **Leverage stays anonymous and free of the maximum.** The negotiator's view gains `offers`: each supplier's committed quote, or else its latest report whose summary was delivered. A withheld report, a held message or an out supplier never appears, and nothing in it is derived from the maximum. Surety refuses a negotiator message that names another invited supplier (its wallet or a distinctive name word, after folding look-alikes, accents, spacing and zero-width characters).
+- **Supplier agents negotiate over several rounds** with prices still set by code: beat a competing price by $1 above the floor, meet it at the floor, or once trade price for a slower delivery; asked for speed, once offer a faster delivery for more; counter an ask half way at most twice, then hold. A seeded test of 400 random messages never takes a supplier below its floor.
+
 ## Escrow lifecycle
 
 ```mermaid
