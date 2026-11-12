@@ -2906,3 +2906,20 @@ blockquote {
     grid-template-columns: 1fr;
   }
 }
+
+/* Which recording to play: a small select beside the "Recorded" badge. */
+.tape-pick select {
+  width: auto;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DOCUMENTED_LIMITS, RECORDED_RUN_FILE } from "../data/evidence";
+import { DOCUMENTED_LIMITS } from "../data/evidence";
 import { shortAddress, usd, utcTime } from "../data/format";
 import { verdictPlain } from "../data/plain";
 import type { RunView } from "../data/timeline";
@@ -18,6 +18,14 @@ const CHECK_LABELS: Record<string, string> = {
   paidFinishValidated: "The payout is a validated ledger result",
   treasuryDownByExactlyTotal: "The treasury is down by exactly the deal total",
   everyLeadDecisionHasReason: "Every Lead decision has a reason",
+  crookKeptOut: "The crook was kept out of the purchase",
+  winnerBestForPriorityOrNoted: "The winner is the best for the buyer's priority, or the exception is noted",
+  negotiationMovedPrice: "The negotiation moved the price",
+  leverageCitedAnonymously: "Other suppliers' offers were cited without naming them",
+  committedQuotesCarryDeliveryDays: "Every final price carries a delivery time",
+  inspectionAttestedBeforePaid: "The inspector confirmed before anything was paid",
+  refusedAttestationRefunded: "The inspector's refusal stopped the payment and the buyer was refunded",
+  treasuryBackToBefore: "The treasury is back to where it started",
 };
 
 export function Control({ record, view, replaying, flat }: { record: SourcingRecord; view: RunView; replaying: boolean; flat: boolean }) {
@@ -150,7 +158,7 @@ export function Control({ record, view, replaying, flat }: { record: SourcingRec
         <p className="fine">Chat messages are in the negotiation pane; {view.messages.length} so far.</p>
       </Panel>
 
-      <Panel title="Run checks" note={replaying ? `Computed when the run was recorded, in ${RECORDED_RUN_FILE}.` : "Computed when a run is gathered into evidence."}>
+      <Panel title="Run checks" note={replaying ? "Computed from the ledger and the database when the run was recorded." : "Computed when a run is gathered into evidence."}>
         {done && record.checks ? (
           <ul className="checks">
             {Object.entries(record.checks).map(([k, ok]) => (

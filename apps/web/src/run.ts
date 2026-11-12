@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { recordedRun } from "./data/evidence";
+import { RECORDINGS, recordingOf } from "./data/evidence";
 import { ApiError, createLiveSource, createSimSource } from "./data/live";
 import { type RunView, type Step, buildTimeline, timelineBounds, viewAt } from "./data/timeline";
 import type { SourcingRecord } from "./data/types";
@@ -33,11 +33,16 @@ export interface Run {
 
 const TICK_MS = 100;
 
-function useReplay(active: boolean): { record: SourcingRecord; steps: Step[]; controls: ReplayControls } {
-  const steps = useMemo(() => buildTimeline(recordedRun), []);
+function useReplay(active: boolean, recorded: SourcingRecord): { record: SourcingRecord; steps: Step[]; controls: ReplayControls } {
+  const steps = useMemo(() => buildTimeline(recorded), [recorded]);
   const { start, end } = useMemo(() => timelineBounds(steps), [steps]);
   const [t, setT] = useState(start);
   const [playing, setPlaying] = useState(true);
+  // Another recording starts from its own beginning.
+  useEffect(() => {
+    setT(start);
+    setPlaying(true);
+  }, [start]);
   const [speed, setSpeed] = useState<number>(4);
   const last = useRef<number | null>(null);
 
@@ -77,7 +82,7 @@ function useReplay(active: boolean): { record: SourcingRecord; steps: Step[]; co
   }, [start, end]);
 
   return {
-    record: recordedRun,
+    record: recorded,
     steps,
     controls: {
       t,
@@ -108,7 +113,7 @@ function useLive(active: boolean, sim: number | null) {
   useEffect(() => {
     if (!active) return;
     let stopped = false;
-    const source = sim !== null ? createSimSource(recordedRun, { speed: sim }) : createLiveSource((url, init) => fetch(url, init));
+    const source = sim !== null ? createSimSource((RECORDINGS[0] as (typeof RECORDINGS)[number]).record, { speed: sim }) : createLiveSource((url, init) => fetch(url, init));
     const poll = async () => {
       try {
         const next = await source.latest();
@@ -132,8 +137,8 @@ function useLive(active: boolean, sim: number | null) {
   return { record, state, asOf };
 }
 
-export function useRun(mode: Mode, sim: number | null = null): Run {
-  const replay = useReplay(mode === "replay");
+export function useRun(mode: Mode, sim: number | null = null, recording = "paid"): Run {
+  const replay = useReplay(mode === "replay", recordingOf(recording).record);
   const live = useLive(mode === "live", sim);
   const liveSteps = useMemo(() => (live.record ? buildTimeline(live.record, { now: live.asOf }) : []), [live.record, live.asOf]);
 

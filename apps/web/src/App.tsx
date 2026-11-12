@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { dealStages } from "./data/buyer";
-import { RECORDED_RUN_FILE } from "./data/evidence";
+import { RECORDINGS, recordingOf } from "./data/evidence";
 import { headline } from "./data/livescreen";
 import { GLOSSARY, HOW_IT_WORKS, statusLine } from "./data/plain";
 import { type Mode, useRun } from "./run";
@@ -67,9 +67,11 @@ export function App() {
   // Flat: no depth, no tilt, solid panels. On for reduced motion and narrow screens, or by the button.
   const [userFlat, setUserFlat] = useState(false);
   const [help, setHelp] = useState(false);
+  const [recording, setRecording] = useState("paid");
   const flatWhy = useFlat(userFlat);
   const flat = flatWhy !== null;
-  const run = useRun(mode, boot.sim);
+  const run = useRun(mode, boot.sim, recording);
+  const tape = recordingOf(recording);
 
   useEffect(() => {
     const read = () => {
@@ -177,9 +179,19 @@ export function App() {
               <span className="badge" data-kind="recorded">
                 Recorded
               </span>
-              <span title={`Every message, amount and transaction comes from ${RECORDED_RUN_FILE}`}>
-                {fellBack ? "The live backend is not reachable, so this is a recording of " : "This is a recording of "}a real test purchase made by AI agents on 9 Nov 2026.
-              </span>
+              <span title={`Every message, amount and transaction comes from ${tape.file}`}>
+                {fellBack ? "The live backend is not reachable, so this is a recording of " : "This is a recording of "}a real test purchase made by AI agents on {tape.date}.
+              </span>{" "}
+              <label className="tape-pick">
+                <span className="visually-hidden">Which recording</span>
+                <select value={recording} onChange={(e) => setRecording(e.target.value)}>
+                  {RECORDINGS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </>
           ) : simulated ? (
             <>
