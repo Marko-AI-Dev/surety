@@ -54,7 +54,7 @@ With no backend running, the app says so and plays four recorded testnet runs, b
 
 | Rule | How | Proof |
 |---|---|---|
-| An agent executes a testnet transaction | The Lead agent's accept locks the payment. No person clicks | The lock above |
+| An agent executes a testnet transaction | The Lead agent chooses the deal and gives its reason. Since 13 Nov the buyer gives one final yes, and Surety then locks the payment within the limits. The release, or the refund, runs with no person clicking: the agents' paperwork check and the ledger do it. In the recorded runs above, made before the final yes was added, the Lead's accept locked the payment directly | The lock above |
 | Limits are enforced outside the agent | The signer is a separate process with its own keys. It refuses a deal over the cap, an unapproved wallet and a sixth open deal, whatever the agent says. The agents run sandboxed and cannot see the drive that holds the keys | [evidence](evidence/testusd-signer-2026-11-09T09-22-15-177Z.json) |
 | A human operator sets the limits | The operator changes caps live with a secret the agents and the worker never hold. A cap lowered to $500 refused the next $600 deal; the worker's own credential got `401` | Same file |
 | Meaningful use of XRPL and RLUSD | Native token escrow with crypto-conditions, refunds by ledger time, no smart contract. TESTUSD stands in for RLUSD because RLUSD's testnet issuer has escrow switched off; it is the same trust-line mechanism, so moving is a change of issuer | [token escrow trial](evidence/token-escrow-trial-testusd-2026-11-09T08-13-36-693Z.json) |
@@ -179,7 +179,7 @@ Requires Node 24 and pnpm 10. On Windows, clone into a short path such as `C:\de
 
 ```bash
 pnpm install
-pnpm test                 # 1069 unit tests, no Docker needed, no network
+pnpm test                 # 1146 unit tests, no Docker needed, no network
 pnpm typecheck
 pnpm check:boundaries     # lint: flags key-handling code outside the signer
 

@@ -27,15 +27,22 @@ The app opens live: it polls the newest purchase every 2 seconds and shows it as
 
 ## Views
 
-- **Buy** (`#/`): the business user's view and the demo's first screen. Under the money rail: the deal in nine steps, the negotiation as one conversation (the same line sent to every supplier is one bubble; a held message shows only that it was held), the quotes, the Lead's decision with its reason, Surety Verify and the receipt. No scores or rule names here; those are in the Control room.
-- **Control room** (`#/control`): the operator's view. The negotiation in one lane per supplier with the bouncer's verdict on every message, held messages in full, and a "Negotiator's eyes" switch that shows exactly what the Negotiator's inbox carried. Then limits, approved suppliers, suggestions, held messages, the audit trail, the run checks, costs, and a QR code for the supplier seat.
-- **Attack lab** (`#/attack`): every recorded attack, the layer that stopped it and the recorded reason, with counters counted from the evidence.
-- **Supplier seat** (`#/supplier`): built for a phone. Three modes: the recorded run from any supplier's side; practice, where the bouncer's real code rules (`packages/gate/src/chat-rules.ts`, imported, not copied) run in the browser with no backend; and live.
+Two places in the menu, and two phone pages with their own links.
 
-The money rail (treasury, XRPL escrow, supplier) stays on screen in the Buy and Control room views.
+- **My purchase** (`#/`): the whole product for the buyer, on one screen.
+  1. **Say what you need,** typed or spoken (the browser's own speech recognition, where it has one). The team asks about anything missing, one plain question at a time: how many, the most you will pay, the price you hope for, how soon, what matters most, how hard to push. `POST /buyer/intake` reads the words; nothing is opened.
+  2. **Put my team to work.** `POST /demo/start` hands the Lead agent its task. The negotiation is shortened to three minutes in this build, and the screen says so.
+  3. **Watch.** Each supplier's conversation is an email thread with the buyer copied in. A message Surety stopped shows only that it was stopped and why, never its text. The buyer can tell the negotiator something at any time (`POST /sourcing/:id/notes`).
+  4. **The final yes.** When the Lead recommends a deal the screen becomes its message: the deals, its pick and its reason, and two buttons. `POST /deals/:id/approval`. Only a yes locks the payment; a no moves nothing.
+  5. **Track it.** After the yes: payment locked, paperwork, the inspector's confirmed shipping number, the check, paid or refunded, each with its ledger link, and a bar from the payment day to the promised delivery day. Delivery itself is marked "Not tracked on the test network yet", and the three quick actions (message the seller, ask the shipping line, report a problem) are marked "Coming soon": none of them is built.
+- **Admin** (`#/admin`): everything else.
+  - **What happened:** a plain-words log of the purchase, oldest first: who said what, which agent did what, every check and every transaction with its ledger link.
+  - **Ask:** an assistant that answers from the records of the last five purchases (`POST /admin/ask`). It is a model, and the page says so.
+  - **Control room, Attack lab, Supplier seat:** the technical views, unchanged. Old links (`#/control`, `#/attack`) still open them.
+  - **Recordings and display:** switch the main screen to a recording, pick which, or turn on the control room's 3D arc.
+- **Supplier's phone page** (`#/supplier`) and **inspector's phone page** (`#/inspector`): as before, reached by their own links.
 
-On a phone the four views are four tabs in one row, and the recorded-run and live switch is hidden: switching to live is a job for the operator's desk.
-
+A recording or a simulated feed is always badged, and can be watched but not acted on: the say-box, the nudge and the yes appear only on the live backend.
 ## Plain words first
 
 The app is written for someone who has never seen Surety.
