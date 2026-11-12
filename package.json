@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && pnpm --filter @surety/web typecheck",
     "check:boundaries": "tsx scripts/check-boundaries.ts",
     "signer": "pnpm --filter @surety/signer start",
     "worker": "pnpm --filter @surety/worker start",
@@ -33,7 +33,9 @@
     "paperclip:team": "tsx scripts/paperclip-team.ts",
     "sourcing:status": "node --env-file=.env --import tsx scripts/sourcing-status.ts",
     "inspector:attest": "node --env-file=.env.api --import tsx services/api/scripts/inspector-attest.ts",
-    "evidence:sourcing": "node --env-file=.env --env-file=.env.api --import tsx scripts/sourcing-evidence.ts"
+    "evidence:sourcing": "node --env-file=.env --env-file=.env.api --import tsx scripts/sourcing-evidence.ts",
+    "web": "pnpm --filter @surety/web dev",
+    "web:build": "pnpm --filter @surety/web build"
   },
   "devDependencies": {
     "@surety/contracts": "workspace:*",
