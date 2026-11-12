@@ -79,6 +79,17 @@ export class NotInvited extends Error {
   }
 }
 
+// The supplier has sent as many messages as one sourcing takes from it.
+export class SupplierMessageLimit extends Error {
+  constructor(
+    readonly sourcingId: string,
+    readonly address: string,
+  ) {
+    super(`supplier ${address} has reached the limit of ${SUPPLIER_MESSAGE_LIMIT} messages in sourcing ${sourcingId}`);
+    this.name = "SupplierMessageLimit";
+  }
+}
+
 // A request Surety refuses on its terms (not a malformed body).
 export class SourcingRefused extends Error {
   constructor(message: string) {
@@ -90,6 +101,12 @@ export class SourcingRefused extends Error {
 // The bouncer's time budget for asking again. The negotiation time box limits chat; it isn't a money
 // deadline, so screening never runs short because a negotiation is ending.
 const SCREEN_SECONDS = 60;
+
+// How many chat messages one supplier may send in one sourcing, delivered or held. A real negotiation
+// takes a handful; without a limit one supplier token can flood the negotiator's inbox and spend the
+// decision model's budget. Checked before screening, so a refused message costs nothing. Messages
+// posted at the same instant can pass it together, so it is a ceiling to within that burst.
+export const SUPPLIER_MESSAGE_LIMIT = 20;
 
 const nowOf = (deps: SourcingDeps) => (deps.now ?? (() => new Date()))();
 const secondsLeft = (s: Sourcing, now: Date) => Math.max(0, Math.round((Date.parse(s.negotiationEndsAt) - now.getTime()) / 1000));
@@ -201,7 +218,9 @@ export async function postSupplierMessage(
   // The invite first: a supplier that isn't part of this sourcing learns nothing about its state.
   const invite = await mustInvite(deps, s.id, address);
   mustBeOpen(s, nowOf(deps), { timed: true });
-  if ((await statusOf(deps, s.id, address)) === "out") throw new SupplierOut(s.id, address);
+  const earlier = await deps.repo.listMessages(s.id, { supplier: address });
+  if (supplierStatus(earlier) === "out") throw new SupplierOut(s.id, address);
+  if (earlier.filter((m) => m.kind === "from_supplier").length >= SUPPLIER_MESSAGE_LIMIT) throw new SupplierMessageLimit(s.id, address);
 
   const result = await screenMessage(deps.engine, {
     text,

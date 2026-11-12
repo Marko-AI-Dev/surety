@@ -191,6 +191,18 @@ describe("the Surety API", () => {
     expect(await call("POST", `/supplier/sourcing/${id}/messages`, a, { text: "Hello again" })).toMatchObject({ status: 403, json: { error: "supplier_out" } });
   });
 
+  it("a supplier's 21st message is 429 too_many_messages, never reaches the decision model, and the quote form still works", async () => {
+    const id = await openWithSupplier();
+    const a = SUPPLIER_TOKENS[SUPPLIER];
+    for (let i = 0; i < 20; i++) {
+      expect((await call("POST", `/supplier/sourcing/${id}/messages`, a, { text: `Our offer stands, note ${i + 1}.` })).json).toMatchObject({ delivered: true });
+    }
+    const asked = asks;
+    expect(await call("POST", `/supplier/sourcing/${id}/messages`, a, { text: "One more." })).toMatchObject({ status: 429, json: { error: "too_many_messages" } });
+    expect(asks).toBe(asked);
+    expect((await call("POST", `/supplier/sourcing/${id}/quote`, a, quoteForm)).status).toBe(200);
+  });
+
   it("the full loop over HTTP ends with a LOCKED job", async () => {
     const id = await openWithSupplier();
     const a = SUPPLIER_TOKENS[SUPPLIER];
