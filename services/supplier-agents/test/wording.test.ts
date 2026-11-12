@@ -52,6 +52,50 @@ describe("createWording", () => {
   });
 });
 
+describe("wording that reads like a real supplier (12 Nov)", () => {
+  const answer = { unitCents: 11_800, deliveryDays: 21, intent: "answer" as const };
+  const thread = [
+    { kind: "to_supplier" as const, text: "Best price for 400 panels CIF Durban?", at: "t1" },
+    { kind: "from_supplier" as const, text: "Can do $118.00 per panel, 21 days.", delivered: true, at: "t2" },
+    { kind: "to_supplier" as const, text: "Are they IEC 61215 certified, and what is the warranty?", at: "t3" },
+  ];
+
+  it("every honest supplier has its own voice and a profile with its certifications", () => {
+    for (const p of [PERSONAS.brightway, PERSONAS.sunpeak]) {
+      expect(p.voice, p.key).toBeTruthy();
+      expect(p.profile?.join(" "), p.key).toMatch(/IEC 61215/);
+    }
+    expect(PERSONAS.brightway.voice).not.toBe(PERSONAS.sunpeak.voice);
+  });
+
+  it("the model sees the recent conversation, the voice and the profile, and greets only when opening", async () => {
+    let body = "";
+    const impl = (async (_u: string, init: { body: string }) => {
+      body = init.body;
+      return completion("Yes, IEC 61215 and IEC 61730, 12-year product warranty. Price stays $118.00.");
+    }) as unknown as typeof fetch;
+    const word = createWording({ apiKey: "k", model: "m", maxCalls: 60, fetchImpl: impl });
+    expect(await word(PERSONAS.brightway, answer, thread)).toBe("Yes, IEC 61215 and IEC 61730, 12-year product warranty. Price stays $118.00.");
+    expect(body).toContain("Are they IEC 61215 certified, and what is the warranty?");
+    expect(body).toContain(PERSONAS.brightway.voice!.slice(0, 30));
+    expect(body).toMatch(/NRCS/);
+    expect(body).toMatch(/no greeting/i);
+  });
+
+  it("an answer may leave out the price, but never states another amount or other days", async () => {
+    const w = (text: string) => createWording({ apiKey: "k", model: "m", maxCalls: 60, fetchImpl: stubFetch(() => completion(text)).impl });
+    expect(await w("Yes, fully IEC 61215 and IEC 61730 certified, NRCS LOA on file.")(PERSONAS.brightway, answer, thread)).toBe("Yes, fully IEC 61215 and IEC 61730 certified, NRCS LOA on file.");
+    expect(await w("Certified. For you $115.00 special.")(PERSONAS.brightway, answer, thread)).toBe(templateWording(PERSONAS.brightway, answer));
+    expect(await w("Certified, and we can ship in 10 days.")(PERSONAS.brightway, answer, thread)).toBe(templateWording(PERSONAS.brightway, answer));
+  });
+
+  it("the answer template states the supplier's certifications and keeps the offer", () => {
+    const t = templateWording(PERSONAS.brightway, answer);
+    expect(t).toMatch(/IEC 61215/);
+    expect(t).toContain("$118.00");
+  });
+});
+
 describe("wording for several rounds (Phase 4d)", () => {
   const beat = { unitCents: 11_300, deliveryDays: 21, intent: "beat" as const };
   const trade = { unitCents: 10_600, deliveryDays: 35, intent: "trade" as const };

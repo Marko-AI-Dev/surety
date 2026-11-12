@@ -59,10 +59,10 @@ describe("the inspector's key stays with a person", () => {
       ...readdirSync(resolve(root, "services/supplier-agents/src")).map((f) => `services/supplier-agents/src/${f}`),
     ];
     const sources: [string, string][] = [
-      ...agentCode.map((f): [string, string] => [f, readFileSync(resolve(root, f), "utf8")]),
+      ...[...agentCode, "agents/paperclip/surety.ts"].map((f): [string, string] => [f, readFileSync(resolve(root, f), "utf8")]),
       ...Object.entries(files),
     ];
-    expect(sources.length).toBeGreaterThanOrEqual(9);
+    expect(sources.length).toBeGreaterThanOrEqual(10);
     for (const [name, text] of sources) {
       expect(text, name).not.toMatch(/API_TOKEN_INSPECTOR|\/inspector\b|inspector:attest/);
     }
@@ -98,6 +98,40 @@ describe("negotiation with leverage (Phase 4d)", () => {
   it("the API skill shows the brief's priority and latest delivery days", () => {
     expect(files["surety-api.md"]).toMatch(/"priority"/);
     expect(files["surety-api.md"]).toMatch(/"latestDeliveryDays"/);
+  });
+});
+
+describe("the negotiator's one-call helper (12 Nov)", () => {
+  const negotiator = files["negotiator.md"] ?? "";
+
+  it("the negotiator is told to use look, wait and act, and never sleep", () => {
+    for (const c of ["node surety.ts look", "node surety.ts wait", "node surety.ts act"]) expect(negotiator).toContain(c);
+    expect(negotiator).toMatch(/never use `sleep`/i);
+  });
+
+  it("paperclip-team copies surety.ts into the negotiator's folder only", () => {
+    const team = readFileSync(resolve(import.meta.dirname, "../scripts/paperclip-team.ts"), "utf8");
+    expect(team).toMatch(/r\.key === "negotiator" \? ` \$\{SOURCE\}\/surety\.ts`/);
+  });
+
+  it("the negotiator sounds like a person, asks what a real buyer asks, and stops pushing once the brief is met", () => {
+    expect(negotiator).toMatch(/certif/i);
+    expect(negotiator).toMatch(/warranty/i);
+    expect(negotiator).toMatch(/`meetsBrief`/);
+    expect(negotiator).toMatch(/stop pushing/i);
+    expect(negotiator).toMatch(/one business day/i);
+    expect(negotiator).toMatch(/never assume/i);
+    expect(negotiator).not.toMatch(/in these words/i);
+  });
+
+  it("the negotiator never takes a price at face value: it asks what the price includes", () => {
+    for (const w of [/freight/i, /insurance/i, /duties/i, /VAT/, /surcharge/i]) expect(negotiator).toMatch(w);
+  });
+
+  it("the helper never reads the maximum and never prints the token", () => {
+    const helper = readFileSync(resolve(import.meta.dirname, "../agents/paperclip/surety.ts"), "utf8");
+    expect(helper).not.toMatch(/maxUnitCents/);
+    expect(helper).not.toMatch(/console\.(log|error)\([^)]*token/i);
   });
 });
 

@@ -33,7 +33,10 @@ interface Agent {
   settled: Set<string>;
 }
 
+// SUPPLIER_SKIP=brightway,sunpeak leaves those suppliers to a person on the supplier seat (12 Nov).
+const skip = new Set((process.env.SUPPLIER_SKIP ?? "").split(",").map((s) => s.trim()).filter(Boolean));
 const agents: Agent[] = directory.flatMap((e) => {
+  if (skip.has(e.persona)) return [];
   const persona = PERSONAS[e.persona as Persona["key"]];
   const token = tokens[e.address];
   return persona && token ? [{ address: e.address, persona: { ...persona, name: e.name }, token, states: new Map(), settled: new Set() }] : [];
@@ -76,7 +79,7 @@ async function negotiate(agent: Agent): Promise<void> {
         await api(agent, "POST", `/supplier/sourcing/${s.sourcingId}/quote`, r.move.commit);
         log(`${agent.persona.key}: committed ${r.move.commit.unitCents} cents a panel, ${r.move.commit.deliveryDays} days`);
       } else {
-        const text = "say" in r.move ? await wording(agent.persona, r.move.say) : r.move.script.replace("{wallet}", stranger);
+        const text = "say" in r.move ? await wording(agent.persona, r.move.say, thread) : r.move.script.replace("{wallet}", stranger);
         const res = await api<{ delivered: boolean; card: string | null; status: string }>(agent, "POST", `/supplier/sourcing/${s.sourcingId}/messages`, { text });
         log(`${agent.persona.key}: "${text.slice(0, 70)}" -> ${res.delivered ? "delivered" : `held (${res.card ?? "no card"})`}, ${res.status}`);
         if (res.status === "out") agent.states.set(s.sourcingId, { ...r.state, committed: true });
