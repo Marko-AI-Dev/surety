@@ -22,7 +22,7 @@ The app opens live: it polls the newest purchase every 2 seconds and shows it as
 - **The main screen:** one sentence on what is happening, three numbers worked out from the record (price moved, suppliers removed, money locked or paid), a link to testnet.xrpl.org for every lock, payment and refund, a thin strip of the nine steps, and the conversations: one per supplier, plus the Lead agent's decision and the inspector. It follows whichever conversation spoke last. A held message shows that it was held and why, never its text; the text is in the Control room.
 - **Judge's seat:** the QR code on the main screen opens the live supplier seat when given that supplier's token. The quote form sends `deliveryDays`, and the settlement form takes the real shipping document number, because the inspector must read the same one.
 - **Inspector's page** (`#/inspector?t=<token>`): the queue without any B/L number, type the number, read it back, then send. Its QR code is in the Control room, not on the main screen.
-- **Start a purchase:** shown when live has no purchase. PROVISIONAL: it calls `POST /demo/start`, which is this app's proposal and not in the API yet; until then it says to start from the terminal.
+- **Start a purchase:** shown when live has no purchase. It calls `POST /demo/start`, which hands the Lead agent its task; the Lead opens the purchase. If the API was started without `PAPERCLIP_COMPANY_ID` and `PAPERCLIP_LEAD_AGENT_ID` the route answers 404 and the form says to start by hand.
 - **Not run against a real backend.** All of this is unit-tested against the record shape and exercised on the simulated feed only.
 
 ## Views

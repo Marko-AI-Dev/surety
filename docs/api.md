@@ -91,6 +91,22 @@ The operator's record of one sourcing, for the web app. It has the same shape as
 
 Read-only: it reads the database and the signer's health, never the ledger or the decision model. Because it carries held messages and the maximum price, every role except `view` gets `403`.
 
+### `POST /demo/start` (view)
+
+The big screen's Start button. It opens nothing itself: it hands the Lead agent its task in Paperclip, and the Lead opens the sourcing with `POST /sourcing` and its own token. Body, all six required and nothing else:
+
+```json
+{ "quantity": 400, "targetUnitCents": 11000, "maxUnitCents": 12000, "priority": "balanced", "latestDeliveryDays": 30, "negotiationSeconds": 180 }
+```
+
+The API adds the rest of the order (Karoo Solar Imports, monocrystalline solar panel 550 W, CIF Durban, the treasury wallet from the signer, and a refund deadline of `API_DEMO_DEADLINE_SECONDS`, default 420). Returns `{ "started": true }`.
+
+- `404 not_found` unless the API was started with `PAPERCLIP_COMPANY_ID` and `PAPERCLIP_LEAD_AGENT_ID` (both UUIDs). The task is created with `paperclipai issue create` inside WSL.
+- `409 conflict` while a sourcing is `OPEN`, or within 120 seconds of the last start.
+- `502 start_failed` when the task could not be created.
+
+The view token is otherwise read-only. This is its one action, and it moves no money: every limit still sits with the signer.
+
 ### `GET /suppliers` (lead, sourcing)
 
 The approved suppliers: `[{ address, name, onHold }]`. A supplier is on hold after any card until the operator clears it (`pnpm supplier:clear`).

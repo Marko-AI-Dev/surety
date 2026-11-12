@@ -41,6 +41,7 @@ import {
   supplierThread,
 } from "@surety/workflow";
 import type { ApiTokens } from "./config";
+import { DEFAULT_DEADLINE_SECONDS, StartBody, type StartPurchase, demoBrief, leadTask } from "./demo-start";
 import { sourcingList, sourcingRecord } from "./record";
 
 // The Surety API: the only door for the buyer's agents, the supplier agents and the UI. One bearer
@@ -50,6 +51,9 @@ import { sourcingList, sourcingRecord } from "./record";
 // sees only its queue and its own answers, never the B/L number a supplier submitted.
 
 const MAX_BODY_BYTES = 16 * 1024;
+// After a start the Lead needs a moment to open the sourcing. A second start inside this window would
+// hand it a second task for the same purchase.
+export const START_WINDOW_MS = 120_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type Role = "lead" | "sourcing" | "negotiator" | "view" | "inspector" | "supplier";
@@ -109,8 +113,15 @@ function statusOf(e: unknown): [number, string, string] {
 
 export function createApiServer(
   deps: SourcingDeps,
-  config: { tokens: ApiTokens; supplierTokens: Record<string, string>; inspectorName?: string },
-  opts: { log?: (line: string) => void } = {},
+  config: {
+    tokens: ApiTokens;
+    supplierTokens: Record<string, string>;
+    inspectorName?: string;
+    // Absent: POST /demo/start answers 404.
+    start?: StartPurchase;
+    demoDeadlineSeconds?: number;
+  },
+  opts: { log?: (line: string) => void; now?: () => number } = {},
 ): http.Server {
   // Tokens are compared as SHA-256 digests with timingSafeEqual: equal length, constant time.
   const digest = (s: string) => createHash("sha256").update(s).digest();
@@ -131,7 +142,34 @@ export function createApiServer(
     return c.supplier;
   };
 
+  const clock = opts.now ?? Date.now;
+  let lastStartAt: number | null = null;
+
   const routes: Route[] = [
+    // The big screen's Start button. It opens nothing itself: it hands the Lead agent its task, and the
+    // Lead opens the sourcing with its own token. One purchase at a time.
+    {
+      method: "POST",
+      pattern: /^\/demo\/start$/,
+      roles: ["view"],
+      handle: async ({ body }) => {
+        const start = config.start;
+        if (!start) throw new HttpError(404, "not_found", "no such resource");
+        const brief = demoBrief(StartBody.parse(body), (await deps.signer.health()).buyer, config.demoDeadlineSeconds ?? DEFAULT_DEADLINE_SECONDS);
+        if ((await deps.repo.listSourcings(20)).some((s) => s.state === "OPEN")) throw new HttpError(409, "conflict", "a purchase is already open");
+        const at = clock();
+        if (lastStartAt !== null && at - lastStartAt < START_WINDOW_MS) throw new HttpError(409, "conflict", "a purchase was started moments ago and is still opening");
+        // Claimed before the hand-over, so two clicks cannot both get through; given back if it fails.
+        lastStartAt = at;
+        try {
+          await start(leadTask(brief));
+        } catch {
+          lastStartAt = null;
+          throw new HttpError(502, "start_failed", "the agent team could not be reached");
+        }
+        return { started: true };
+      },
+    },
     { method: "POST", pattern: /^\/sourcing$/, roles: ["lead"], handle: ({ body }) => openSourcing(deps, body) },
     { method: "GET", pattern: /^\/sourcing$/, roles: ["lead", "view"], handle: () => sourcingList(deps, 20) },
     // The operator's full record of a sourcing, held messages and the maximum included: view only.

@@ -3,9 +3,9 @@ import { usd } from "../data/format";
 import { ApiError, type StartBrief, startPurchase } from "../data/live";
 
 // Start a purchase from the screen. The browser never holds the Lead agent's token: the button asks
-// the backend's demo command to open the purchase, through the dev proxy, from this machine only.
-// PROVISIONAL: the route (POST /demo/start) is this app's proposal and is not in the API yet. Until it
-// is, the form says how to start a purchase from the terminal instead.
+// the API (POST /demo/start, through the dev proxy, from this machine only) to hand the Lead agent its
+// task. The Lead then opens the purchase itself. The route answers 404 when the API was started without
+// the agent team's ids, and the form then says how to start a purchase by hand.
 const DEFAULTS: StartBrief = { quantity: 400, targetUnitCents: 11_000, maxUnitCents: 12_000, priority: "balanced", latestDeliveryDays: 30, negotiationSeconds: 180 };
 
 export function validateBrief(b: StartBrief): string | null {
@@ -32,13 +32,13 @@ export function Start({ waiting }: { waiting: string }) {
     setMessage(null);
     try {
       await startPurchase((u, i) => fetch(u, i), b);
-      setMessage({ tone: "plain", text: "Started. Your Lead agent is opening the purchase; it appears here in a few seconds." });
+      setMessage({ tone: "plain", text: "Started. Your Lead agent has its task and is opening the purchase. It appears here within a minute." });
     } catch (err) {
       const missing = err instanceof ApiError && (err.status === 404 || err.status === 403 || err.status === 0);
       setMessage({
         tone: "stop",
         text: missing
-          ? "This button needs the backend's start command, which is not connected yet. Start the purchase from the terminal with pnpm demo and it will appear here."
+          ? "This button is not connected to your agent team on this machine. Give the Lead agent its task by hand and the purchase will appear here."
           : err instanceof ApiError
             ? err.message
             : "That did not go through.",

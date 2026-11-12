@@ -10,6 +10,7 @@ import { createSignerClient } from "@surety/signer-client";
 import { createPgRepo } from "@surety/workflow";
 import { TESTUSD_CURRENCY_HEX, getTrustLine } from "@surety/xrpl-settlement";
 import { loadApiConfig } from "./config";
+import { createPaperclipStarter } from "./demo-start";
 import { createApiServer } from "./http";
 import { createSupplierLine } from "./supplier-line";
 
@@ -38,11 +39,14 @@ const names = new Map<string, string>(
 
 const server = createApiServer(
   { repo, signer, supplierLine, engine: createJevEngine({ apiKey: config.openRouterKey }), directory: (a) => names.get(a) ?? null },
-  config,
+  {
+    ...config,
+    ...(config.demoStart ? { start: createPaperclipStarter(config.demoStart), demoDeadlineSeconds: config.demoStart.deadlineSeconds } : {}),
+  },
   { log },
 );
 server.listen(config.port, config.host, () => {
-  log(`Surety API on ${config.host}:${config.port} | ${names.size} suppliers in the directory | ${Object.keys(config.supplierTokens).length} supplier tokens`);
+  log(`Surety API on ${config.host}:${config.port} | ${names.size} suppliers in the directory | ${Object.keys(config.supplierTokens).length} supplier tokens | start from the screen ${config.demoStart ? "on" : "off"}`);
 });
 
 let stopping = false;
