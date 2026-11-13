@@ -21,6 +21,12 @@ export type Draft = z.infer<typeof DraftSchema>;
 export type Field = keyof Draft;
 
 export const FIELDS: Field[] = ["quantity", "maxUnitCents", "targetUnitCents", "latestDeliveryDays", "priority", "push"];
+// The numbers a purchase cannot do without. These are asked for.
+export const ASKED: Field[] = ["quantity", "maxUnitCents", "targetUnitCents", "latestDeliveryDays"];
+// What is assumed when the buyer does not say: a balance of price and speed, and (by the brief's own
+// default) a firm negotiator. The answer says which were assumed, so the screen can show them and let
+// the buyer change them. One complete sentence is then enough to start.
+export const ASSUMED: Field[] = ["priority", "push"];
 
 export const IntakeBody = z
   .object({
@@ -158,9 +164,11 @@ export async function readWithModel(chat: Chat, text: string): Promise<Draft> {
 
 export interface IntakeResult {
   draft: Draft;
-  // The next thing to ask, or null when the six numbers are all there.
+  // The next thing to ask, or null when the numbers a purchase needs are all there.
   question: { field: Field; ask: string } | null;
   ready: boolean;
+  // What the buyer did not say and was assumed. Empty until the purchase is ready to start.
+  assumed: Field[];
   // Which reader filled the draft this turn, for the screen to be honest about.
   readBy: "code" | "code and model";
 }
@@ -179,14 +187,18 @@ export async function intake(raw: unknown, chat?: Chat): Promise<IntakeResult> {
       draft,
       question: { field: "targetUnitCents", ask: "The price you hope for cannot be above the most you will pay. What price would you be happy with?" },
       ready: false,
+      assumed: [],
       readBy: Object.keys(fromModel).length > 0 ? "code and model" : "code",
     };
   }
-  const missing = FIELDS.find((f) => draft[f] === undefined);
+  const missing = ASKED.find((f) => draft[f] === undefined);
+  const assumed = missing === undefined ? ASSUMED.filter((f) => draft[f] === undefined) : [];
+  if (assumed.includes("priority")) draft.priority = "balanced";
   return {
     draft,
     question: missing ? { field: missing, ask: QUESTIONS[missing] } : null,
     ready: missing === undefined,
+    assumed,
     readBy: Object.keys(fromModel).length > 0 ? "code and model" : "code",
   };
 }
