@@ -171,7 +171,7 @@ function SupplierPanel({ record, view, card, canAct, onClose }: { record: Sourci
   };
   return (
     <Sheet open={card !== null} onOpenChange={(open) => (open ? null : onClose())}>
-      <SheetContent className="tw w-full gap-0 border-l bg-popover text-popover-foreground sm:max-w-lg">
+      <SheetContent className="tw w-full gap-0 glass-panel border-l border-solid text-popover-foreground sm:max-w-lg">
         <SheetHeader className="border-b border-solid">
           <SheetTitle>{card?.name ?? "Supplier"}</SheetTitle>
           <SheetDescription>{card?.line}. You see every message. Nothing said here can move money.</SheetDescription>
@@ -233,7 +233,7 @@ function SettingsPanel({ record, open, canAct, onClose }: { record: SourcingReco
   };
   return (
     <Sheet open={open} onOpenChange={(o) => (o ? null : onClose())}>
-      <SheetContent className="tw w-full gap-0 border-l bg-popover text-popover-foreground sm:max-w-md">
+      <SheetContent className="tw w-full gap-0 glass-panel border-l border-solid text-popover-foreground sm:max-w-md">
         <SheetHeader className="border-b border-solid">
           <SheetTitle>How your negotiator works</SheetTitle>
           <SheetDescription>{record ? "You can change this at any time while the negotiation runs." : "These apply once a purchase is under way. You can also choose the first one when you start."}</SheetDescription>
@@ -285,7 +285,7 @@ function LimitsPanel({ record, open, onClose }: { record: SourcingRecord | null;
   const policy = record?.policy ?? null;
   return (
     <Sheet open={open} onOpenChange={(o) => (o ? null : onClose())}>
-      <SheetContent className="tw w-full gap-0 border-l bg-popover text-popover-foreground sm:max-w-md">
+      <SheetContent className="tw w-full gap-0 glass-panel border-l border-solid text-popover-foreground sm:max-w-md">
         <SheetHeader className="border-b border-solid">
           <SheetTitle>Suppliers and limits</SheetTitle>
           <SheetDescription>Set by a person, outside the reach of your agents. Your agents can read these; they cannot change them.</SheetDescription>

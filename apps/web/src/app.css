@@ -60,3 +60,41 @@
     margin: 0;
   }
 }
+
+/* Frosted panels for what slides or pops over the page (side panels, the quick-actions window). They
+   sit outside the layers on purpose, so they win over a component's own background and shadow. More
+   opaque than the page's glass, because text sits straight on them. Solid where blur is missing,
+   unwanted or switched off. */
+.glass-panel {
+  background: color-mix(in srgb, var(--glass-solid) 74%, transparent);
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-lip), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.35);
+  backdrop-filter: blur(var(--blur)) saturate(1.35);
+}
+.glass-veil {
+  background: var(--veil);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-panel {
+    background: var(--glass-solid);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-panel {
+    background: var(--glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .glass-veil {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+:root[data-solid="true"] .glass-panel {
+  background: var(--glass-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
