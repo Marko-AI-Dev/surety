@@ -31,7 +31,7 @@ Read this file at the start of every session. If a rule here is wrong or out of 
 - **Test first for logic.** Write the failing test, watch it fail, then write the smallest code that passes.
 - **`pnpm check` must pass before every commit.** It runs the typecheck, the unit tests, the key boundary check and the web build.
 - **Verify before claiming done.** Run the command, read its output, then say it passed. In every report keep "verified by running" apart from "read in the code", and say what was not verified.
-- **Small commits, one change each.** Work on a branch and open a pull request. Never push to `main`. The agent that builds does not merge its own pull request: a separate reviewer reviews, merges and tests on the live backend. Nothing is deployed without Marko's go-ahead.
+- **Small commits, one change each.** Work on a branch and open a pull request. Never push to `main`. The agent that builds may merge its own pull request once `pnpm check` passes (Marko, 13 Nov 2026). The exception is the money path (non-negotiable 3): a change there waits for a separate review before it merges. A merge is not a live test: say in the pull request what has not been run on the live backend. Nothing is deployed without Marko's go-ahead.
 - **Plain, calm writing**, on screen and in reports. Short sentences, no long dashes, no jargon a new reader would not know. One primary action per screen. A disabled button says why.
 
 ## Where things are
