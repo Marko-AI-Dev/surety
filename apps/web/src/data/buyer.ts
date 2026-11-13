@@ -1,4 +1,4 @@
-import type { RunView } from "./timeline";
+import { type RunView, silentUnnamed } from "./timeline";
 import type { Card, SourcingRecord } from "./types";
 
 // What the Buy view shows: the negotiation as one conversation, and the deal as a row of stages.
@@ -67,7 +67,7 @@ export interface Stage {
 // The deal from brief to payout. The inspector's stage is always in the row: "off" when the record
 // has no second key, so the place it will take is visible before the API exists.
 export function dealStages(record: SourcingRecord, view: RunView): Stage[] {
-  const invited = view.invites.filter((i) => i.invited).length;
+  const invited = view.invites.filter((i) => i.invited && !silentUnnamed(i)).length;
   const committed = view.invites.filter((i) => i.quote).length;
   const talking = view.messages.some((m) => m.kind === "to_supplier");
   const declined = view.decisions.length > 0 && !view.accepted;

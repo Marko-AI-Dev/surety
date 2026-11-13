@@ -25,7 +25,8 @@ describe("the one sentence that says what is happening", () => {
   it("names the removal of the crook while the negotiation is still running", () => {
     const redCard = steps.find((s) => s.kind === "message" && s.title.includes("red card"));
     const l = statusLine(recordedRun, viewAt(recordedRun, steps, redCard?.at ?? 0));
-    expect(l.now).toBe("Your agents are negotiating with 4 suppliers.");
+    // Four wallets were invited. One has no name in the directory and never answered, so the buyer is told three.
+    expect(l.now).toBe("Your agents are negotiating with 3 suppliers.");
     expect(l.detail).toBe("1 supplier was removed for trying to manipulate them. Your money has not moved.");
   });
 

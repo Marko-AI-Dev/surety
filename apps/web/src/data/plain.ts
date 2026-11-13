@@ -1,5 +1,5 @@
 import { ruleOf, usd } from "./format";
-import type { MessageView, RunView } from "./timeline";
+import { type MessageView, type RunView, silentUnnamed } from "./timeline";
 import type { SourcingRecord } from "./types";
 
 // Plain words first. Everything here is written for someone who has never seen Surety: what is
@@ -18,7 +18,7 @@ export interface StatusLine {
 export function statusLine(record: SourcingRecord, view: RunView): StatusLine {
   const supplier = view.accepted?.supplier.name ?? "the supplier";
   const total = usd(view.money.totalCents);
-  const invited = view.invites.filter((i) => i.invited).length;
+  const invited = view.invites.filter((i) => i.invited && !silentUnnamed(i)).length;
   const out = view.invites.filter((i) => i.status === "out").length;
   const committed = view.invites.filter((i) => i.quote).length;
   const talking = view.messages.some((m) => m.kind === "to_supplier");

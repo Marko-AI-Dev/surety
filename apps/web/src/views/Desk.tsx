@@ -5,7 +5,7 @@ import { usd, utcTime } from "../data/format";
 import { ApiError, type Draft, type IntakeAnswer, answerDeal, readNeed, sendNote, startPurchase } from "../data/live";
 import { chatRows, headline } from "../data/livescreen";
 import { statusLine } from "../data/plain";
-import type { RunView } from "../data/timeline";
+import { type RunView, silentUnnamed } from "../data/timeline";
 import type { SourcingRecord } from "../data/types";
 import { Numbers, Stages } from "./Business";
 import { Start } from "./Start";
@@ -241,7 +241,8 @@ function MailCard({ m }: { m: Mail }) {
 }
 
 function Threads({ record, view, canNudge }: { record: SourcingRecord; view: RunView; canNudge: boolean }) {
-  const rows = chatRows(record, view).filter((r) => r.kind === "supplier");
+  const hidden = new Set(view.invites.filter(silentUnnamed).map((i) => i.address));
+  const rows = chatRows(record, view).filter((r) => r.kind === "supplier" && !hidden.has(r.id));
   const [picked, setPicked] = useState<string | null>(null);
   const latest = [...view.messages].reverse().find((m) => m.kind !== "report")?.supplier ?? rows[0]?.id ?? null;
   const open = picked && rows.some((r) => r.id === picked) ? picked : latest;
@@ -291,6 +292,11 @@ function Threads({ record, view, canNudge }: { record: SourcingRecord; view: Run
           </ol>
         </div>
       )}
+      {hidden.size > 0 && rows.length > 0 ? (
+        <p className="fine">
+          {hidden.size === 1 ? "One approved wallet" : `${hidden.size} approved wallets`} with no name in your supplier directory {hidden.size === 1 ? "was" : "were"} also invited and {hidden.size === 1 ? "has" : "have"} not answered. {hidden.size === 1 ? "It is" : "They are"} in the admin log.
+        </p>
+      ) : null}
       {notes.length > 0 ? (
         <ul className="my-notes">
           {notes.map((n) => (

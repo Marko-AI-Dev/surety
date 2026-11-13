@@ -4,7 +4,8 @@ import { adminLog, deskStage, reviewOf, threadOf, trackerOf } from "../src/data/
 import { recordingOf } from "../src/data/evidence";
 import { headline } from "../src/data/livescreen";
 import { proxyDecision } from "../src/data/proxy-policy";
-import { buildTimeline, timelineBounds, viewAt } from "../src/data/timeline";
+import { statusLine } from "../src/data/plain";
+import { buildTimeline, silentUnnamed, timelineBounds, viewAt } from "../src/data/timeline";
 import type { SourcingRecord } from "../src/data/types";
 
 // The buyer's desk, read exactly as the screen reads it, from the recorded runs.
@@ -92,6 +93,26 @@ describe("a conversation as an email thread", () => {
     const ok = threadOf(record, view, record.invites[0]?.address ?? "");
     expect(ok[0]).toMatchObject({ from: "Your negotiator", mine: true, held: null });
     expect(ok.some((m) => !m.mine && m.body)).toBe(true);
+  });
+});
+
+describe("an approved wallet with no name that never answers", () => {
+  it("is left out of the buyer's count while it is silent, and stays in the admin log", () => {
+    const { record, view } = play("paid");
+    const unnamed = view.invites.filter((i) => i.unnamed);
+    expect(unnamed).toHaveLength(1);
+    expect(unnamed[0]?.replied).toBe(false);
+    expect(silentUnnamed(unnamed[0]!)).toBe(true);
+    const said = new Set<string>();
+    for (let at = 0; at < 400_000; at += 5_000) {
+      const mid = play("paid", (b) => Math.min(b.end, b.start + at));
+      said.add(statusLine(mid.record, mid.view).now);
+    }
+    expect(said).toContain("Your agents are negotiating with 2 suppliers.");
+    expect([...said].some((line) => line.includes("with 3 suppliers") || line.includes("invited 3 "))).toBe(false);
+    expect(adminLog(record, view).some((e) => e.what.includes("invited rMAmWT"))).toBe(true);
+    // A named supplier that has not answered yet still counts.
+    expect(view.invites.filter((i) => !i.unnamed).every((i) => !silentUnnamed({ ...i, replied: false }))).toBe(true);
   });
 });
 

@@ -258,6 +258,10 @@ export interface InviteView {
   selected: boolean;
 }
 
+// An approved wallet with no name in the supplier directory that has never written. The buyer's screen
+// leaves it out: it would show as a bare address that never answers. The admin log still has it.
+export const silentUnnamed = (i: InviteView) => i.unnamed && !i.replied;
+
 export interface MessageView extends RecordMessage {
   index: number;
   atMs: number;
