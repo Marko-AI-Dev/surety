@@ -4,9 +4,13 @@ import { type RankedQuote, rankQuotes } from "./sourcing-rank";
 import { z } from "zod";
 import {
   Address,
+  type Autonomy,
+  BuyerControlsSchema,
+  BuyerMessageSchema,
   BuyerNoteSchema,
   type Card,
   ChatTextSchema,
+  DraftDecisionSchema,
   MAX_TESTUSD_CENTS,
   type OfferReport,
   OfferReportSchema,
@@ -23,7 +27,17 @@ import { type DecisionEngine, type ScreenResult, type SupplierLine, chatState, s
 import type { SignerClient } from "@surety/signer-client";
 import type { DealsRepo } from "./deal-repo";
 import type { JobsRepo } from "./repo";
-import { type BuyerNote, CommittedQuoteConflict, type Invite, type Sourcing, type SourcingMessage, type SourcingRepo, type SupplierSuggestion } from "./sourcing-repo";
+import {
+  type BuyerControls,
+  type BuyerNote,
+  CommittedQuoteConflict,
+  type Invite,
+  type MessageDraft,
+  type Sourcing,
+  type SourcingMessage,
+  type SourcingRepo,
+  type SupplierSuggestion,
+} from "./sourcing-repo";
 
 // Sourcing and negotiation: the lead opens a sourcing from the buyer's brief, the sourcing agent
 // invites approved suppliers, the negotiator and suppliers chat through Surety, and suppliers commit
@@ -258,32 +272,129 @@ export async function postSupplierMessage(
   return { delivered: result.verdict === "deliver", card: result.card, status: await statusOf(deps, s.id, address) };
 }
 
-// The negotiator's message to one supplier. Surety's own agent, so it isn't screened.
-export async function postNegotiatorMessage(deps: SourcingDeps, sourcingId: string, address: string, raw: unknown): Promise<SourcingMessage> {
-  const text = ChatTextSchema.parse(raw);
+// What the buyer's side may say to a supplier right now: the sourcing is open, the supplier is invited
+// and still in, and the text names no other supplier (leverage stays anonymous).
+async function mayWriteTo(deps: SourcingDeps, sourcingId: string, address: string, text: string): Promise<Sourcing> {
   const s = await mustSourcing(deps, sourcingId);
   mustBeOpen(s, nowOf(deps), { timed: true });
   const invite = await mustInvite(deps, s.id, address);
   if ((await statusOf(deps, s.id, address)) === "out") throw new SupplierOut(s.id, address);
-  // Leverage stays anonymous: a message naming another invited supplier is refused, never stored.
   const others = (await deps.repo.listInvites(s.id)).filter((i) => i.address !== address);
   const allowed = [s.brief.goods.description, s.brief.port, invite.name];
   if (namesOtherSupplier(text, others, allowed) !== null) throw new SourcingRefused("a message must not name another supplier");
-  return deps.repo.addMessage({
-    sourcingId: s.id,
-    supplier: address,
-    kind: "to_supplier",
-    body: text,
-    deliveredBody: text,
-    verdict: "deliver",
-    card: null,
-    screen: null,
-    offer: null,
-  });
+  return s;
+}
+
+const deliverToSupplier = (deps: SourcingDeps, sourcingId: string, address: string, text: string) =>
+  deps.repo.addMessage({ sourcingId, supplier: address, kind: "to_supplier", body: text, deliveredBody: text, verdict: "deliver", card: null, screen: null, offer: null });
+
+// The buyer's settings for this negotiation: what the buyer changed since, else the brief, else the defaults.
+export async function controlsOf(deps: SourcingDeps, s: Sourcing): Promise<{ autonomy: Autonomy; push: Push; wrapUpAt: string | null }> {
+  const c = await deps.repo.getControls(s.id);
+  return { autonomy: c.autonomy ?? s.brief.autonomy ?? "full", push: c.push ?? s.brief.push ?? "firm", wrapUpAt: c.wrapUpAt };
+}
+
+export type HeldForBuyer = { held: "buyer_review"; draftId: string; supplier: string };
+
+// The negotiator's message to one supplier. Surety's own agent, so it isn't screened. When the buyer
+// approves every message first, it is kept as a draft: no supplier and no agent reads it until the
+// buyer sends it. One draft a supplier waits at a time; asking again returns the one that waits.
+export async function postNegotiatorMessage(deps: SourcingDeps, sourcingId: string, address: string, raw: unknown): Promise<SourcingMessage | HeldForBuyer> {
+  const text = ChatTextSchema.parse(raw);
+  const s = await mayWriteTo(deps, sourcingId, address, text);
+  if ((await controlsOf(deps, s)).autonomy === "full") return deliverToSupplier(deps, s.id, address, text);
+  const waiting = (await deps.repo.listDrafts(s.id)).find((d) => d.supplier === address && d.state === "pending");
+  const draft = waiting ?? (await deps.repo.addDraft({ sourcingId: s.id, supplier: address, author: "negotiator", body: text }));
+  return { held: "buyer_review", draftId: draft.id, supplier: address };
+}
+
+export class DraftNotFound extends Error {
+  constructor(readonly draftId: string) {
+    super(`draft ${draftId} not found`);
+    this.name = "DraftNotFound";
+  }
+}
+
+// The buyer's answer to a waiting draft. Send delivers the draft, in the buyer's wording when the
+// buyer changed it; discard delivers nothing. The draft is claimed before the message is stored, so
+// answering twice can never send it twice.
+export async function decideDraft(deps: SourcingDeps, draftId: string, raw: unknown): Promise<{ draft: MessageDraft; message: SourcingMessage | null }> {
+  const { action, text } = DraftDecisionSchema.parse(raw);
+  const draft = await deps.repo.getDraft(draftId);
+  if (!draft) throw new DraftNotFound(draftId);
+  if (action === "discard") return { draft: await deps.repo.decideDraft(draft.id, "discarded", null), message: null };
+  const body = text ?? draft.body;
+  await mayWriteTo(deps, draft.sourcingId, draft.supplier, body);
+  const sent = await deps.repo.decideDraft(draft.id, "sent", body === draft.body ? null : body);
+  const message = await deliverToSupplier(deps, draft.sourcingId, draft.supplier, body);
+  await deps.repo.linkDraft(sent.id, message.id);
+  return { draft: { ...sent, messageId: message.id }, message };
+}
+
+// How many messages the buyer may write to suppliers themself in one sourcing.
+export const BUYER_MESSAGE_LIMIT = 40;
+
+// The buyer writes to a supplier themself. It goes out at once, in either mode, and is kept as a sent
+// draft so the record knows the buyer wrote it.
+export async function postBuyerMessage(deps: SourcingDeps, sourcingId: string, raw: unknown): Promise<SourcingMessage> {
+  const { supplier, text } = BuyerMessageSchema.parse(raw);
+  const s = await mayWriteTo(deps, sourcingId, supplier, text);
+  if ((await deps.repo.listDrafts(s.id)).filter((d) => d.author === "buyer").length >= BUYER_MESSAGE_LIMIT) {
+    throw new SourcingRefused(`the buyer has written ${BUYER_MESSAGE_LIMIT} messages in this sourcing`);
+  }
+  const draft = await deps.repo.addDraft({ sourcingId: s.id, supplier, author: "buyer", body: text });
+  await deps.repo.decideDraft(draft.id, "sent", null);
+  const message = await deliverToSupplier(deps, s.id, supplier, text);
+  await deps.repo.linkDraft(draft.id, message.id);
+  return message;
+}
+
+// The buyer changes how the negotiator works while the negotiation runs.
+export async function setBuyerControls(deps: SourcingDeps, sourcingId: string, raw: unknown) {
+  const patch = BuyerControlsSchema.parse(raw);
+  const s = await mustSourcing(deps, sourcingId);
+  mustBeOpen(s, nowOf(deps), { timed: false });
+  await deps.repo.setControls(s.id, { ...(patch.autonomy ? { autonomy: patch.autonomy } : {}), ...(patch.push ? { push: patch.push } : {}) });
+  return controlsOf(deps, s);
+}
+
+// The buyer asks the agents to bring what they have. Asking again changes nothing.
+export async function requestWrapUp(deps: SourcingDeps, sourcingId: string) {
+  const s = await mustSourcing(deps, sourcingId);
+  mustBeOpen(s, nowOf(deps), { timed: false });
+  await deps.repo.setControls(s.id, { wrapUpAt: nowOf(deps) });
+  return controlsOf(deps, s);
+}
+
+// A committed quote meets the brief when it is at or under the target price and, where the buyer gave
+// a latest delivery, inside it.
+export const meetsBrief = (brief: SourcingBrief, q: { unitCents: number; deliveryDays: number | null }) =>
+  q.unitCents <= brief.goods.targetUnitCents && (brief.latestDeliveryDays === undefined || (q.deliveryDays !== null && q.deliveryDays <= brief.latestDeliveryDays));
+
+export type DecideWhy = "criteria_met" | "buyer_asked" | "time_over";
+export interface DecideNow {
+  ready: boolean;
+  why: DecideWhy | null;
+}
+
+// When the lead should stop waiting and bring a deal to the buyer. Worked out by code, not left to an
+// agent's sense of time: a committed quote from a supplier still in meets the brief; or the buyer asked
+// and at least one quote is committed; or the buyer's decide-by time has passed.
+export function readyToDecide(
+  s: Sourcing,
+  invites: { status: "in" | "out"; quote: { unitCents: number } | null; deliveryDays: number | null }[],
+  controls: Pick<BuyerControls, "wrapUpAt">,
+  now: Date,
+): DecideNow {
+  const committed = invites.filter((i) => i.status === "in" && i.quote !== null);
+  if (committed.some((i) => meetsBrief(s.brief, { unitCents: (i.quote as { unitCents: number }).unitCents, deliveryDays: i.deliveryDays }))) return { ready: true, why: "criteria_met" };
+  if (controls.wrapUpAt !== null && committed.length > 0) return { ready: true, why: "buyer_asked" };
+  if (now.getTime() >= Date.parse(s.negotiationEndsAt)) return { ready: true, why: "time_over" };
+  return { ready: false, why: null };
 }
 
 export type InboxItem =
-  | { supplier: string; kind: "to_supplier" | "from_supplier"; text: string; at: string }
+  | { supplier: string; kind: "to_supplier" | "from_supplier"; text: string; at: string; byBuyer?: true }
   | { supplier: string; kind: "from_supplier"; withheld: true; card: Card | null; at: string };
 
 // What the negotiator reads: its own messages and every delivered supplier message. A quarantined
@@ -291,9 +402,10 @@ export type InboxItem =
 export async function negotiatorInbox(deps: SourcingDeps, sourcingId: string): Promise<InboxItem[]> {
   const s = await mustSourcing(deps, sourcingId);
   const items: InboxItem[] = [];
+  const buyerWrote = new Set((await deps.repo.listDrafts(s.id)).filter((d) => d.author === "buyer" && d.messageId).map((d) => d.messageId));
   for (const m of await deps.repo.listMessages(s.id)) {
     if (m.kind === "report") continue;
-    if (m.kind === "to_supplier") items.push({ supplier: m.supplier, kind: "to_supplier", text: m.body, at: m.createdAt });
+    if (m.kind === "to_supplier") items.push({ supplier: m.supplier, kind: "to_supplier", text: m.body, at: m.createdAt, ...(buyerWrote.has(m.id) ? { byBuyer: true as const } : {}) });
     else if (m.verdict === "deliver" && m.deliveredBody !== null) items.push({ supplier: m.supplier, kind: "from_supplier", text: m.deliveredBody, at: m.createdAt });
     else items.push({ supplier: m.supplier, kind: "from_supplier", withheld: true, card: m.card, at: m.createdAt });
   }
@@ -436,6 +548,8 @@ export interface LeadView {
   invites: { address: string; name: string; status: "in" | "out"; cards: { yellow: number; red: number }; quote: SupplierQuote | null; deliveryDays: number | null; dealId: string | null }[];
   // Surety's ranking of the committed quotes for the buyer's priority. Lead and view only.
   ranking: RankedQuote[];
+  // Whether to stop waiting and bring a deal to the buyer now, and why. Worked out by code.
+  decideNow: DecideNow;
   reports: ReportItem[];
   suggestions: SupplierSuggestion[];
 }
@@ -473,6 +587,7 @@ export async function leadView(deps: SourcingDeps, sourcingId: string): Promise<
     selectedSupplier: s.selectedSupplier,
     dealId: s.dealId,
     invites,
+    decideNow: readyToDecide(s, invites, await deps.repo.getControls(s.id), nowOf(deps)),
     ranking: rankQuotes(
       s.brief,
       invites.flatMap((i) => (i.quote ? [{ supplier: i.address, status: i.status, unitCents: i.quote.unitCents, deliveryDays: i.deliveryDays }] : [])),
@@ -494,6 +609,12 @@ export interface NegotiatorView {
   latestDeliveryDays: number | null;
   // How hard the buyer wants the push, and anything the buyer said since the negotiation began.
   push: Push;
+  // full: the negotiator's messages go out as it writes them. approve: each waits for the buyer.
+  autonomy: Autonomy;
+  // The buyer asked for what the agents have: ask every supplier for its final committed quote now.
+  wrapUp: boolean;
+  // Messages waiting for the buyer, one a supplier at most. Never their text: the negotiator wrote it.
+  pendingDrafts: { supplier: string; at: string }[];
   buyerNotes: { text: string; at: string }[];
   negotiationEndsAt: string;
   secondsLeft: number;
@@ -508,6 +629,7 @@ export async function negotiatorView(deps: SourcingDeps, sourcingId: string): Pr
   const s = await mustSourcing(deps, sourcingId);
   const messages = await deps.repo.listMessages(s.id);
   const invites = await deps.repo.listInvites(s.id);
+  const controls = await controlsOf(deps, s);
   return {
     id: s.id,
     ref: s.ref,
@@ -517,7 +639,10 @@ export async function negotiatorView(deps: SourcingDeps, sourcingId: string): Pr
     port: s.brief.port,
     priority: s.brief.priority,
     latestDeliveryDays: s.brief.latestDeliveryDays ?? null,
-    push: s.brief.push ?? "firm",
+    push: controls.push,
+    autonomy: controls.autonomy,
+    wrapUp: controls.wrapUpAt !== null,
+    pendingDrafts: (await deps.repo.listDrafts(s.id)).filter((d) => d.state === "pending").map((d) => ({ supplier: d.supplier, at: d.createdAt })),
     buyerNotes: (await deps.repo.listBuyerNotes(s.id)).map((n) => ({ text: n.text, at: n.createdAt })),
     negotiationEndsAt: s.negotiationEndsAt,
     secondsLeft: secondsLeft(s, nowOf(deps)),
