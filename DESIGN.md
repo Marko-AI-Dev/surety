@@ -37,7 +37,7 @@ Every colour is a custom property on `:root` in `apps/web/src/styles.css`, with 
 
 ## The UI kit
 
-- New UI is built from `apps/web/src/components/ui` (shadcn/ui on Tailwind 4): button, textarea, sheet, switch, badge. Add a building block there before using it in a screen.
+- New UI is built from `apps/web/src/components/ui` (shadcn/ui on Tailwind 4): button, textarea, sheet, dialog, switch, badge. Add components by hand in shadcn's shape: the shadcn CLI adds an unrelated package (`cn`) when run in this repo. Add a building block there before using it in a screen.
 - `apps/web/src/app.css` is the one stylesheet entry. It maps shadcn's colour names onto the tokens above (`bg-primary` is `--primary`, `text-muted-foreground` is `--muted`, `border` is `--line`, `bg-card` is `--glass`, and `bg-ok`, `bg-held`, `bg-stop`, `bg-money`, `bg-ours` for the meaning colours), so a kit component follows both themes without extra work.
 - Tailwind's reset is left out on purpose: it would restyle the older screens. The few resets the kit needs apply only inside an element with the class `tw`. A screen built from the kit puts `tw` on its root, and on any panel that renders outside it (a sheet).
 - The older screens are styled by `apps/web/src/styles.css`, which sits in its own cascade layer below Tailwind's utilities. They move to the kit one at a time.
@@ -46,6 +46,9 @@ Every colour is a custom property on `:root` in `apps/web/src/styles.css`, with 
 ## Layout
 
 - The buyer has one screen: a chat with their agent (`apps/web/src/views/Chat.tsx`). The text box is fixed at the bottom and is never removed. What happens arrives as a message. A supplier's conversation opens in a side panel; on a phone the panel is the full screen.
+- On a wide screen a menu runs down the left (`apps/web/src/components/SideNav.tsx`): related items sit under a label and each has an icon. The deal sits to the right of the chat as six steps in the order they happen, with only the current one open. Below 1024px the menu gives way to the bar across the top; below 1280px the deal steps give way to the supplier chips.
+- Secondary content folds away (accordions) and the order on screen follows the order things happen in.
+- A main button may change its words on hover to what pressing it gets you. Nothing else on a button moves, and it stands still under reduced motion.
 - Everything technical lives under Admin. The supplier's and the inspector's phone pages keep their own links.
 - A container holds everything it shows. Avoid a scrolling area inside a scrolling page; the chat feed is the one deliberate exception, and it fills the screen so the page itself does not scroll.
 - Works from 390px wide. Touch targets are at least 44px.
