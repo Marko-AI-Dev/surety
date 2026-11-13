@@ -3,10 +3,12 @@ import { dealStages } from "./data/buyer";
 import { RECORDINGS, recordingOf } from "./data/evidence";
 import { GLOSSARY, HOW_IT_WORKS, statusLine } from "./data/plain";
 import { type Mode, useRun } from "./run";
-import { ADMIN_TABS, AdminNav, type AdminTab, AskAdmin, Display, Log } from "./views/Admin";
+import { ADMIN_TABS, AdminNav, type AdminTab, AskAdmin, Display } from "./views/Admin";
 import { AttackLab } from "./views/AttackLab";
 import { Stages } from "./views/Business";
 import { Control } from "./views/Control";
+import { SideNav } from "./components/SideNav";
+import { Audit } from "./views/Audit";
 import { Chat } from "./views/Chat";
 import { Desk } from "./views/Desk";
 import { Inspector } from "./views/Inspector";
@@ -140,7 +142,8 @@ export function App() {
   const scrub = replay && (route === "desk" || (route === "admin" && (tab === "log" || tab === "control")));
 
   return (
-    <div className="app" data-route={route === "admin" && tab === "attacks" ? "attack" : route}>
+    <div className="app" data-route={route === "admin" && tab === "attacks" ? "attack" : route} data-shell={phonePage ? undefined : "side"}>
+      {phonePage ? null : <SideNav section={route === "admin" ? "admin" : "buyer"} current={route === "admin" ? tab : "desk"} dark={theme === "dark"} onTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))} onHelp={() => setHelp(true)} />}
       <header className="top glass">
         <a className="brand" href="#/">
           Surety
@@ -266,7 +269,7 @@ export function App() {
             <Waiting>No purchase on record yet.</Waiting>
           )
         ) : (
-          <Log record={record} view={view} />
+          <Audit record={record} view={view} />
         )}
       </main>
 
