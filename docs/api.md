@@ -72,6 +72,8 @@ Opens a sourcing from the buyer's brief.
 - **The ranking** orders committed quotes for the priority: `price` by price then days, `speed` by days then price, `balanced` by price relative to the cheapest plus days relative to the fastest. A quote that is out, above the maximum, without days or slower than `latestDeliveryDays` is ranked last with its reason. The lead may accept another; Surety then records a deal event `off_priority` with the best quote, the chosen one and the lead's reason. It never blocks.
 - **For sourcing and negotiator:** `{ goods: { description, quantity, targetUnitCents }, incoterm, port, priority, latestDeliveryDays, secondsLeft, invites: [{ address, name, status, committed }], offers: [{ supplier, unitCents, deliveryDays, source, at }] }`, with no maximum and no ranking. `offers` holds each supplier's committed quote, or else its latest report whose summary was delivered: the competing offers the negotiator may cite, anonymised. A withheld report, a held message or an out supplier never appears, and nothing in it is derived from the maximum.
 
+The lead's and the view's answer carries `decideNow: { ready, why }`, worked out by code: `criteria_met` (a committed quote from a supplier still in is at or under the target price and inside the latest delivery), `buyer_asked` (the buyer asked for what the agents have and at least one quote is committed) or `time_over` (the buyer's decide-by time, `negotiationSeconds`, has passed; 30 seconds to thirty days). The negotiator's answer carries `autonomy`, `wrapUp` and `pendingDrafts: [{ supplier, at }]` (never a draft's text).
+
 ### `GET /sourcing` (lead, view)
 
 The 20 newest sourcings: `[{ id, ref, state, goods, quantity, incoterm, port, negotiationEndsAt, dealId, createdAt }]`. No prices.
@@ -127,6 +129,28 @@ The record (`GET /sourcing/:id/record`) carries `approval: { state: "waiting" | 
 
 The buyer nudges its own negotiator: body `{ "text": "..." }` (1 to 500 characters, at most 20 a sourcing, only while the negotiation is open). The negotiator's `GET /sourcing/:id` gains `push` (`"gentle"` or `"firm"`, from the brief; `"firm"` when the brief has none) and `buyerNotes: [{ text, at }]`. A note never reaches a supplier and is not screened: it is the buyer's own words to its own agent.
 
+### `POST /sourcing/:id/controls` (view)
+
+The buyer changes how its negotiator works while the negotiation is open. Body `{ "autonomy"?: "full" | "approve", "push"?: "gentle" | "firm" }` (at least one). Returns `{ autonomy, push, wrapUpAt }`. `full`: the negotiator's messages go out as it writes them. `approve`: each one waits for the buyer. The brief may set both at the start (`autonomy`, `push`); without them the defaults are `full` and `firm`.
+
+### `POST /sourcing/:id/wrap-up` (view)
+
+The buyer asks for what the agents have now. Body `{}`. Returns `{ autonomy, push, wrapUpAt }`; asking again keeps the first time. It selects nothing and locks nothing: the negotiator's view gains `wrapUp: true` (ask every supplier for its final committed quote now), and the lead's view says when to decide.
+
+### `POST /drafts/:id` (view)
+
+The buyer's answer to a message that waits for it (approve-first). Body `{ "action": "send" | "discard", "text"?: "..." }`. `send` delivers the draft to the supplier, in the buyer's wording when `text` is given; `discard` delivers nothing. Returns `{ id, state, supplier }`. A draft is answered once (`409` after that). A reworded draft still may not name another supplier (`400`), and then stays waiting.
+
+### `POST /sourcing/:id/buyer-messages` (view)
+
+The buyer writes to a supplier themself: body `{ "supplier": "r...", "text": "..." }` (1 to 1000 characters, at most 40 a sourcing). It goes out at once in either mode. The negotiator's inbox marks it `byBuyer: true`.
+
+### `POST /sourcing/:id/chat` (view)
+
+The buyer's chat with its own agent. Body `{ "text": "..." }` (1 to 500 characters, at most 60 a sourcing). Returns `{ reply, action, done }`. A small model either answers a question from this purchase's record (`action: "none"`) or names one of four things the buyer wants: `note` (pass an instruction to the negotiator, in the buyer's own words), `wrap_up`, `approve_first` or `full_autonomy`. Code carries the action out and code writes the confirmation, so the chat never claims something that did not happen. The chat cannot approve a deal, decline one or pay. `404` without a model; when the model fails the reply is a plain apology.
+
+The record (`GET /sourcing/:id/record`) also carries `controls: { autonomy, push, wrapUpAt }`, `decideNow`, `drafts: [{ id, supplier, text, at }]` (waiting only), `chat: [{ role: "buyer" | "agent", text, at }]`, `typing: { address: at }`, and on each message to a supplier `by: "negotiator" | "buyer"`, `buyerApproved` and `buyerEdited`.
+
 ### `POST /buyer/intake` (view)
 
 Plain words in, the numbers of a purchase out. Body `{ "text": "...", "draft"?: {...}, "field"?: "quantity" | ... }`. Returns `{ draft, question: { field, ask } | null, ready, readBy }`. Code reads the obvious; a small model (`API_CHAT_MODEL`, default `openai/gpt-4o-mini`, through OpenRouter) fills in what code missed, and its answer is checked like any input. It opens nothing.
@@ -161,6 +185,8 @@ The negotiator's messages and every delivered supplier message, oldest first:
 
 - **Body:** `{ "supplier": "<wallet>", "text": "..." }`, up to 1000 characters.
 - A message that names another invited supplier (its wallet, or a distinctive word of its name) is refused with `400 refused` and stored nowhere, so leverage stays anonymous.
+
+In approve-first mode the answer is `{ held: "buyer_review", draftId, supplier }`: the message is a draft that no supplier and no agent reads until the buyer sends it. One draft a supplier waits at a time; posting again returns the one that waits.
 
 ### `POST /sourcing/:id/reports` (negotiator)
 
@@ -226,6 +252,10 @@ This supplier's conversation: `[{ kind, text, delivered?, card?, at }]`. It show
   - A wallet other than the supplier's own, or bank details, is a red card.
   - A message that steers the buyer's agent is a yellow card.
   - Links are stripped.
+
+### `POST /supplier/sourcing/:id/typing`
+
+A supplier says it is writing a reply. Body `{}`. Kept in memory for 20 seconds and shown on the buyer's screen; it decides nothing. `404` for a sourcing the supplier is not invited to.
 
 ### `POST /supplier/sourcing/:id/quote`
 

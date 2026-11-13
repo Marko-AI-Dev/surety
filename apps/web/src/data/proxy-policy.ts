@@ -36,6 +36,11 @@ const BUYER_ACTIONS: RegExp[] = [
   new RegExp("^/api/buyer/intake$"),
   new RegExp("^/api/admin/ask$"),
   new RegExp(`^/api/sourcing/${ID}/notes$`),
+  new RegExp(`^/api/sourcing/${ID}/controls$`),
+  new RegExp(`^/api/sourcing/${ID}/wrap-up$`),
+  new RegExp(`^/api/sourcing/${ID}/buyer-messages$`),
+  new RegExp(`^/api/sourcing/${ID}/chat$`),
+  new RegExp(`^/api/drafts/${ID}$`),
   new RegExp(`^/api/deals/${ID}/approval$`),
 ];
 
@@ -60,7 +65,9 @@ export function proxyDecision(req: ProxyRequest): ProxyDecision {
   const fromOwnPage =
     typeof origin === "string" && origin.replace(/^https?:\/\//, "") === host && req.headers["sec-fetch-site"] === "same-origin" && String(req.headers["content-type"] ?? "").startsWith("application/json");
   // The same holds for the buyer's other actions: saying what it needs, a note to its negotiator, the
-  // final yes or no on a deal, and a question to the admin assistant. Nothing else may be posted.
+  // final yes or no on a deal, a question to the admin assistant, the chat with its own agent, its
+  // negotiator's settings, asking for what the agents have, answering a waiting draft, and writing to
+  // a supplier. Nothing else may be posted.
   const act = req.method === "POST" && BUYER_ACTIONS.some((p) => p.test(path)) && fromOwnPage;
   return local && !forwarded && ownHost && (read || act) ? "inject" : "refuse";
 }

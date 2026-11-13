@@ -7,6 +7,8 @@ import {
   DealConflict,
   DealTransitionConflict,
   DeliverableConflict,
+  DraftConflict,
+  DraftNotFound,
   InspectionClosed,
   InspectionNotFound,
   InviteConflict,
@@ -25,6 +27,7 @@ import {
   attest,
   buyerDecision,
   commitQuote,
+  decideDraft,
   inspectionOf,
   inspectorQueue,
   inviteSupplier,
@@ -33,11 +36,14 @@ import {
   negotiatorInbox,
   negotiatorView,
   openSourcing,
+  postBuyerMessage,
   postNegotiatorMessage,
   postSupplierMessage,
   recommendationOf,
   reportOffer,
+  requestWrapUp,
   selectSupplier,
+  setBuyerControls,
   settlementDraftFor,
   submitSettlement,
   suggestSupplier,
@@ -45,6 +51,7 @@ import {
   supplierThread,
 } from "@surety/workflow";
 import { adminAnswer } from "./assistant";
+import { buyerChat } from "./chat";
 import type { ApiTokens } from "./config";
 import { type Chat, intake } from "./intake";
 import { DEFAULT_DEADLINE_SECONDS, StartBody, type StartPurchase, demoBrief, leadTask } from "./demo-start";
@@ -60,6 +67,8 @@ const MAX_BODY_BYTES = 16 * 1024;
 // After a start the Lead needs a moment to open the sourcing. A second start inside this window would
 // hand it a second task for the same purchase.
 export const START_WINDOW_MS = 120_000;
+// How long a supplier's "I am writing" signal counts.
+export const TYPING_MS = 20_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type Role = "lead" | "sourcing" | "negotiator" | "view" | "inspector" | "supplier";
@@ -98,7 +107,7 @@ function statusOf(e: unknown): [number, string, string] {
   if (e instanceof HttpError) return [e.status, e.code, e.message];
   if (e instanceof ZodError) return [400, "bad_request", e.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; ")];
   if (e instanceof SourcingRefused) return [400, "refused", e.message];
-  if (e instanceof NotInvited || e instanceof SourcingNotFound || e instanceof InspectionNotFound) return [404, "not_found", "no such resource"];
+  if (e instanceof NotInvited || e instanceof SourcingNotFound || e instanceof InspectionNotFound || e instanceof DraftNotFound) return [404, "not_found", "no such resource"];
   if (e instanceof SupplierOut) return [403, "supplier_out", e.message];
   if (e instanceof SupplierMessageLimit) return [429, "too_many_messages", e.message];
   if (e instanceof SourcingClosed || e instanceof InspectionClosed) return [409, "closed", e.message];
@@ -110,6 +119,7 @@ function statusOf(e: unknown): [number, string, string] {
     e instanceof DealConflict ||
     e instanceof DealTransitionConflict ||
     e instanceof DeliverableConflict ||
+    e instanceof DraftConflict ||
     e instanceof TransitionConflict ||
     e instanceof TransitionError
   ) {
@@ -154,6 +164,17 @@ export function createApiServer(
 
   const clock = opts.now ?? Date.now;
   let lastStartAt: number | null = null;
+  // Which suppliers are writing a reply right now: the supplier's own signal, kept in memory only.
+  // It is a courtesy for the buyer's screen and decides nothing.
+  const typing = new Map<string, number>();
+  const typingIn = (sourcingId: string) => {
+    const out: Record<string, string> = {};
+    for (const [key, at] of typing) {
+      if (clock() - at > TYPING_MS) typing.delete(key);
+      else if (key.startsWith(`${sourcingId}/`)) out[key.slice(sourcingId.length + 1)] = new Date(at).toISOString();
+    }
+    return out;
+  };
 
   const routes: Route[] = [
     // The big screen's Start button. It opens nothing itself: it hands the Lead agent its task, and the
@@ -183,7 +204,7 @@ export function createApiServer(
     { method: "POST", pattern: /^\/sourcing$/, roles: ["lead"], handle: ({ body }) => openSourcing(deps, body) },
     { method: "GET", pattern: /^\/sourcing$/, roles: ["lead", "view"], handle: () => sourcingList(deps, 20) },
     // The operator's full record of a sourcing, held messages and the maximum included: view only.
-    { method: "GET", pattern: /^\/sourcing\/([^/]+)\/record$/, roles: ["view"], handle: ({ id }) => sourcingRecord(deps, id) },
+    { method: "GET", pattern: /^\/sourcing\/([^/]+)\/record$/, roles: ["view"], handle: async ({ id }) => ({ ...(await sourcingRecord(deps, id)), typing: typingIn(id) }) },
     {
       method: "GET",
       pattern: /^\/sourcing\/([^/]+)$/,
@@ -239,6 +260,41 @@ export function createApiServer(
     },
     // The buyer nudges its own negotiator. The negotiator reads the notes with its view of the sourcing.
     { method: "POST", pattern: /^\/sourcing\/([^/]+)\/notes$/, roles: ["view"], handle: async ({ id, body }) => ({ text: (await addBuyerNote(deps, id, body)).text }) },
+    // The buyer changes how its negotiator works: on its own, or every message approved first; how hard to push.
+    { method: "POST", pattern: /^\/sourcing\/([^/]+)\/controls$/, roles: ["view"], handle: ({ id, body }) => setBuyerControls(deps, id, body) },
+    // The buyer asks for what the agents have now. Nothing is selected and nothing locks here.
+    { method: "POST", pattern: /^\/sourcing\/([^/]+)\/wrap-up$/, roles: ["view"], handle: ({ id }) => requestWrapUp(deps, id) },
+    // The buyer's answer to a message that waits for it: send (as written or reworded) or discard.
+    {
+      method: "POST",
+      pattern: /^\/drafts\/([^/]+)$/,
+      roles: ["view"],
+      handle: async ({ id, body }) => {
+        const { draft } = await decideDraft(deps, id, body);
+        return { id: draft.id, state: draft.state, supplier: draft.supplier };
+      },
+    },
+    // The buyer writes to a supplier themself.
+    {
+      method: "POST",
+      pattern: /^\/sourcing\/([^/]+)\/buyer-messages$/,
+      roles: ["view"],
+      handle: async ({ id, body }) => {
+        const m = await postBuyerMessage(deps, id, body);
+        return { supplier: m.supplier, at: m.createdAt };
+      },
+    },
+    // The buyer's chat with its own agent: an answer from the record, or one of four things done by code.
+    {
+      method: "POST",
+      pattern: /^\/sourcing\/([^/]+)\/chat$/,
+      roles: ["view"],
+      handle: async ({ id, body }) => {
+        const chat = config.chat;
+        if (!chat) throw new HttpError(404, "not_found", "no such resource");
+        return buyerChat(deps, chat, id, body);
+      },
+    },
     // Plain words in, the six numbers of a purchase out, and the next thing to ask. Opens nothing.
     { method: "POST", pattern: /^\/buyer\/intake$/, roles: ["view"], handle: ({ body }) => intake(body, config.chat) },
     // The admin assistant: answers from the records only. It reads; it cannot act.
@@ -323,6 +379,18 @@ export function createApiServer(
       pattern: /^\/supplier\/sourcing\/([^/]+)\/messages$/,
       roles: ["supplier"],
       handle: ({ caller, id, body }) => postSupplierMessage(deps, id, supplierOf(caller), TextBody.parse(body).text),
+    },
+    // A supplier says it is writing a reply. Only for a sourcing it is invited to.
+    {
+      method: "POST",
+      pattern: /^\/supplier\/sourcing\/([^/]+)\/typing$/,
+      roles: ["supplier"],
+      handle: async ({ caller, id }) => {
+        const address = supplierOf(caller);
+        if (!(await deps.repo.listInvites(id)).some((i) => i.address === address)) throw new HttpError(404, "not_found", "no such resource");
+        typing.set(`${id}/${address}`, clock());
+        return { ok: true };
+      },
     },
     {
       method: "POST",

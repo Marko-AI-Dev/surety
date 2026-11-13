@@ -216,7 +216,7 @@ describe("the menu and the proxy", () => {
     const own = { host: "localhost:5173", origin: "http://localhost:5173", "sec-fetch-site": "same-origin", "content-type": "application/json" };
     const id = "11111111-2222-4333-8444-555555555555";
     const post = (path: string, headers: Record<string, unknown> = own, remoteAddress = "127.0.0.1") => proxyDecision({ method: "POST", path, remoteAddress, headers });
-    for (const path of ["/api/demo/start", "/api/buyer/intake", "/api/admin/ask", `/api/sourcing/${id}/notes`, `/api/deals/${id}/approval`]) {
+    for (const path of ["/api/demo/start", "/api/buyer/intake", "/api/admin/ask", `/api/sourcing/${id}/notes`, `/api/deals/${id}/approval`, `/api/sourcing/${id}/controls`, `/api/sourcing/${id}/wrap-up`, `/api/sourcing/${id}/buyer-messages`, `/api/sourcing/${id}/chat`, `/api/drafts/${id}`]) {
       expect(post(path)).toBe("inject");
       expect(post(path, own, "192.168.1.20")).toBe("refuse");
       expect(post(path, { ...own, origin: "http://evil.example" })).toBe("refuse");
@@ -225,6 +225,6 @@ describe("the menu and the proxy", () => {
       expect(post(path, { ...own, host: "evil.example" })).toBe("refuse");
       expect(post(path, { ...own, "x-forwarded-for": "1.2.3.4" })).toBe("refuse");
     }
-    for (const path of [`/api/deals/${id}/decision`, "/api/sourcing", `/api/sourcing/${id}/select`, `/api/sourcing/${id}/messages`, `/api/deals/not-an-id/approval`]) expect(post(path)).toBe("refuse");
+    for (const path of [`/api/deals/${id}/decision`, "/api/sourcing", `/api/sourcing/${id}/select`, `/api/sourcing/${id}/messages`, `/api/deals/not-an-id/approval`, `/api/drafts/not-an-id`, `/api/sourcing/${id}/invites`, `/api/sourcing/${id}/reports`]) expect(post(path)).toBe("refuse");
   });
 });

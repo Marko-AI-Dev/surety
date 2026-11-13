@@ -5,6 +5,7 @@ import {
   LEAD_RECOMMENDS,
   type SourcingDeps,
   SourcingNotFound,
+  controlsOf,
   inspectionOf,
   leadView,
   supplierOnHold,
@@ -42,7 +43,6 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
   // committed quotes for the buyer's priority, the job's events with their real times, and the deal's
   // notes (an event that changes no state, such as a choice that went against the priority).
   const inspection = deal ? await inspectionOf(deps, deal.id) : null;
-  const ranking = (await leadView(deps, s.id)).ranking;
   const jobEvents = job ? await repo.listEvents(job.id) : [];
   const notes = deal ? (await repo.listDealEvents(deal.id)).filter((ev) => ev.fromState === ev.toState) : [];
   // The buyer's final yes. The lead recommends a deal; nothing locks until the buyer approves it.
@@ -63,6 +63,13 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
     };
   }
   const buyerNotes = (await repo.listBuyerNotes(s.id)).map((n) => ({ text: n.text, at: n.createdAt }));
+  // The buyer's side: its settings, the messages waiting for it, who wrote each message that went out,
+  // and its chat with its own agent.
+  const view = await leadView(deps, s.id);
+  const controls = await controlsOf(deps, s);
+  const drafts = await repo.listDrafts(s.id);
+  const sentBy = new Map(drafts.filter((d) => d.state === "sent" && d.messageId).map((d) => [d.messageId as string, d]));
+  const chat = (await repo.listChat(s.id)).map((l) => ({ role: l.role, text: l.body, at: l.createdAt }));
   // Only a validated transaction is shown as one; the mirror's result is the ledger's.
   const tx = (type: string) => {
     const t = txs.find((x) => x.type === type && x.status === "validated" && x.txHash);
@@ -93,6 +100,8 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
       at: m.createdAt,
       kind: m.kind,
       supplier: m.supplier,
+      // Who wrote a message to a supplier: the negotiator, or the buyer (written or reworded by them).
+      ...(m.kind === "to_supplier" ? { by: sentBy.get(m.id)?.author === "buyer" ? "buyer" : "negotiator", buyerApproved: sentBy.has(m.id), buyerEdited: sentBy.get(m.id)?.sentBody != null } : {}),
       body: m.body,
       delivered: m.verdict === "deliver",
       card: m.card,
@@ -129,7 +138,11 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
     inspection,
     approval,
     buyerNotes,
-    ranking,
+    controls: { autonomy: controls.autonomy, push: controls.push, wrapUpAt: controls.wrapUpAt },
+    decideNow: view.decideNow,
+    drafts: drafts.filter((d) => d.state === "pending").map((d) => ({ id: d.id, supplier: d.supplier, text: d.body, at: d.createdAt })),
+    chat,
+    ranking: view.ranking,
     notes: notes.map((n) => ({ at: n.createdAt, actor: n.actor, reasonCodes: n.reasonCodes, detail: n.detail })),
     events: jobEvents.map((ev) => ({ at: ev.createdAt, actor: ev.actor, from: ev.fromState, to: ev.toState, reasonCodes: ev.reasonCodes })),
     create: tx("create"),

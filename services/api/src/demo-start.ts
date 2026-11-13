@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { z } from "zod";
-import { PRIORITIES, PUSH_LEVELS, type SourcingBrief, SourcingBriefSchema, quantitySchema } from "@surety/contracts";
+import { PRIORITIES, PUSH_LEVELS, type SourcingBrief, SourcingBriefSchema, quantitySchema, AUTONOMY_LEVELS, NEGOTIATION_MAX_SECONDS } from "@surety/contracts";
 
 // Starting a purchase from the big screen. The screen never opens a sourcing itself and never holds
 // the Lead's token: it asks the API to hand the Lead agent its task in Paperclip, exactly as the
@@ -15,9 +15,11 @@ export const StartBody = z
     maxUnitCents: cents,
     priority: z.enum(PRIORITIES),
     latestDeliveryDays: z.number().int().min(1).max(365),
-    negotiationSeconds: z.number().int().min(30).max(3_600),
+    negotiationSeconds: z.number().int().min(30).max(NEGOTIATION_MAX_SECONDS),
     // How hard the negotiator should push. Optional, so the six-number form still works.
     push: z.enum(PUSH_LEVELS).optional(),
+    // Whether the negotiator's messages wait for the buyer. Optional: absent means it writes on its own.
+    autonomy: z.enum(AUTONOMY_LEVELS).optional(),
   })
   .strict()
   .refine((b) => b.targetUnitCents <= b.maxUnitCents, { message: "the target price must not exceed the maximum" });
@@ -53,6 +55,7 @@ export function demoBrief(start: StartBody, treasury: string, deadlineSeconds: n
     priority: start.priority,
     latestDeliveryDays: start.latestDeliveryDays,
     ...(start.push ? { push: start.push } : {}),
+    ...(start.autonomy ? { autonomy: start.autonomy } : {}),
   });
 }
 
