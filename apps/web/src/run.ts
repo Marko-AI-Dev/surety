@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RECORDINGS, recordingOf } from "./data/evidence";
 import { ApiError, createLiveSource, createSimSource } from "./data/live";
 import { type RunView, type Step, buildTimeline, timelineBounds, viewAt } from "./data/timeline";
-import type { SourcingRecord } from "./data/types";
+import type { SourcingListItem, SourcingRecord } from "./data/types";
 
 export type Mode = "replay" | "live";
 export const SPEEDS = [1, 4, 16] as const;
@@ -29,6 +29,8 @@ export interface Run {
   steps: Step[];
   replay: ReplayControls | null;
   live: { status: "connecting" | "ok" | "error"; message: string | null; updatedAt: number | null; simulated: boolean; everConnected: boolean } | null;
+  // Every purchase the backend knows, newest first. Empty on a recording.
+  purchases: SourcingListItem[];
 }
 
 const TICK_MS = 100;
@@ -106,8 +108,10 @@ function useReplay(active: boolean, recorded: SourcingRecord): { record: Sourcin
 
 // `sim` is a speed for the simulated feed (a recorded run through the live path), or null for the
 // real API. The simulated feed is for testing and is always badged.
-function useLive(active: boolean, sim: number | null) {
+// `picked` is the id of an earlier purchase to show; null shows the newest.
+function useLive(active: boolean, sim: number | null, picked: string | null) {
   const [record, setRecord] = useState<SourcingRecord | null>(null);
+  const [purchases, setPurchases] = useState<SourcingListItem[]>([]);
   const [asOf, setAsOf] = useState<number>(() => Date.now());
   const [state, setState] = useState<NonNullable<Run["live"]>>({ status: "connecting", message: null, updatedAt: null, simulated: sim !== null, everConnected: false });
   useEffect(() => {
@@ -116,8 +120,12 @@ function useLive(active: boolean, sim: number | null) {
     const source = sim !== null ? createSimSource((RECORDINGS[0] as (typeof RECORDINGS)[number]).record, { speed: sim }) : createLiveSource((url, init) => fetch(url, init));
     const poll = async () => {
       try {
-        const next = await source.latest();
+        const listed = await source.list();
+        // A picked purchase that is not in the list (a stale link) falls back to the newest.
+        const id = picked && listed.some((p) => p.id === picked) ? picked : listed[0]?.id;
+        const next = id ? await source.record(id) : null;
         if (stopped) return;
+        setPurchases(listed);
         setRecord(next);
         setAsOf(source.now());
         setState({ status: "ok", message: next ? null : "No purchase has been started yet.", updatedAt: Date.now(), simulated: source.simulated, everConnected: true });
@@ -133,13 +141,13 @@ function useLive(active: boolean, sim: number | null) {
       stopped = true;
       clearInterval(id);
     };
-  }, [active, sim]);
-  return { record, state, asOf };
+  }, [active, sim, picked]);
+  return { record, state, asOf, purchases };
 }
 
-export function useRun(mode: Mode, sim: number | null = null, recording = "paid"): Run {
+export function useRun(mode: Mode, sim: number | null = null, recording = "paid", picked: string | null = null): Run {
   const replay = useReplay(mode === "replay", recordingOf(recording).record);
-  const live = useLive(mode === "live", sim);
+  const live = useLive(mode === "live", sim, picked);
   const liveSteps = useMemo(() => (live.record ? buildTimeline(live.record, { now: live.asOf }) : []), [live.record, live.asOf]);
 
   if (mode === "replay") {
@@ -150,6 +158,7 @@ export function useRun(mode: Mode, sim: number | null = null, recording = "paid"
       view: viewAt(replay.record, replay.steps, replay.controls.t),
       replay: replay.controls,
       live: null,
+      purchases: [],
     };
   }
   return {
@@ -159,6 +168,7 @@ export function useRun(mode: Mode, sim: number | null = null, recording = "paid"
     view: live.record ? viewAt(live.record, liveSteps, Number.POSITIVE_INFINITY) : null,
     replay: null,
     live: live.state,
+    purchases: live.purchases,
   };
 }
 

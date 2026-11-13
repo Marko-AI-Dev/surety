@@ -1,4 +1,4 @@
-import { CircleHelp, FileText, FlaskConical, History, LayoutDashboard, type LucideIcon, MessageSquare, Moon, PlayCircle, ShieldCheck, SlidersHorizontal, Smartphone, Sun, TriangleAlert } from "lucide-react";
+import { CircleHelp, FileText, FlaskConical, History, LayoutDashboard, type LucideIcon, MessageSquare, Moon, PlayCircle, ShieldCheck, ShoppingBag, SlidersHorizontal, Smartphone, Sun, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The menu down the left side on a wide screen, for the buyer's screen and for the admin. Related
@@ -21,7 +21,13 @@ interface Item {
 }
 
 const BUYER: { label: string; items: Item[] }[] = [
-  { label: "Buying", items: [{ label: "Your agent", icon: MessageSquare, href: "#/", tab: "desk" }] },
+  {
+    label: "Buying",
+    items: [
+      { label: "Your agent", icon: MessageSquare, href: "#/", tab: "desk" },
+      { label: "My purchases", icon: ShoppingBag, href: "#/purchases", tab: "purchases" },
+    ],
+  },
   {
     label: "Control",
     items: [

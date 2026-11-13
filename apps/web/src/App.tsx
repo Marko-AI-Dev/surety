@@ -10,6 +10,7 @@ import { Control } from "./views/Control";
 import { SideNav } from "./components/SideNav";
 import { Audit } from "./views/Audit";
 import { Chat } from "./views/Chat";
+import { Purchases } from "./views/Purchases";
 import { Desk } from "./views/Desk";
 import { Inspector } from "./views/Inspector";
 import { MoneyRail } from "./views/MoneyRail";
@@ -26,21 +27,30 @@ interface Place {
   route: Route;
   tab: AdminTab;
   token: string | null;
+  // The buyer's side has two pages: the chat and the list of purchases.
+  page: "chat" | "purchases";
+  // An earlier purchase to show in the chat; null shows the newest.
+  purchase: string | null;
 }
+const PURCHASE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Older links (#/control, #/attack) still land in the right admin tab.
 const OLD: Record<string, AdminTab> = { "/control": "control", "/attack": "attacks" };
 
 export function parseHash(hash: string): Place {
   const [path = "", query = ""] = hash.replace(/^#/, "").split("?");
-  const token = new URLSearchParams(query).get("t");
-  if (path === "/supplier") return { route: "supplier", tab: "log", token };
-  if (path === "/inspector") return { route: "inspector", tab: "log", token };
+  const params = new URLSearchParams(query);
+  const token = params.get("t");
+  const base = { tab: "log" as AdminTab, page: "chat" as const, purchase: null };
+  if (path === "/supplier") return { ...base, route: "supplier", token };
+  if (path === "/inspector") return { ...base, route: "inspector", token };
   const old = OLD[path];
-  if (old) return { route: "admin", tab: old, token: null };
+  if (old) return { ...base, route: "admin", tab: old, token: null };
   const tab = ADMIN_TABS.find((t) => t.hash === `#${path}`);
-  if (tab) return { route: "admin", tab: tab.id, token: null };
-  return { route: "desk", tab: "log", token: null };
+  if (tab) return { ...base, route: "admin", tab: tab.id, token: null };
+  if (path === "/purchases") return { ...base, route: "desk", page: "purchases", token: null };
+  const p = params.get("p");
+  return { ...base, route: "desk", token: null, purchase: p && PURCHASE_ID.test(p) ? p : null };
 }
 
 // The page's own query: ?mode=recorded opens on the recorded run; ?sim=6 feeds a recorded run through
@@ -63,7 +73,7 @@ function storedTheme(): Theme {
 }
 
 export function App() {
-  const [{ route, tab }, setPlace] = useState(() => parseHash(location.hash));
+  const [{ route, tab, page, purchase }, setPlace] = useState(() => parseHash(location.hash));
   // A supplier's or the inspector's token arrives after the # and is kept in memory only. It is removed
   // from the address bar at once, so it is not left in history, and it is never written to storage.
   const [supplierToken, setSupplierToken] = useState<string | null>(null);
@@ -81,7 +91,7 @@ export function App() {
   const [recording, setRecording] = useState("paid");
   const flatWhy = useFlat(userFlat);
   const flat = flatWhy !== null;
-  const run = useRun(mode, boot.sim, recording);
+  const run = useRun(mode, boot.sim, recording, purchase);
   const tape = recordingOf(recording);
 
   useEffect(() => {
@@ -94,7 +104,7 @@ export function App() {
       if (next.token && next.route === "inspector") setInspectorToken(next.token);
       if (next.token) history.replaceState(null, "", `${location.pathname}${location.search}#/${next.route}`);
       setPlace((cur) => {
-        if (cur.route !== next.route || cur.tab !== next.tab) scrollTo(0, 0);
+        if (cur.route !== next.route || cur.tab !== next.tab || cur.page !== next.page) scrollTo(0, 0);
         return { ...next, token: null };
       });
     };
@@ -143,7 +153,7 @@ export function App() {
 
   return (
     <div className="app" data-route={route === "admin" && tab === "attacks" ? "attack" : route} data-shell={phonePage ? undefined : "side"}>
-      {phonePage ? null : <SideNav section={route === "admin" ? "admin" : "buyer"} current={route === "admin" ? tab : "desk"} dark={theme === "dark"} onTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))} onHelp={() => setHelp(true)} />}
+      {phonePage ? null : <SideNav section={route === "admin" ? "admin" : "buyer"} current={route === "admin" ? tab : page === "purchases" ? "purchases" : "desk"} dark={theme === "dark"} onTheme={() => setTheme((t) => (t === "light" ? "dark" : "light"))} onHelp={() => setHelp(true)} />}
       <header className="top glass">
         <a className="brand" href="#/">
           Surety
@@ -215,11 +225,13 @@ export function App() {
           <Supplier record={mode === "replay" ? record : null} view={mode === "replay" ? view : null} token={supplierToken} mode={seatMode} setMode={setSeatMode} />
         ) : route === "inspector" ? (
           <Inspector token={inspectorToken} />
+        ) : route === "desk" && page === "purchases" ? (
+          <Purchases purchases={run.purchases} showing={purchase} live={liveOk} recording={recording} onRecording={setRecording} />
         ) : route === "desk" ? (
           mode === "live" && run.live?.status === "connecting" && !record ? (
             <Waiting>{simulated ? "The simulated purchase is about to open." : "Connecting to the Surety backend."}</Waiting>
           ) : (
-            <Chat record={record} view={view} canAct={liveOk} now={liveOk || !view || !Number.isFinite(view.t) ? Date.now() : view.t} />
+            <Chat record={record} view={view} canAct={liveOk} now={liveOk || !view || !Number.isFinite(view.t) ? Date.now() : view.t} earlier={liveOk && record !== null && run.purchases[0] !== undefined && run.purchases[0].id !== record.sourcing.id} />
           )
         ) : tab === "classic" ? (
           <Desk record={record} view={view} canAct={liveOk} now={liveOk || !view || !Number.isFinite(view.t) ? Date.now() : view.t} />

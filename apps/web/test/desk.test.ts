@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseHash } from "../src/App";
 import { adminLog, deskStage, openThread, reviewOf, threadOf, trackerOf } from "../src/data/desk";
+import { purchaseRows } from "../src/data/purchases";
 import { recordingOf } from "../src/data/evidence";
 import { headline } from "../src/data/livescreen";
 import { proxyDecision } from "../src/data/proxy-policy";
@@ -226,5 +227,44 @@ describe("the menu and the proxy", () => {
       expect(post(path, { ...own, "x-forwarded-for": "1.2.3.4" })).toBe("refuse");
     }
     for (const path of [`/api/deals/${id}/decision`, "/api/sourcing", `/api/sourcing/${id}/select`, `/api/sourcing/${id}/messages`, `/api/deals/not-an-id/approval`, `/api/drafts/not-an-id`, `/api/sourcing/${id}/invites`, `/api/sourcing/${id}/reports`]) expect(post(path)).toBe("refuse");
+  });
+});
+
+describe("my purchases", () => {
+  const A = "11111111-2222-4333-8444-555555555555";
+  const B = "66666666-7777-4888-8999-aaaaaaaaaaaa";
+
+  it("has its own page, and an earlier purchase opens by its id; anything else is the latest", () => {
+    expect(parseHash("#/purchases")).toMatchObject({ route: "desk", page: "purchases", purchase: null });
+    expect(parseHash(`#/?p=${A}`)).toMatchObject({ route: "desk", page: "chat", purchase: A });
+    expect(parseHash("#/")).toMatchObject({ route: "desk", page: "chat", purchase: null });
+    expect(parseHash("#/?p=not-an-id")).toMatchObject({ route: "desk", page: "chat", purchase: null });
+    expect(parseHash("#/admin")).toMatchObject({ route: "admin", page: "chat", purchase: null });
+  });
+
+  it("lists purchases newest first, each with one plain line for where it stands", () => {
+    const rows = purchaseRows(
+      [
+        { id: B, ref: "SR-2", state: "OPEN", goods: "Solar panel 550 W", quantity: 400, createdAt: "2026-11-13T12:16:51.000Z", stage: "waiting", supplier: "Sunpeak Energy Ltd", totalCents: null },
+        { id: A, ref: "SR-1", state: "SELECTED", goods: "Solar panel 550 W", quantity: 1000, createdAt: "2026-11-12T09:00:00.000Z", stage: "paid", supplier: "Sunpeak Energy Ltd", totalCents: 4_680_000 },
+      ],
+      null,
+    );
+    expect(rows.map((r) => [r.title, r.line, r.tone, r.amount, r.href, r.showing])).toEqual([
+      ["400 x Solar panel 550 W", "Waiting for your yes or no", "held", null, "#/", true],
+      ["1,000 x Solar panel 550 W", "Paid to Sunpeak Energy Ltd", "ok", "$46,800.00", `#/?p=${A}`, false],
+    ]);
+    expect(rows[1]?.opened).toBe("12 Nov 2026");
+    // The one on screen is marked, whichever it is.
+    expect(purchaseRows([{ id: B, ref: "SR-2", state: "OPEN" }, { id: A, ref: "SR-1", state: "CLOSED" }], A).map((r) => r.showing)).toEqual([false, true]);
+  });
+
+  it("says no and refunded plainly, and copes with a list from an older backend", () => {
+    const line = (stage: string) => purchaseRows([{ id: A, ref: "SR-1", state: "OPEN", stage: stage as never, supplier: "Brightway" }], null)[0]?.line;
+    expect(line("declined")).toBe("You said no. Nothing was paid.");
+    expect(line("refunded")).toBe("Refunded to you. Brightway was not paid.");
+    expect(line("locked")).toBe("Payment locked for Brightway, waiting for the checks");
+    expect(line("negotiating")).toBe("Your agents are negotiating");
+    expect(purchaseRows([{ id: A, ref: "SR-1", state: "OPEN" }], null)[0]).toMatchObject({ title: "SR-1", line: "In progress", tone: "plain" });
   });
 });

@@ -78,6 +78,8 @@ The lead's and the view's answer carries `decideNow: { ready, why }`, worked out
 
 The 20 newest sourcings: `[{ id, ref, state, goods, quantity, incoterm, port, negotiationEndsAt, dealId, createdAt }]`. No prices.
 
+Each item also says where the purchase stands: `stage` (`negotiating`, `waiting` for the buyer's yes, `declined`, `locked`, `paid`, `refunded`, `stopped` or `closed`), `supplier` (the name on the recommended or turned-down deal, else null) and `totalCents` (once a payment exists, else null).
+
 ### `GET /sourcing/:id/record` (view)
 
 The operator's record of one sourcing, for the web app. It has the same shape as `evidence/sourcing-*.json`, so a live run and a recorded run render with the same code:

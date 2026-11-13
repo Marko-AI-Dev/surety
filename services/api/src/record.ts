@@ -169,17 +169,52 @@ export async function sourcingRecord(deps: SourcingDeps, sourcingId: string) {
 
 // The sourcings, newest first, for the lead and the operator's view. No maximum price: the full brief
 // stays on GET /sourcing/:id for the roles that may see it.
+export type PurchaseStage = "negotiating" | "waiting" | "declined" | "locked" | "paid" | "refunded" | "stopped" | "closed";
+
 export async function sourcingList(deps: SourcingDeps, limit: number) {
-  return (await deps.repo.listSourcings(limit)).map((s) => ({
-    id: s.id,
-    ref: s.ref,
-    state: s.state,
-    goods: s.brief.goods.description,
-    quantity: s.brief.goods.quantity,
-    incoterm: s.brief.incoterm,
-    port: s.brief.port,
-    negotiationEndsAt: s.negotiationEndsAt,
-    dealId: s.dealId,
-    createdAt: s.createdAt,
-  }));
+  const { repo } = deps;
+  return Promise.all(
+    (await repo.listSourcings(limit)).map(async (s) => {
+      // Where the purchase stands, for a list of them: the deal the lead recommended, or the last one
+      // the buyer turned down, and its payment if it has one.
+      const current = s.dealId ? await repo.getDeal(s.dealId) : null;
+      const earlier = current ? [] : (await Promise.all((await repo.listInvites(s.id)).filter((i) => i.dealId).map((i) => repo.getDeal(i.dealId as string)))).filter((d): d is Deal => d !== null);
+      const declined = earlier.find((d) => d.state === "DECLINED") ?? null;
+      const deal = current ?? declined;
+      const job = current?.jobId ? await repo.getJob(current.jobId) : null;
+      const stage: PurchaseStage = job
+        ? job.state === "PAID"
+          ? "paid"
+          : job.state === "REFUNDED"
+            ? "refunded"
+            : job.state === "CREATE_FAILED"
+              ? "stopped"
+              : "locked"
+        : current
+          ? current.state === "DECLINED"
+            ? "declined"
+            : "waiting"
+          : declined
+            ? "declined"
+            : s.state === "OPEN"
+              ? "negotiating"
+              : "closed";
+      return {
+        id: s.id,
+        ref: s.ref,
+        state: s.state,
+        goods: s.brief.goods.description,
+        quantity: s.brief.goods.quantity,
+        incoterm: s.brief.incoterm,
+        port: s.brief.port,
+        negotiationEndsAt: s.negotiationEndsAt,
+        dealId: s.dealId,
+        createdAt: s.createdAt,
+        stage,
+        // The supplier of the recommended (or turned down) deal, and the amount once a payment exists.
+        supplier: deal ? deal.intent.supplier.name : null,
+        totalCents: job && "cents" in job.amount ? Number(job.amount.cents) : null,
+      };
+    }),
+  );
 }
