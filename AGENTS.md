@@ -2,6 +2,7 @@
 
 Surety is escrow for import purchases: a buyer's AI agents find suppliers and negotiate, the buyer gives the final yes, and the payment is locked on the XRP Ledger until the paperwork passes and an inspector confirms the shipment.
 
+- What changed recently and why, for anyone arriving without the history: the newest `docs/handover-*.md`.
 - What it is for and its constraints: `PRODUCT.md`.
 - Where the product is going, in Marko's words: `docs/product-vision.md`. Where the two differ, the vision is newer.
 - The design system: `DESIGN.md`.
