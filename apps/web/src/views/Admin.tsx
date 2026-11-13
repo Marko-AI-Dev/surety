@@ -10,9 +10,10 @@ import { Chip, TxLink, Waiting } from "./bits";
 // an assistant that answers from the records, and the older technical views (control room, attack lab,
 // supplier seat, recordings), kept out of the main menu.
 
-export type AdminTab = "log" | "ledger" | "ask" | "control" | "attacks" | "seat" | "classic" | "display";
+export type AdminTab = "log" | "how" | "ledger" | "ask" | "control" | "attacks" | "seat" | "classic" | "display";
 export const ADMIN_TABS: { id: AdminTab; hash: string; label: string }[] = [
   { id: "log", hash: "#/admin", label: "What happened" },
+  { id: "how", hash: "#/admin/how", label: "How Surety works" },
   { id: "ledger", hash: "#/admin/ledger", label: "Escrow ledger" },
   { id: "ask", hash: "#/admin/ask", label: "Ask" },
   { id: "control", hash: "#/admin/control", label: "Control room" },
