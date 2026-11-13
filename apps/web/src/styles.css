@@ -3398,3 +3398,31 @@ main > .desk-card {
     border-radius: 22px;
   }
 }
+
+/* ---------- the chat: a supplier or the agent is writing */
+.typing-dots::after {
+  content: "...";
+  display: inline-block;
+  width: 1.2em;
+  overflow: hidden;
+  vertical-align: bottom;
+  animation: typing-dots 1.2s steps(4, end) infinite;
+}
+@keyframes typing-dots {
+  from {
+    width: 0;
+  }
+  to {
+    width: 1.2em;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-dots::after {
+    animation: none;
+  }
+}
+
+/* The buyer's chat fills the screen, so the page keeps no room below it unless the replay bar is there. */
+.app[data-route="desk"]:not(:has(.replay)) {
+  padding-bottom: 1rem;
+}

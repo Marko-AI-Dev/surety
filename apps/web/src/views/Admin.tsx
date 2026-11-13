@@ -10,13 +10,15 @@ import { Chip, TxLink, Waiting } from "./bits";
 // an assistant that answers from the records, and the older technical views (control room, attack lab,
 // supplier seat, recordings), kept out of the main menu.
 
-export type AdminTab = "log" | "ask" | "control" | "attacks" | "seat" | "display";
+export type AdminTab = "log" | "ask" | "control" | "attacks" | "seat" | "classic" | "display";
 export const ADMIN_TABS: { id: AdminTab; hash: string; label: string }[] = [
   { id: "log", hash: "#/admin", label: "What happened" },
   { id: "ask", hash: "#/admin/ask", label: "Ask" },
   { id: "control", hash: "#/admin/control", label: "Control room" },
   { id: "attacks", hash: "#/admin/attacks", label: "Attack lab" },
   { id: "seat", hash: "#/admin/seat", label: "Supplier seat" },
+  // The buyer's screen before the chat (13 Nov), kept until it is no longer wanted.
+  { id: "classic", hash: "#/admin/classic", label: "Classic view" },
   { id: "display", hash: "#/admin/display", label: "Recordings and display" },
 ];
 

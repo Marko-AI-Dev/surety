@@ -7,6 +7,7 @@ import { ADMIN_TABS, AdminNav, type AdminTab, AskAdmin, Display, Log } from "./v
 import { AttackLab } from "./views/AttackLab";
 import { Stages } from "./views/Business";
 import { Control } from "./views/Control";
+import { Chat } from "./views/Chat";
 import { Desk } from "./views/Desk";
 import { Inspector } from "./views/Inspector";
 import { MoneyRail } from "./views/MoneyRail";
@@ -215,8 +216,10 @@ export function App() {
           mode === "live" && run.live?.status === "connecting" && !record ? (
             <Waiting>{simulated ? "The simulated purchase is about to open." : "Connecting to the Surety backend."}</Waiting>
           ) : (
-            <Desk record={record} view={view} canAct={liveOk} now={liveOk || !view || !Number.isFinite(view.t) ? Date.now() : view.t} />
+            <Chat record={record} view={view} canAct={liveOk} now={liveOk || !view || !Number.isFinite(view.t) ? Date.now() : view.t} />
           )
+        ) : tab === "classic" ? (
+          <Desk record={record} view={view} canAct={liveOk} now={liveOk || !view || !Number.isFinite(view.t) ? Date.now() : view.t} />
         ) : tab === "attacks" ? (
           <AttackLab />
         ) : tab === "seat" ? (

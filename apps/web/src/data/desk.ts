@@ -76,6 +76,9 @@ export interface Mail {
   // A message Surety stopped: never shown as text here, only that it was stopped and why.
   held: { tone: "held" | "stop"; text: string; card: "yellow" | "red" | null } | null;
   mine: boolean;
+  // The buyer wrote or reworded this one (14 Nov).
+  byBuyer: boolean;
+  buyerEdited: boolean;
 }
 
 // One supplier's conversation as an email thread, oldest first. The negotiator's reports to the Lead
@@ -90,11 +93,13 @@ export function threadOf(record: SourcingRecord, view: RunView, supplier: string
       return {
         key: `${m.index}`,
         at: m.atMs,
-        from: mine ? "Your negotiator" : name,
+        from: mine ? (m.by === "buyer" ? "You" : "Your negotiator") : name,
         to: mine ? name : "Your negotiator",
         body: mine || m.delivered ? m.body : null,
         held: mine || m.delivered ? null : { tone: verdict.tone === "stop" ? "stop" : "held", text: verdict.text, card: m.card },
         mine,
+        byBuyer: mine && m.by === "buyer",
+        buyerEdited: mine && m.buyerEdited === true,
       };
     });
 }

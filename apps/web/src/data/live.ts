@@ -100,13 +100,14 @@ export interface StartBrief {
   latestDeliveryDays: number;
   negotiationSeconds: number;
   push?: "gentle" | "firm";
+  autonomy?: "full" | "approve";
 }
 export function startPurchase(fetchFn: FetchFn, brief: StartBrief, base = "/api"): Promise<unknown> {
   return call<unknown>(fetchFn, `${base}/demo/start`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(brief) });
 }
 
 // The buyer's screen: plain words in, the numbers of a purchase out (POST /buyer/intake).
-export type Draft = Partial<Omit<StartBrief, "negotiationSeconds">>;
+export type Draft = Partial<Omit<StartBrief, "negotiationSeconds" | "autonomy">>;
 export type DraftField = keyof Draft;
 export interface IntakeAnswer {
   draft: Draft;
@@ -122,6 +123,21 @@ export const sendNote = (fetchFn: FetchFn, sourcingId: string, text: string, bas
 // The buyer's final yes or no (POST /deals/:id/approval). Only a yes can lock the payment.
 export const answerDeal = (fetchFn: FetchFn, dealId: string, outcome: "approve" | "decline", reason?: string, base = "/api") =>
   post<{ deal: { state: string }; job: { state: string } | null }>(fetchFn, `${base}/deals/${dealId}/approval`, reason ? { outcome, reason } : { outcome });
+// The buyer's chat with its own agent (POST /sourcing/:id/chat): an answer from the record, or one of
+// four things done by code.
+export type ChatAction = "none" | "note" | "wrap_up" | "approve_first" | "full_autonomy";
+export const sendChat = (fetchFn: FetchFn, sourcingId: string, text: string, base = "/api") =>
+  post<{ reply: string; action: ChatAction; done: boolean }>(fetchFn, `${base}/sourcing/${sourcingId}/chat`, { text });
+// How the negotiator works (POST /sourcing/:id/controls), and asking for what the agents have now.
+export type Controls = { autonomy: "full" | "approve"; push: "gentle" | "firm"; wrapUpAt: string | null };
+export const setControls = (fetchFn: FetchFn, sourcingId: string, patch: { autonomy?: "full" | "approve"; push?: "gentle" | "firm" }, base = "/api") =>
+  post<Controls>(fetchFn, `${base}/sourcing/${sourcingId}/controls`, patch);
+export const askWrapUp = (fetchFn: FetchFn, sourcingId: string, base = "/api") => post<Controls>(fetchFn, `${base}/sourcing/${sourcingId}/wrap-up`, {});
+// The buyer's answer to a waiting message (POST /drafts/:id), and a message the buyer writes themself.
+export const answerDraft = (fetchFn: FetchFn, draftId: string, action: "send" | "discard", text?: string, base = "/api") =>
+  post<{ id: string; state: string }>(fetchFn, `${base}/drafts/${draftId}`, text === undefined ? { action } : { action, text });
+export const writeToSupplier = (fetchFn: FetchFn, sourcingId: string, supplier: string, text: string, base = "/api") =>
+  post<{ supplier: string }>(fetchFn, `${base}/sourcing/${sourcingId}/buyer-messages`, { supplier, text });
 // The admin assistant (POST /admin/ask): answers from the records only.
 export const askAdmin = (fetchFn: FetchFn, question: string, base = "/api") => post<{ answer: string; basedOn: string[] }>(fetchFn, `${base}/admin/ask`, { question });
 

@@ -24,6 +24,10 @@ export interface RecordMessage {
   card: Card | null;
   offer: { supplier: string; unitCents: number; quantity: number; deliveryDays: number; summary?: string } | null;
   screen: ScreenRecord | null;
+  // On a message to a supplier (14 Nov): who wrote it, and whether the buyer approved or reworded it.
+  by?: "negotiator" | "buyer";
+  buyerApproved?: boolean;
+  buyerEdited?: boolean;
 }
 
 export interface RecordInvite {
@@ -114,6 +118,7 @@ export interface SourcingRecord {
       priority?: "price" | "speed" | "balanced";
       latestDeliveryDays?: number | null;
       push?: "gentle" | "firm";
+      autonomy?: "full" | "approve";
     };
     negotiationEndsAt: string;
   };
@@ -136,6 +141,13 @@ export interface SourcingRecord {
   approval?: { state: "waiting" | "approved" | "declined"; dealId: string; supplier: string; leadReason: string; at: string; answeredAt: string | null } | null;
   // What the buyer told its negotiator during the negotiation.
   buyerNotes?: { text: string; at: string }[] | null;
+  // The buyer's control of the negotiation (14 Nov): its settings, when the lead should decide, the
+  // messages waiting for the buyer, the buyer's chat with its agent, and which suppliers are writing.
+  controls?: { autonomy: "full" | "approve"; push: "gentle" | "firm"; wrapUpAt: string | null } | null;
+  decideNow?: { ready: boolean; why: "criteria_met" | "buyer_asked" | "time_over" | null } | null;
+  drafts?: { id: string; supplier: string; text: string; at: string }[] | null;
+  chat?: { role: "buyer" | "agent"; text: string; at: string }[] | null;
+  typing?: Record<string, string> | null;
   // Phase 4d: notes on the run, such as a choice that went against the priority.
   notes?: unknown[] | null;
   events?: { at: string; actor: string; from: string | null; to: string; reasonCodes: string[] }[] | null;

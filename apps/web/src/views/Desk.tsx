@@ -101,7 +101,7 @@ function Say({ value, onChange, onSend, placeholder, busy, send = "Send" }: { va
 
 const PRIORITY_WORDS = { price: "the lowest price", speed: "the fastest delivery", balanced: "a balance of price and speed" } as const;
 
-function understood(d: Draft): string[] {
+export function understood(d: Draft): string[] {
   const lines: string[] = [];
   if (d.quantity !== undefined) lines.push(`${d.quantity.toLocaleString("en-US")} solar panels (550 W), delivered to Durban`);
   if (d.targetUnitCents !== undefined) lines.push(`Aim for ${usd(d.targetUnitCents)} a panel`);
@@ -322,7 +322,7 @@ function Threads({ record, view, canNudge }: { record: SourcingRecord; view: Run
 
 // ---------- the review: your Lead agent comes to you
 
-function Review({ record, canAct }: { record: SourcingRecord; canAct: boolean }) {
+export function Review({ record, canAct }: { record: SourcingRecord; canAct: boolean }) {
   const review = reviewOf(record);
   const [busy, setBusy] = useState<"approve" | "decline" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -388,7 +388,7 @@ function Review({ record, canAct }: { record: SourcingRecord; canAct: boolean })
 
 const day = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
-function Track({ record, view, now }: { record: SourcingRecord; view: RunView; now: number }) {
+export function Track({ record, view, now }: { record: SourcingRecord; view: RunView; now: number }) {
   const t = trackerOf(record, view, now);
   if (!t) return null;
   return (
