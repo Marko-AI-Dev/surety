@@ -19,6 +19,14 @@ export type Priority = (typeof PRIORITIES)[number];
 export const PUSH_LEVELS = ["gentle", "firm"] as const;
 export type Push = (typeof PUSH_LEVELS)[number];
 
+// Who sends the negotiator's messages: the negotiator on its own, or only after the buyer has read,
+// edited and approved each one. Absent in older briefs, which read back as full.
+export const AUTONOMY_LEVELS = ["full", "approve"] as const;
+export type Autonomy = (typeof AUTONOMY_LEVELS)[number];
+
+// The longest a buyer may give a negotiation: thirty days.
+export const NEGOTIATION_MAX_SECONDS = 30 * 86_400;
+
 export const SourcingBriefSchema = z
   .object({
     buyer: partySchema,
@@ -30,13 +38,16 @@ export const SourcingBriefSchema = z
     port: portSchema,
     // The deal's refund deadline once a quote is accepted, as in DealIntent.
     deadlineSeconds: z.number().int().min(60).max(86_400),
-    // How long suppliers and the negotiator may chat. Server clock: it moves no money.
-    negotiationSeconds: z.number().int().min(30).max(3_600),
+    // The buyer's decide-by time: the latest the negotiation may run. It is a backstop, not the
+    // protocol: the negotiation ends earlier when a committed quote meets the brief or the buyer asks.
+    // Server clock: it moves no money.
+    negotiationSeconds: z.number().int().min(30).max(NEGOTIATION_MAX_SECONDS),
     // Absent in 4c briefs, which read back as balanced.
     priority: z.enum(PRIORITIES).default("balanced"),
     // The latest delivery the buyer accepts, in days from acceptance. Optional.
     latestDeliveryDays: z.number().int().min(1).max(365).optional(),
     push: z.enum(PUSH_LEVELS).optional(),
+    autonomy: z.enum(AUTONOMY_LEVELS).optional(),
   })
   .strict();
 
@@ -113,3 +124,21 @@ export const BUYER_NOTE_MAX_CHARS = 500;
 export const BuyerNoteSchema = z.object({ text: z.string().trim().min(1).max(BUYER_NOTE_MAX_CHARS) }).strict();
 
 export type Card = "yellow" | "red";
+
+// What the buyer may change while a negotiation runs. At least one of the two.
+export const BuyerControlsSchema = z
+  .object({ autonomy: z.enum(AUTONOMY_LEVELS).optional(), push: z.enum(PUSH_LEVELS).optional() })
+  .strict()
+  .refine((c) => c.autonomy !== undefined || c.push !== undefined, { message: "nothing to change" });
+
+// The buyer's answer to a message the negotiator drafted: send it (as written, or with the buyer's
+// own wording) or throw it away.
+export const DraftDecisionSchema = z.object({ action: z.enum(["send", "discard"]), text: ChatTextSchema.optional() }).strict();
+export type DraftDecision = z.infer<typeof DraftDecisionSchema>;
+
+// A message the buyer writes to a supplier themself.
+export const BuyerMessageSchema = z.object({ supplier: Address, text: ChatTextSchema }).strict();
+
+// What the buyer says to its own agent in the chat.
+export const BUYER_CHAT_MAX_CHARS = 500;
+export const BuyerChatSchema = z.object({ text: z.string().trim().min(1).max(BUYER_CHAT_MAX_CHARS) }).strict();

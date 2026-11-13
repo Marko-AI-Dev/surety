@@ -43,9 +43,13 @@ describe("sourcing contracts", () => {
     expect(SourcingBriefSchema.safeParse({ ...brief, goods: { ...brief.goods, targetUnitCents: 12_500 } }).success).toBe(false);
   });
 
-  it("a brief needs a negotiation window of 30 to 3600 seconds and a deadline of 60 to 86400", () => {
+  it("a brief needs a negotiation window of 30 seconds to thirty days and a deadline of 60 to 86400", () => {
     expect(SourcingBriefSchema.safeParse({ ...brief, negotiationSeconds: 29 }).success).toBe(false);
-    expect(SourcingBriefSchema.safeParse({ ...brief, negotiationSeconds: 3601 }).success).toBe(false);
+    expect(SourcingBriefSchema.safeParse({ ...brief, negotiationSeconds: 3601 }).success).toBe(true);
+    expect(SourcingBriefSchema.safeParse({ ...brief, negotiationSeconds: 30 * 86_400 }).success).toBe(true);
+    expect(SourcingBriefSchema.safeParse({ ...brief, negotiationSeconds: 30 * 86_400 + 1 }).success).toBe(false);
+    expect(SourcingBriefSchema.safeParse({ ...brief, autonomy: "approve" }).success).toBe(true);
+    expect(SourcingBriefSchema.safeParse({ ...brief, autonomy: "some" }).success).toBe(false);
     expect(SourcingBriefSchema.safeParse({ ...brief, deadlineSeconds: 59 }).success).toBe(false);
   });
 

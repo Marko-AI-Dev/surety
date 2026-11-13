@@ -7,7 +7,11 @@ import {
   SourcingConflict,
   type SourcingMessage,
   type SourcingRepo,
+  type BuyerControls,
   type BuyerNote,
+  type ChatLine,
+  DraftConflict,
+  type MessageDraft,
   type SupplierReview,
   type SupplierSuggestion,
 } from "./sourcing-repo";
@@ -21,6 +25,9 @@ export function createMemorySourcingRepo(): SourcingRepo {
   const suggestions: SupplierSuggestion[] = [];
   const reviews: SupplierReview[] = [];
   const buyerNotes: BuyerNote[] = [];
+  const controls = new Map<string, BuyerControls>();
+  const drafts: MessageDraft[] = [];
+  const chat: ChatLine[] = [];
   let messageId = 0;
   const copy = structuredClone;
   const key = (sourcingId: string, address: string) => `${sourcingId}/${address}`;
@@ -177,6 +184,62 @@ export function createMemorySourcingRepo(): SourcingRepo {
 
     async listBuyerNotes(sourcingId) {
       return buyerNotes.filter((n) => n.sourcingId === sourcingId).map((x) => copy(x));
+    },
+
+    async getControls(sourcingId) {
+      return copy(controls.get(sourcingId) ?? { autonomy: null, push: null, wrapUpAt: null });
+    },
+
+    async setControls(sourcingId, patch) {
+      if (!sourcings.has(sourcingId)) throw new Error(`no sourcing ${sourcingId}`);
+      const c = controls.get(sourcingId) ?? { autonomy: null, push: null, wrapUpAt: null };
+      if (patch.autonomy) c.autonomy = patch.autonomy;
+      if (patch.push) c.push = patch.push;
+      if (patch.wrapUpAt && c.wrapUpAt === null) c.wrapUpAt = patch.wrapUpAt.toISOString();
+      controls.set(sourcingId, c);
+      return copy(c);
+    },
+
+    async addDraft(d) {
+      mustInvite(d.sourcingId, d.supplier);
+      const draft: MessageDraft = { id: randomUUID(), ...d, state: "pending", sentBody: null, messageId: null, createdAt: now(), decidedAt: null };
+      drafts.push(draft);
+      return copy(draft);
+    },
+
+    async getDraft(id) {
+      const d = drafts.find((x) => x.id === id);
+      return d ? copy(d) : null;
+    },
+
+    async listDrafts(sourcingId) {
+      return drafts.filter((d) => d.sourcingId === sourcingId).map((x) => copy(x));
+    },
+
+    async decideDraft(id, to, sentBody) {
+      const d = drafts.find((x) => x.id === id);
+      if (!d) throw new Error(`no draft ${id}`);
+      if (d.state !== "pending") throw new DraftConflict(id, d.state);
+      d.state = to;
+      d.sentBody = sentBody;
+      d.decidedAt = now();
+      return copy(d);
+    },
+
+    async linkDraft(id, messageId) {
+      const d = drafts.find((x) => x.id === id);
+      if (d) d.messageId = messageId;
+    },
+
+    async addChatLine(sourcingId, role, body) {
+      if (!sourcings.has(sourcingId)) throw new Error(`no sourcing ${sourcingId}`);
+      const line: ChatLine = { id: randomUUID(), sourcingId, role, body, createdAt: now() };
+      chat.push(line);
+      return copy(line);
+    },
+
+    async listChat(sourcingId) {
+      return chat.filter((l) => l.sourcingId === sourcingId).map((x) => copy(x));
     },
 
     async addReview(address, note) {

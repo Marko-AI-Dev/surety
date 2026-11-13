@@ -1,4 +1,4 @@
-import type { Card, OfferReport, SourcingBrief, SupplierQuote } from "@surety/contracts";
+import type { Autonomy, Card, OfferReport, Push, SourcingBrief, SupplierQuote } from "@surety/contracts";
 import { QuoteConflict } from "./deal-repo";
 import type { SourcingState } from "./sourcing-states";
 
@@ -66,6 +66,39 @@ export interface BuyerNote {
   createdAt: string;
 }
 
+// What the buyer changed since the brief. A null field means the brief still decides.
+export interface BuyerControls {
+  autonomy: Autonomy | null;
+  push: Push | null;
+  // Set once, when the buyer asks the agents to bring what they have.
+  wrapUpAt: string | null;
+}
+
+// A message to a supplier that waits for the buyer, or one the buyer wrote. It becomes a chat message
+// only when it is sent; until then no supplier and no agent reads it.
+export interface MessageDraft {
+  id: string;
+  sourcingId: string;
+  supplier: string;
+  author: "negotiator" | "buyer";
+  body: string;
+  state: "pending" | "sent" | "discarded";
+  // What actually went out, when the buyer changed the wording.
+  sentBody: string | null;
+  messageId: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+// One line of the buyer's chat with its own agent.
+export interface ChatLine {
+  id: string;
+  sourcingId: string;
+  role: "buyer" | "agent";
+  body: string;
+  createdAt: string;
+}
+
 export interface SupplierReview {
   id: string;
   address: string;
@@ -107,6 +140,21 @@ export interface SourcingRepo {
   addBuyerNote(sourcingId: string, text: string): Promise<BuyerNote>;
   // Oldest first.
   listBuyerNotes(sourcingId: string): Promise<BuyerNote[]>;
+  // All null when the buyer has changed nothing.
+  getControls(sourcingId: string): Promise<BuyerControls>;
+  // Only the fields given change. wrapUpAt is set once: a later value never replaces an earlier one.
+  setControls(sourcingId: string, patch: { autonomy?: Autonomy; push?: Push; wrapUpAt?: Date }): Promise<BuyerControls>;
+  addDraft(d: { sourcingId: string; supplier: string; author: "negotiator" | "buyer"; body: string }): Promise<MessageDraft>;
+  getDraft(id: string): Promise<MessageDraft | null>;
+  // Oldest first.
+  listDrafts(sourcingId: string): Promise<MessageDraft[]>;
+  // pending to sent or discarded, once; otherwise DraftConflict. Claimed before the message is
+  // stored, so two answers can never send one draft twice.
+  decideDraft(id: string, to: "sent" | "discarded", sentBody: string | null): Promise<MessageDraft>;
+  linkDraft(id: string, messageId: string): Promise<void>;
+  addChatLine(sourcingId: string, role: "buyer" | "agent", body: string): Promise<ChatLine>;
+  // Oldest first.
+  listChat(sourcingId: string): Promise<ChatLine[]>;
   addReview(address: string, note: string): Promise<SupplierReview>;
   lastReview(address: string): Promise<SupplierReview | null>;
 }
@@ -142,5 +190,16 @@ export class CommittedQuoteConflict extends QuoteConflict {
     super(sourcingId);
     this.message = `supplier ${address} already committed a different quote in sourcing ${sourcingId}`;
     this.name = "CommittedQuoteConflict";
+  }
+}
+
+// The draft was already sent or discarded.
+export class DraftConflict extends Error {
+  constructor(
+    readonly draftId: string,
+    readonly state: string,
+  ) {
+    super(`draft ${draftId} is already ${state}`);
+    this.name = "DraftConflict";
   }
 }

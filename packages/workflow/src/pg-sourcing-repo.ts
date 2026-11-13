@@ -10,7 +10,11 @@ import {
   SourcingConflict,
   type SourcingMessage,
   type SourcingRepo,
+  type BuyerControls,
   type BuyerNote,
+  type ChatLine,
+  DraftConflict,
+  type MessageDraft,
   type SupplierReview,
   type SupplierSuggestion,
 } from "./sourcing-repo";
@@ -42,6 +46,31 @@ function toInvite(r: Row): Invite {
     deliveryDays: r.delivery_days ?? null,
     dealId: r.deal_id ?? null,
   };
+}
+
+const isoOrNull = (v: unknown) => (v ? iso(v) : null);
+
+function toControls(r: Row | undefined): BuyerControls {
+  return { autonomy: r?.autonomy ?? null, push: r?.push ?? null, wrapUpAt: isoOrNull(r?.wrap_up_at) };
+}
+
+function toDraft(r: Row): MessageDraft {
+  return {
+    id: r.id,
+    sourcingId: r.sourcing_id,
+    supplier: r.supplier,
+    author: r.author,
+    body: r.body,
+    state: r.state,
+    sentBody: r.sent_body ?? null,
+    messageId: r.message_id === null || r.message_id === undefined ? null : String(r.message_id),
+    createdAt: iso(r.created_at),
+    decidedAt: isoOrNull(r.decided_at),
+  };
+}
+
+function toChatLine(r: Row): ChatLine {
+  return { id: r.id, sourcingId: r.sourcing_id, role: r.role, body: r.body, createdAt: iso(r.created_at) };
 }
 
 function toMessage(r: Row): SourcingMessage {
@@ -234,6 +263,68 @@ export function createPgSourcingRepo(sql: postgres.Sql): SourcingRepo {
     async listBuyerNotes(sourcingId) {
       const rows = await sql`select * from buyer_notes where sourcing_id = ${sourcingId} order by created_at, id`;
       return rows.map(toBuyerNote);
+    },
+
+    async getControls(sourcingId) {
+      const [row] = await sql`select * from buyer_controls where sourcing_id = ${sourcingId}`;
+      return toControls(row);
+    },
+
+    async setControls(sourcingId, patch) {
+      const [row] = await sql`
+        insert into buyer_controls (sourcing_id, autonomy, push, wrap_up_at)
+        values (${sourcingId}, ${patch.autonomy ?? null}, ${patch.push ?? null}, ${patch.wrapUpAt ?? null})
+        on conflict (sourcing_id) do update set
+          autonomy = coalesce(excluded.autonomy, buyer_controls.autonomy),
+          push = coalesce(excluded.push, buyer_controls.push),
+          wrap_up_at = coalesce(buyer_controls.wrap_up_at, excluded.wrap_up_at)
+        returning *`;
+      return toControls(row);
+    },
+
+    async addDraft(d) {
+      const [row] = await sql`
+        insert into message_drafts (sourcing_id, supplier, author, body)
+        values (${d.sourcingId}, ${d.supplier}, ${d.author}, ${d.body})
+        returning *`;
+      if (!row) throw new Error("insert into message_drafts returned no row");
+      return toDraft(row);
+    },
+
+    async getDraft(id) {
+      const [row] = await sql`select * from message_drafts where id = ${id}`;
+      return row ? toDraft(row) : null;
+    },
+
+    async listDrafts(sourcingId) {
+      const rows = await sql`select * from message_drafts where sourcing_id = ${sourcingId} order by created_at, id`;
+      return rows.map(toDraft);
+    },
+
+    async decideDraft(id, to, sentBody) {
+      const [row] = await sql`
+        update message_drafts set state = ${to}, sent_body = ${sentBody}, decided_at = clock_timestamp()
+        where id = ${id} and state = 'pending'
+        returning *`;
+      if (row) return toDraft(row);
+      const [current] = await sql`select state from message_drafts where id = ${id}`;
+      if (!current) throw new Error(`no draft ${id}`);
+      throw new DraftConflict(id, current.state as string);
+    },
+
+    async linkDraft(id, messageId) {
+      await sql`update message_drafts set message_id = ${messageId} where id = ${id}`;
+    },
+
+    async addChatLine(sourcingId, role, body) {
+      const [row] = await sql`insert into buyer_chat (sourcing_id, role, body) values (${sourcingId}, ${role}, ${body}) returning *`;
+      if (!row) throw new Error("insert into buyer_chat returned no row");
+      return toChatLine(row);
+    },
+
+    async listChat(sourcingId) {
+      const rows = await sql`select * from buyer_chat where sourcing_id = ${sourcingId} order by created_at, id`;
+      return rows.map(toChatLine);
     },
 
     async addReview(address, note) {

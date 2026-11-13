@@ -107,6 +107,45 @@ export function describeSourcingRepo(name: string, make: () => Promise<JobsRepo 
       expect(m1).toMatchObject({ sourcingId: s.id, supplier: SUPPLIER, kind: "from_supplier", verdict: "deliver", card: null });
     });
 
+    it("buyer controls: empty at first, only the given fields change, and the wrap-up time is set once", async () => {
+      const s = await opened();
+      expect(await repo.getControls(s.id)).toEqual({ autonomy: null, push: null, wrapUpAt: null });
+      expect(await repo.setControls(s.id, { autonomy: "approve" })).toEqual({ autonomy: "approve", push: null, wrapUpAt: null });
+      expect(await repo.setControls(s.id, { push: "gentle" })).toEqual({ autonomy: "approve", push: "gentle", wrapUpAt: null });
+      const first = new Date("2026-11-13T10:00:00.000Z");
+      expect((await repo.setControls(s.id, { wrapUpAt: first })).wrapUpAt).toBe(first.toISOString());
+      expect((await repo.setControls(s.id, { wrapUpAt: new Date("2026-11-13T11:00:00.000Z"), autonomy: "full" }))).toEqual({ autonomy: "full", push: "gentle", wrapUpAt: first.toISOString() });
+    });
+
+    it("a draft is decided once, keeps what was sent, and links to its message", async () => {
+      const s = await opened();
+      const d = await repo.addDraft({ sourcingId: s.id, supplier: SUPPLIER, author: "negotiator", body: "Can you do $110.00?" });
+      expect(d).toMatchObject({ state: "pending", sentBody: null, messageId: null, decidedAt: null, author: "negotiator" });
+      expect(await repo.getDraft(d.id)).toEqual(d);
+      const sent = await repo.decideDraft(d.id, "sent", "Could you do $110.00, please?");
+      expect(sent).toMatchObject({ state: "sent", sentBody: "Could you do $110.00, please?" });
+      expect(sent.decidedAt).not.toBeNull();
+      await expect(repo.decideDraft(d.id, "discarded", null)).rejects.toMatchObject({ name: "DraftConflict" });
+      const m = await repo.addMessage(supplierMessage(s.id, { kind: "to_supplier", body: "Could you do $110.00, please?", deliveredBody: "Could you do $110.00, please?" }));
+      await repo.linkDraft(d.id, m.id);
+      expect((await repo.getDraft(d.id))?.messageId).toBe(m.id);
+      const other = await repo.addDraft({ sourcingId: s.id, supplier: SUPPLIER, author: "buyer", body: "Hello" });
+      expect((await repo.listDrafts(s.id)).map((x) => x.id)).toEqual([d.id, other.id]);
+      expect(await repo.getDraft("00000000-0000-4000-8000-000000000000")).toBeNull();
+    });
+
+    it("chat lines are listed oldest first, per sourcing", async () => {
+      const s = await opened();
+      const other = await opened();
+      await repo.addChatLine(s.id, "buyer", "Where are we?");
+      await repo.addChatLine(other.id, "buyer", "Another purchase");
+      await repo.addChatLine(s.id, "agent", "Two suppliers have answered.");
+      expect((await repo.listChat(s.id)).map((l) => [l.role, l.body])).toEqual([
+        ["buyer", "Where are we?"],
+        ["agent", "Two suppliers have answered."],
+      ]);
+    });
+
     it("a message for a supplier that isn't invited is refused", async () => {
       const s = await opened();
       await expect(repo.addMessage(supplierMessage(s.id, { supplier: ATTACKER }))).rejects.toThrow();
