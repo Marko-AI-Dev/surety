@@ -58,6 +58,14 @@ export interface SupplierSuggestion {
   createdAt: string;
 }
 
+// Something the buyer told its negotiator during the negotiation.
+export interface BuyerNote {
+  id: string;
+  sourcingId: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface SupplierReview {
   id: string;
   address: string;
@@ -96,6 +104,9 @@ export interface SourcingRepo {
   releaseSelection(sourcingId: string, dealId: string): Promise<Sourcing>;
   addSuggestion(s: { sourcingId: string; name: string; address: string; reason: string }): Promise<SupplierSuggestion>;
   listSuggestions(sourcingId: string): Promise<SupplierSuggestion[]>;
+  addBuyerNote(sourcingId: string, text: string): Promise<BuyerNote>;
+  // Oldest first.
+  listBuyerNotes(sourcingId: string): Promise<BuyerNote[]>;
   addReview(address: string, note: string): Promise<SupplierReview>;
   lastReview(address: string): Promise<SupplierReview | null>;
 }

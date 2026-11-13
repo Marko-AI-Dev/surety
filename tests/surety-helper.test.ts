@@ -104,6 +104,13 @@ describe("digest: one compact picture of the negotiation", () => {
     expect(digest(view({ state: "selected" as View["state"], secondsLeft: 50 }), [], 0).phase).toBe("closed");
   });
 
+  it("carries how hard the buyer wants the push and the buyer's notes (13 Nov)", () => {
+    const d = digest(view({ push: "gentle", buyerNotes: [{ text: "Sunpeak is a friend, go easy", at: "t9" }] }), [], 0);
+    expect(d).toMatchObject({ push: "gentle", buyerNotes: [{ text: "Sunpeak is a friend, go easy", at: "t9" }] });
+    // An API from before 13 Nov sends neither: firm, and no notes.
+    expect(digest(view(), [], 0)).toMatchObject({ push: "firm", buyerNotes: [] });
+  });
+
   it("carries the brief's facts the negotiator needs, and never a maximum", () => {
     const d = digest(view(), [], 0);
     expect(d).toMatchObject({ ref: "SRC-1", quantity: 400, targetUnitCents: 10000, priority: "balanced", latestDeliveryDays: 30, incoterm: "CIF", port: "Durban" });
@@ -169,6 +176,13 @@ describe("run: the command line, against a fake Surety API", () => {
     const api = fakeApi([view()], [own, own, own]);
     const out = JSON.parse(await run(["wait", "s-1", "--since", "0", "--max", "4"], io(api.fetch)));
     expect(out.woke).toBe("timeout");
+  });
+
+  it("wait wakes when the buyer sends a note during the wait", async () => {
+    const note = { text: "Push harder on delivery", at: "t" };
+    const api = fakeApi([view({ buyerNotes: [] }), view({ buyerNotes: [note] })], [[], []]);
+    const out = JSON.parse(await run(["wait", "s-1", "--since", "0"], io(api.fetch)));
+    expect(out).toMatchObject({ woke: "buyer_note", buyerNotes: [note] });
   });
 
   it("wait wakes for the final call and for the close", async () => {

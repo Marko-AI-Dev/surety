@@ -10,6 +10,7 @@ import {
   SourcingConflict,
   type SourcingMessage,
   type SourcingRepo,
+  type BuyerNote,
   type SupplierReview,
   type SupplierSuggestion,
 } from "./sourcing-repo";
@@ -61,6 +62,10 @@ function toMessage(r: Row): SourcingMessage {
 
 function toSuggestion(r: Row): SupplierSuggestion {
   return { id: r.id, sourcingId: r.sourcing_id, name: r.name, address: r.address, reason: r.reason, createdAt: iso(r.created_at) };
+}
+
+function toBuyerNote(r: Row): BuyerNote {
+  return { id: r.id, sourcingId: r.sourcing_id, text: r.body, createdAt: iso(r.created_at) };
 }
 
 function toReview(r: Row): SupplierReview {
@@ -218,6 +223,17 @@ export function createPgSourcingRepo(sql: postgres.Sql): SourcingRepo {
     async listSuggestions(sourcingId) {
       const rows = await sql`select * from supplier_suggestions where sourcing_id = ${sourcingId} order by created_at, id`;
       return rows.map(toSuggestion);
+    },
+
+    async addBuyerNote(sourcingId, text) {
+      const [row] = await sql`insert into buyer_notes (sourcing_id, body) values (${sourcingId}, ${text}) returning *`;
+      if (!row) throw new Error("insert into buyer_notes returned no row");
+      return toBuyerNote(row);
+    },
+
+    async listBuyerNotes(sourcingId) {
+      const rows = await sql`select * from buyer_notes where sourcing_id = ${sourcingId} order by created_at, id`;
+      return rows.map(toBuyerNote);
     },
 
     async addReview(address, note) {

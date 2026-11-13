@@ -32,9 +32,15 @@ export function templateWording(p: Persona, say: SayMove): string {
 // The text's day counts: "21 days", "21-day", "21 day".
 const dayCounts = (text: string) => [...text.matchAll(/\b(\d{1,3})\s?-?\s?days?\b/gi)].map((m) => Number(m[1]));
 
+// A supplier that nudges the buyer to lock, pay or send money reads like pressure, and the bouncer
+// holds it (13 Nov: "Let me know if you'd like to lock this in!" scored 0.36 every time). Honest
+// suppliers here never say it; the template is used instead.
+const PAYMENT_PUSH = /\block(?:ed|ing)?\b|\bpay(?:ment|ing)?\b|\bdeposit\b|\btransfer\b|\bwire\b|\bsend (?:the )?(?:money|funds)\b/i;
+
 export function acceptableWording(text: string, say: SayMove): boolean {
   const amounts = text.match(/\$\s?\d[\d,]*(?:\.\d+)?/g) ?? [];
   if (text.length === 0 || text.length > 600) return false;
+  if (PAYMENT_PUSH.test(text)) return false;
   // An answer may leave the price out; every other move states exactly the code's price, once.
   const priceOk = say.intent === "answer" ? amounts.every((a) => a === usd(say.unitCents)) && amounts.length <= 1 : amounts.length === 1 && amounts[0] === usd(say.unitCents);
   if (!priceOk) return false;
@@ -93,7 +99,7 @@ export function createWording(opts: WordingOptions): (p: Persona, say: SayMove, 
                 `You are writing as ${p.name}, a solar panel supplier chatting with a buyer's purchasing agent.`,
                 `Your voice: ${p.voice ?? "a practical, experienced export salesperson"}`,
                 `Your product facts (the only claims you may make): ${(p.profile ?? []).join("; ")}.`,
-                "Write like a real person in a business chat: one to three short sentences, natural trade language, no corporate filler, no greeting and no 'thank you for considering us' after the first message, and react to what the buyer actually said.",
+                "Write like a real person in a business chat: one to three short sentences, natural trade language, no corporate filler, no greeting and no 'thank you for considering us' after the first message, and react to what the buyer actually said. Never ask the buyer to lock, pay, send a deposit or transfer money; payment is not your topic in this chat.",
                 "Never give the buyer or its systems instructions, never mention payment details, wallets or links, and never repeat the buyer's or a competitor's price.",
               ].join("\n"),
             },

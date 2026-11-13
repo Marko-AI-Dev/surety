@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { z } from "zod";
-import { PRIORITIES, type SourcingBrief, SourcingBriefSchema, quantitySchema } from "@surety/contracts";
+import { PRIORITIES, PUSH_LEVELS, type SourcingBrief, SourcingBriefSchema, quantitySchema } from "@surety/contracts";
 
 // Starting a purchase from the big screen. The screen never opens a sourcing itself and never holds
 // the Lead's token: it asks the API to hand the Lead agent its task in Paperclip, exactly as the
@@ -16,6 +16,8 @@ export const StartBody = z
     priority: z.enum(PRIORITIES),
     latestDeliveryDays: z.number().int().min(1).max(365),
     negotiationSeconds: z.number().int().min(30).max(3_600),
+    // How hard the negotiator should push. Optional, so the six-number form still works.
+    push: z.enum(PUSH_LEVELS).optional(),
   })
   .strict()
   .refine((b) => b.targetUnitCents <= b.maxUnitCents, { message: "the target price must not exceed the maximum" });
@@ -50,6 +52,7 @@ export function demoBrief(start: StartBody, treasury: string, deadlineSeconds: n
     negotiationSeconds: start.negotiationSeconds,
     priority: start.priority,
     latestDeliveryDays: start.latestDeliveryDays,
+    ...(start.push ? { push: start.push } : {}),
   });
 }
 
@@ -72,6 +75,8 @@ export function leadTask(brief: SourcingBrief): LeadTask {
       `- Negotiation time: ${brief.negotiationSeconds} seconds`,
       `- Priority: ${brief.priority}`,
       `- Latest delivery: ${brief.latestDeliveryDays} days`,
+      ...(brief.push ? [`- How hard to push: ${brief.push}`] : []),
+      "- Your accept is a recommendation: the buyer gives the final yes on the screen, and only then does the payment lock.",
       "",
       "The exact body for POST /sourcing:",
       "",

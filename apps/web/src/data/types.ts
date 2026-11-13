@@ -113,6 +113,7 @@ export interface SourcingRecord {
       // Phase 4d: what the buyer cares about most, and the slowest delivery it accepts.
       priority?: "price" | "speed" | "balanced";
       latestDeliveryDays?: number | null;
+      push?: "gentle" | "firm";
     };
     negotiationEndsAt: string;
   };
@@ -131,6 +132,10 @@ export interface SourcingRecord {
   policy?: PolicyView | null;
   inspection?: Inspection | null;
   ranking?: RankingRow[] | null;
+  // The buyer's final yes: the Lead recommends a deal and nothing locks until the buyer approves it.
+  approval?: { state: "waiting" | "approved" | "declined"; dealId: string; supplier: string; leadReason: string; at: string; answeredAt: string | null } | null;
+  // What the buyer told its negotiator during the negotiation.
+  buyerNotes?: { text: string; at: string }[] | null;
   // Phase 4d: notes on the run, such as a choice that went against the priority.
   notes?: unknown[] | null;
   events?: { at: string; actor: string; from: string | null; to: string; reasonCodes: string[] }[] | null;

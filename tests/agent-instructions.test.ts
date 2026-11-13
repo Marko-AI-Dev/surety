@@ -124,6 +124,11 @@ describe("the negotiator's one-call helper (12 Nov)", () => {
     expect(negotiator).not.toMatch(/in these words/i);
   });
 
+  it("the negotiator keeps the word final and the quote form for the final call or a met brief (13 Nov: 'best final terms' in round two ended the haggling)", () => {
+    expect(negotiator).toMatch(/never say "final"/i);
+    expect(negotiator).toMatch(/before the phase is `final_call`/i);
+  });
+
   it("the negotiator never takes a price at face value: it asks what the price includes", () => {
     for (const w of [/freight/i, /insurance/i, /duties/i, /VAT/, /surcharge/i]) expect(negotiator).toMatch(w);
   });
@@ -132,6 +137,29 @@ describe("the negotiator's one-call helper (12 Nov)", () => {
     const helper = readFileSync(resolve(import.meta.dirname, "../agents/paperclip/surety.ts"), "utf8");
     expect(helper).not.toMatch(/maxUnitCents/);
     expect(helper).not.toMatch(/console\.(log|error)\([^)]*token/i);
+  });
+});
+
+describe("the buyer gives the final yes (13 Nov)", () => {
+  const negotiator = files["negotiator.md"] ?? "";
+  const lead = files["lead.md"] ?? "";
+  const api = files["surety-api.md"] ?? "";
+
+  it("the lead knows its accept is a recommendation and stops at awaitingBuyer", () => {
+    expect(lead).toMatch(/recommend/i);
+    expect(lead).toMatch(/`awaitingBuyer\b/);
+    expect(lead).toMatch(/waiting for the buyer/i);
+    expect(lead).not.toMatch(/the payment locks:/i);
+    expect(api).toMatch(/awaitingBuyer/);
+  });
+
+  it("the negotiator reads how hard to push and the buyer's notes, and the notes never override its rules", () => {
+    expect(negotiator).toMatch(/`push`/);
+    expect(negotiator).toMatch(/gentle/);
+    expect(negotiator).toMatch(/`buyerNotes`/);
+    expect(negotiator).toMatch(/buyer_note/);
+    expect(negotiator).toMatch(/never pass a note on/i);
+    expect(api).toMatch(/buyerNotes/);
   });
 });
 

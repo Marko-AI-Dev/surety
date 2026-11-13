@@ -11,6 +11,8 @@
 //   EOF
 
 export type Priority = "price" | "speed" | "balanced";
+export type Push = "gentle" | "firm";
+export type BuyerNote = { text: string; at: string };
 
 export interface Offer {
   supplier: string;
@@ -29,6 +31,9 @@ export interface View {
   port: string;
   priority: Priority;
   latestDeliveryDays: number | null;
+  // How hard the buyer wants the push, and what the buyer told its negotiator. Absent before 13 Nov.
+  push?: Push;
+  buyerNotes?: BuyerNote[];
   negotiationEndsAt: string;
   secondsLeft: number;
   invites: { address: string; name: string; status: "in" | "out"; committed: boolean }[];
@@ -66,6 +71,8 @@ export interface Digest {
   port: string;
   priority: Priority;
   latestDeliveryDays: number | null;
+  push: Push;
+  buyerNotes: BuyerNote[];
   cursor: number;
   suppliers: SupplierDigest[];
 }
@@ -130,6 +137,8 @@ export function digest(view: View, inbox: Inbox, since: number): Digest {
     port: view.port,
     priority: view.priority,
     latestDeliveryDays: view.latestDeliveryDays,
+    push: view.push ?? "firm",
+    buyerNotes: view.buyerNotes ?? [],
     cursor: inbox.length,
     suppliers,
   };
@@ -219,10 +228,12 @@ export async function run(argv: string[], io: Io): Promise<string> {
     const max = Math.min(flag(argv, "--max") ?? 25, 120);
     let d = await look(since);
     const startedInFinalCall = d.phase === "final_call";
+    const notesAtStart = d.buyerNotes.length;
     for (let waited = 0; ; waited += POLL_MS / 1000) {
       const woke =
         d.phase === "closed" ? "closed"
         : d.phase === "final_call" && !startedInFinalCall ? "final_call"
+        : d.buyerNotes.length > notesAtStart ? "buyer_note"
         : d.suppliers.some((s) => s.newMessages > 0) ? "supplier_replied"
         : waited >= max ? "timeout"
         : null;

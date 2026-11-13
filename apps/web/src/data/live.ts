@@ -99,10 +99,31 @@ export interface StartBrief {
   priority: "price" | "speed" | "balanced";
   latestDeliveryDays: number;
   negotiationSeconds: number;
+  push?: "gentle" | "firm";
 }
 export function startPurchase(fetchFn: FetchFn, brief: StartBrief, base = "/api"): Promise<unknown> {
   return call<unknown>(fetchFn, `${base}/demo/start`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(brief) });
 }
+
+// The buyer's screen: plain words in, the numbers of a purchase out (POST /buyer/intake).
+export type Draft = Partial<Omit<StartBrief, "negotiationSeconds">>;
+export type DraftField = keyof Draft;
+export interface IntakeAnswer {
+  draft: Draft;
+  question: { field: DraftField; ask: string } | null;
+  ready: boolean;
+  readBy: "code" | "code and model";
+}
+const post = <T>(fetchFn: FetchFn, url: string, body: unknown) =>
+  call<T>(fetchFn, url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+export const readNeed = (fetchFn: FetchFn, body: { text: string; draft?: Draft; field?: DraftField }, base = "/api") => post<IntakeAnswer>(fetchFn, `${base}/buyer/intake`, body);
+// A note from the buyer to its own negotiator (POST /sourcing/:id/notes).
+export const sendNote = (fetchFn: FetchFn, sourcingId: string, text: string, base = "/api") => post<{ text: string }>(fetchFn, `${base}/sourcing/${sourcingId}/notes`, { text });
+// The buyer's final yes or no (POST /deals/:id/approval). Only a yes can lock the payment.
+export const answerDeal = (fetchFn: FetchFn, dealId: string, outcome: "approve" | "decline", reason?: string, base = "/api") =>
+  post<{ deal: { state: string }; job: { state: string } | null }>(fetchFn, `${base}/deals/${dealId}/approval`, reason ? { outcome, reason } : { outcome });
+// The admin assistant (POST /admin/ask): answers from the records only.
+export const askAdmin = (fetchFn: FetchFn, question: string, base = "/api") => post<{ answer: string; basedOn: string[] }>(fetchFn, `${base}/admin/ask`, { question });
 
 export interface SupplierSourcing {
   sourcingId: string;

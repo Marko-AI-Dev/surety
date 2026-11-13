@@ -15,6 +15,10 @@ const text = z.string().min(1).max(120);
 export const PRIORITIES = ["price", "speed", "balanced"] as const;
 export type Priority = (typeof PRIORITIES)[number];
 
+// How hard the buyer wants the negotiator to push. Absent in older briefs, which read back as firm.
+export const PUSH_LEVELS = ["gentle", "firm"] as const;
+export type Push = (typeof PUSH_LEVELS)[number];
+
 export const SourcingBriefSchema = z
   .object({
     buyer: partySchema,
@@ -32,6 +36,7 @@ export const SourcingBriefSchema = z
     priority: z.enum(PRIORITIES).default("balanced"),
     // The latest delivery the buyer accepts, in days from acceptance. Optional.
     latestDeliveryDays: z.number().int().min(1).max(365).optional(),
+    push: z.enum(PUSH_LEVELS).optional(),
   })
   .strict();
 
@@ -98,5 +103,13 @@ export const LeadDecisionSchema = z
   .strict();
 
 export type LeadDecision = z.infer<typeof LeadDecisionSchema>;
+
+// The buyer's final word on the deal the lead recommends. Only an approve can lock a payment.
+export const BuyerDecisionSchema = z.object({ outcome: z.enum(["approve", "decline"]), reason: z.string().trim().max(500).optional() }).strict();
+export type BuyerDecision = z.infer<typeof BuyerDecisionSchema>;
+
+// A note from the buyer to its own negotiator while the negotiation runs.
+export const BUYER_NOTE_MAX_CHARS = 500;
+export const BuyerNoteSchema = z.object({ text: z.string().trim().min(1).max(BUYER_NOTE_MAX_CHARS) }).strict();
 
 export type Card = "yellow" | "red";

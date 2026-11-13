@@ -7,6 +7,7 @@ import {
   SourcingConflict,
   type SourcingMessage,
   type SourcingRepo,
+  type BuyerNote,
   type SupplierReview,
   type SupplierSuggestion,
 } from "./sourcing-repo";
@@ -19,6 +20,7 @@ export function createMemorySourcingRepo(): SourcingRepo {
   const messages: SourcingMessage[] = [];
   const suggestions: SupplierSuggestion[] = [];
   const reviews: SupplierReview[] = [];
+  const buyerNotes: BuyerNote[] = [];
   let messageId = 0;
   const copy = structuredClone;
   const key = (sourcingId: string, address: string) => `${sourcingId}/${address}`;
@@ -164,6 +166,17 @@ export function createMemorySourcingRepo(): SourcingRepo {
 
     async listSuggestions(sourcingId) {
       return suggestions.filter((g) => g.sourcingId === sourcingId).map((x) => copy(x));
+    },
+
+    async addBuyerNote(sourcingId, text) {
+      if (!sourcings.has(sourcingId)) throw new Error(`no sourcing ${sourcingId}`);
+      const n: BuyerNote = { id: randomUUID(), sourcingId, text, createdAt: now() };
+      buyerNotes.push(n);
+      return copy(n);
+    },
+
+    async listBuyerNotes(sourcingId) {
+      return buyerNotes.filter((n) => n.sourcingId === sourcingId).map((x) => copy(x));
     },
 
     async addReview(address, note) {

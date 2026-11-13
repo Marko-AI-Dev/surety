@@ -179,6 +179,7 @@ describe("the Surety API", () => {
     await call("POST", `/supplier/sourcing/${id}/quote`, SUPPLIER_TOKENS[SUPPLIER], quoteForm);
     const deal = (await call("POST", `/sourcing/${id}/select`, TOKENS.lead, { supplier: SUPPLIER })).json;
     await call("POST", `/deals/${deal.id}/decision`, TOKENS.lead, { outcome: "accept", reason: "Cheapest within the brief." });
+    await call("POST", `/deals/${deal.id}/approval`, TOKENS.view, { outcome: "approve" });
     expect((await call("GET", `/supplier/deals/${deal.id}/settlement`, b)).status).toBe(404);
     expect((await call("POST", `/supplier/deals/${deal.id}/settlement`, b, { invoiceNumber: "X" })).status).toBe(400);
     expect((await call("GET", "/supplier/deals", b)).json).toEqual([]);
@@ -213,7 +214,10 @@ describe("the Surety API", () => {
     expect((await call("POST", `/supplier/sourcing/${id}/quote`, a, quoteForm)).json.quote.totalCents).toBe(4_560_000);
     const deal = await call("POST", `/sourcing/${id}/select`, TOKENS.lead, { supplier: SUPPLIER });
     expect(deal.json.state).toBe("QUOTE_RECEIVED");
-    const decided = await call("POST", `/deals/${deal.json.id}/decision`, TOKENS.lead, { outcome: "accept", reason: "Cheapest within the brief." });
+    // The Lead's accept is a recommendation: nothing locks until the buyer says yes.
+    const recommended = await call("POST", `/deals/${deal.json.id}/decision`, TOKENS.lead, { outcome: "accept", reason: "Cheapest within the brief." });
+    expect(recommended.json).toMatchObject({ deal: { state: "QUOTE_RECEIVED" }, job: null, awaitingBuyer: true });
+    const decided = await call("POST", `/deals/${deal.json.id}/approval`, TOKENS.view, { outcome: "approve" });
     expect(decided.json).toMatchObject({ deal: { state: "ACCEPTED" }, job: { state: "LOCKED" } });
     expect((await call("GET", `/deals/${deal.json.id}`, TOKENS.view)).json).toMatchObject({ deal: { state: "ACCEPTED" }, job: { state: "LOCKED" } });
     expect((await call("GET", "/supplier/deals", a)).json[0]).toMatchObject({ dealId: deal.json.id, jobState: "LOCKED" });
@@ -319,7 +323,15 @@ describe("the Surety API", () => {
 
     const deal = (await call("POST", `/sourcing/${id}/select`, TOKENS.lead, { supplier: SUPPLIER })).json;
     await call("POST", `/deals/${deal.id}/decision`, TOKENS.lead, { outcome: "accept", reason: "Cheapest within the brief." });
+    expect((await call("GET", `/sourcing/${id}/record`, TOKENS.view)).json).toMatchObject({
+      sourcing: { state: "SELECTED" },
+      job: null,
+      create: null,
+      approval: { state: "waiting", dealId: deal.id, supplier: SUPPLIER, leadReason: "Cheapest within the brief." },
+    });
+    await call("POST", `/deals/${deal.id}/approval`, TOKENS.view, { outcome: "approve" });
     const after = (await call("GET", `/sourcing/${id}/record`, TOKENS.view)).json;
+    expect(after.approval).toMatchObject({ state: "approved", dealId: deal.id });
     expect(after).toMatchObject({
       sourcing: { state: "SELECTED" },
       deals: [{ id: deal.id, state: "ACCEPTED", decision: { final: "accept", agent: { reason: "Cheapest within the brief." } } }],
@@ -380,7 +392,8 @@ describe("the inspector's routes", () => {
     const a = SUPPLIER_TOKENS[SUPPLIER];
     await call("POST", `/supplier/sourcing/${id}/quote`, a, quoteForm);
     const deal = (await call("POST", `/sourcing/${id}/select`, TOKENS.lead, { supplier: SUPPLIER })).json;
-    expect((await call("POST", `/deals/${deal.id}/decision`, TOKENS.lead, { outcome: "accept", reason: "Cheapest within the brief." })).json.job.state).toBe("LOCKED");
+    expect((await call("POST", `/deals/${deal.id}/decision`, TOKENS.lead, { outcome: "accept", reason: "Cheapest within the brief." })).json.job).toBeNull();
+    expect((await call("POST", `/deals/${deal.id}/approval`, TOKENS.view, { outcome: "approve" })).json.job.state).toBe("LOCKED");
     if (settle) {
       const draft = (await call("GET", `/supplier/deals/${deal.id}/settlement`, a)).json;
       const settled = await call("POST", `/supplier/deals/${deal.id}/settlement`, a, {
