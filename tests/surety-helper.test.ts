@@ -8,7 +8,9 @@ const C = "rCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
 const view = (over: Partial<View> = {}): View => ({
   id: "s-1",
   ref: "SRC-1",
-  state: "negotiating",
+  // The state the API really sends (packages/workflow negotiatorView). 13 Nov: the fixture said
+  // "negotiating", which the API never sends, and a live negotiator took OPEN as closed and quit.
+  state: "OPEN",
   goods: { description: "400 solar panels", quantity: 400, targetUnitCents: 10000 },
   incoterm: "CIF",
   port: "Durban",
@@ -196,6 +198,20 @@ describe("run: the command line, against a fake Surety API", () => {
     const api = fakeApi([view({ buyerNotes: [] }), view({ buyerNotes: [note] })], [[], []]);
     const out = JSON.parse(await run(["wait", "s-1", "--since", "0"], io(api.fetch)));
     expect(out).toMatchObject({ woke: "buyer_note", buyerNotes: [note] });
+  });
+
+  it("wait wakes when a supplier is invited during the wait (13 Nov: the negotiator started before the invites)", async () => {
+    const one = view().invites.slice(0, 1);
+    const api = fakeApi([view({ invites: [] }), view({ invites: one })], [[], []]);
+    const out = JSON.parse(await run(["wait", "s-1", "--since", "0"], io(api.fetch)));
+    expect(out).toMatchObject({ woke: "supplier_invited" });
+    expect(out.suppliers.map((s: { address: string }) => s.address)).toEqual([A]);
+  });
+
+  it("an OPEN purchase with time left is live; SELECTED or no time left is closed", () => {
+    expect(digest(view({ state: "OPEN", secondsLeft: 120 }), [], 0).phase).toBe("negotiate");
+    expect(digest(view({ state: "SELECTED", secondsLeft: 120 }), [], 0).phase).toBe("closed");
+    expect(digest(view({ state: "OPEN", secondsLeft: 0 }), [], 0).phase).toBe("closed");
   });
 
   it("wait wakes for the final call and for the close", async () => {

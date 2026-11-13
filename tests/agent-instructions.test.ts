@@ -109,6 +109,11 @@ describe("the negotiator's one-call helper (12 Nov)", () => {
     expect(negotiator).toMatch(/never use `sleep`/i);
   });
 
+  it("the negotiator opens a supplier invited after it started (13 Nov: it started 9 s before the invites)", () => {
+    expect(negotiator).toMatch(/supplier_invited/);
+    expect(negotiator).toMatch(/thread is empty, open it/i);
+  });
+
   it("paperclip-team copies surety.ts into the negotiator's folder only", () => {
     const team = readFileSync(resolve(import.meta.dirname, "../scripts/paperclip-team.ts"), "utf8");
     expect(team).toMatch(/r\.key === "negotiator" \? ` \$\{SOURCE\}\/surety\.ts`/);

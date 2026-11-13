@@ -103,7 +103,8 @@ const lineOf = (m: Inbox[number]): Line =>
   "withheld" in m ? { from: "supplier", withheld: true } : { from: m.kind === "to_supplier" ? "you" : "supplier", text: m.text };
 
 export function digest(view: View, inbox: Inbox, since: number): Digest {
-  const phase = view.state !== "negotiating" || view.secondsLeft <= 0 ? "closed" : view.secondsLeft <= FINAL_CALL_SECONDS ? "final_call" : "negotiate";
+  // The API sends the sourcing's own state: OPEN while suppliers can be talked to.
+  const phase = view.state !== "OPEN" || view.secondsLeft <= 0 ? "closed" : view.secondsLeft <= FINAL_CALL_SECONDS ? "final_call" : "negotiate";
   const suppliers = view.invites
     .filter((i) => i.status === "in")
     .map((i): SupplierDigest => {
@@ -233,11 +234,13 @@ export async function run(argv: string[], io: Io): Promise<string> {
     let d = await look(since);
     const startedInFinalCall = d.phase === "final_call";
     const notesAtStart = d.buyerNotes.length;
+    const suppliersAtStart = new Set(d.suppliers.map((s) => s.address));
     for (let waited = 0; ; waited += POLL_MS / 1000) {
       const woke =
         d.phase === "closed" ? "closed"
         : d.phase === "final_call" && !startedInFinalCall ? "final_call"
         : d.buyerNotes.length > notesAtStart ? "buyer_note"
+        : d.suppliers.some((s) => !suppliersAtStart.has(s.address)) ? "supplier_invited"
         : d.suppliers.some((s) => s.newMessages > 0) ? "supplier_replied"
         : waited >= max ? "timeout"
         : null;
