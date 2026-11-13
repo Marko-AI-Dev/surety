@@ -187,22 +187,25 @@ export interface LogEntry {
   what: string;
   tone: "plain" | "ok" | "held" | "stop" | "money";
   tx: LedgerTx | null;
+  // The step of the deal this belongs to (data/audit.ts).
+  stage: "brief" | "suppliers" | "negotiating" | "decision" | "locked" | "settled";
 }
 
 // Everything that happened, oldest first, in plain words: who said what, which agent did what, every
 // check and every transaction with its ledger link.
 export function adminLog(record: SourcingRecord, view: RunView): LogEntry[] {
   const out: LogEntry[] = [];
-  const add = (key: string, at: number, who: string, what: string, tone: LogEntry["tone"] = "plain", tx: LedgerTx | null = null) => out.push({ key, at, time: utcTime(at), who, what, tone, tx });
+  const add = (key: string, at: number, stage: LogEntry["stage"], who: string, what: string, tone: LogEntry["tone"] = "plain", tx: LedgerTx | null = null) => out.push({ key, at, time: utcTime(at), who, what, tone, tx, stage });
+  const STAGE: Record<string, LogEntry["stage"]> = { opened: "brief", invited: "suppliers", suggested: "suppliers", quote: "negotiating", closed: "negotiating", decision: "decision", locked: "locked", documents: "settled", inspected: "settled", verified: "settled", paid: "settled", refunded: "settled" };
   for (const s of view.trail) {
     if (s.kind === "message" && s.messageIndex !== undefined) {
       const m = view.messages.find((x) => x.index === s.messageIndex);
       if (!m) continue;
       const name = nameOf(record, m.supplier);
-      if (m.kind === "to_supplier") add(s.id, s.at, "Negotiator (agent)", `Wrote to ${name}: "${m.body}"`);
-      else if (m.kind === "report") add(s.id, s.at, "Negotiator (agent)", m.offer ? `Reported to the Lead that ${name} offers ${usd(m.offer.unitCents)} a unit in ${m.offer.deliveryDays} days.` : `Reported to the Lead about ${name}.`);
-      else if (m.delivered) add(s.id, s.at, name, `Wrote: "${m.body}"`);
-      else add(s.id, s.at, "Surety's bouncer", `Stopped a message from ${name} before any agent read it${m.card ? ` and gave a ${m.card} card` : ""}. ${verdictPlain(m).text}`, m.card === "red" ? "stop" : "held");
+      if (m.kind === "to_supplier") add(s.id, s.at, "negotiating", m.by === "buyer" ? "You" : "Negotiator (agent)", `Wrote to ${name}: "${m.body}"`);
+      else if (m.kind === "report") add(s.id, s.at, "negotiating", "Negotiator (agent)", m.offer ? `Reported to the Lead that ${name} offers ${usd(m.offer.unitCents)} a unit in ${m.offer.deliveryDays} days.` : `Reported to the Lead about ${name}.`);
+      else if (m.delivered) add(s.id, s.at, "negotiating", name, `Wrote: "${m.body}"`);
+      else add(s.id, s.at, "negotiating", "Surety's bouncer", `Stopped a message from ${name} before any agent read it${m.card ? ` and gave a ${m.card} card` : ""}. ${verdictPlain(m).text}`, m.card === "red" ? "stop" : "held");
       continue;
     }
     const tx = s.kind === "locked" ? (record.create ?? null) : s.kind === "paid" ? (record.finish ?? null) : s.kind === "refunded" ? (record.cancel ?? null) : null;
@@ -216,13 +219,13 @@ export function adminLog(record: SourcingRecord, view: RunView): LogEntry[] {
             : s.supplier
               ? nameOf(record, s.supplier)
               : "Your team";
-    add(s.id, s.at, who, s.detail ? `${s.title}. ${s.detail}` : s.title, s.kind === "paid" ? "ok" : s.kind === "refunded" ? "stop" : s.kind === "locked" ? "money" : "plain", tx);
+    add(s.id, s.at, STAGE[s.kind] ?? "negotiating", who, s.detail ? `${s.title}. ${s.detail}` : s.title, s.kind === "paid" ? "ok" : s.kind === "refunded" ? "stop" : s.kind === "locked" ? "money" : "plain", tx);
   }
-  for (const [i, n] of (record.buyerNotes ?? []).entries()) add(`note:${i}`, Date.parse(n.at), "You", `Told your negotiator: "${n.text}"`);
+  for (const [i, n] of (record.buyerNotes ?? []).entries()) add(`note:${i}`, Date.parse(n.at), "negotiating", "You", `Told your negotiator: "${n.text}"`);
   const a = record.approval;
   if (a) {
-    add("approval:asked", Date.parse(a.at), "Lead (agent)", `Recommended ${nameOf(record, a.supplier)} and asked for your yes: "${a.leadReason}"`);
-    if (a.answeredAt) add("approval:answered", Date.parse(a.answeredAt), "You", a.state === "approved" ? "Said yes. Only then could the payment lock." : "Said no. Nothing was locked or paid.", a.state === "approved" ? "ok" : "stop");
+    add("approval:asked", Date.parse(a.at), "decision", "Lead (agent)", `Recommended ${nameOf(record, a.supplier)} and asked for your yes: "${a.leadReason}"`);
+    if (a.answeredAt) add("approval:answered", Date.parse(a.answeredAt), "decision", "You", a.state === "approved" ? "Said yes. Only then could the payment lock." : "Said no. Nothing was locked or paid.", a.state === "approved" ? "ok" : "stop");
   }
   return out.filter((e) => Number.isFinite(e.at)).sort((x, y) => x.at - y.at);
 }
