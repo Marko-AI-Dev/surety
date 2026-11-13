@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseHash } from "../src/App";
-import { adminLog, deskStage, reviewOf, threadOf, trackerOf } from "../src/data/desk";
+import { adminLog, deskStage, openThread, reviewOf, threadOf, trackerOf } from "../src/data/desk";
 import { recordingOf } from "../src/data/evidence";
 import { headline } from "../src/data/livescreen";
 import { proxyDecision } from "../src/data/proxy-policy";
@@ -113,6 +113,26 @@ describe("an approved wallet with no name that never answers", () => {
     expect(adminLog(record, view).some((e) => e.what.includes("invited rMAmWT"))).toBe(true);
     // A named supplier that has not answered yet still counts.
     expect(view.invites.filter((i) => !i.unnamed).every((i) => !silentUnnamed({ ...i, replied: false }))).toBe(true);
+  });
+});
+
+describe("which conversation the reading pane opens", () => {
+  it("never opens the silent unnamed wallet, even when the negotiator wrote to it last", () => {
+    const { view } = play("paid");
+    const unnamed = view.invites.find((i) => i.unnamed)?.address ?? "";
+    const shown = view.invites.filter((i) => !silentUnnamed(i)).map((i) => i.address);
+    const lastShown = [...view.messages].reverse().find((m) => m.kind !== "report" && shown.includes(m.supplier));
+    const last = { ...lastShown!, supplier: unnamed, kind: "to_supplier" as const };
+    const late: typeof view = { ...view, messages: [...view.messages, last, last, last] };
+    expect(late.messages.at(-1)?.supplier).toBe(unnamed);
+    expect(shown).not.toContain(unnamed);
+    expect(openThread(late, shown, null)).toBe(lastShown?.supplier);
+    // A hidden wallet cannot be picked either; a shown one can.
+    expect(openThread(late, shown, unnamed)).toBe(lastShown?.supplier);
+    expect(openThread(late, shown, shown[1]!)).toBe(shown[1]);
+    // Only the hidden wallet has messages: the first supplier on screen opens. Nothing on screen: nothing opens.
+    expect(openThread({ ...view, messages: [last] }, shown, null)).toBe(shown[0]);
+    expect(openThread(late, [], null)).toBeNull();
   });
 });
 

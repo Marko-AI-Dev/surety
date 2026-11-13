@@ -32,6 +32,9 @@ const nameIn = (r: Rec, address: string) => {
   return !i || i.name === i.address ? `an approved wallet with no name in the supplier directory (${short(address)})` : i.name;
 };
 
+// The supplier a payment is for: the seller on the payment, by its directory name.
+const payeeOf = (r: Rec) => (r.job ? (r.invites.some((i) => i.address === r.job?.seller) ? nameIn(r, r.job.seller) : `a wallet that was not on the invite list (${short(r.job.seller)})`) : null);
+
 // How one purchase ended, in one plain line, worked out by code. The model reads this first, so it
 // cannot mix one purchase's price with another's payment.
 export function outcomeLine(r: Rec, now = Date.now()): string {
@@ -41,13 +44,17 @@ export function outcomeLine(r: Rec, now = Date.now()): string {
   const pick = a ? r.invites.find((i) => i.address === a.supplier) : null;
   const picked = a ? `The Lead agent recommended ${nameIn(r, a.supplier)}${pick?.quote ? ` at ${dollars(pick.quote.unitCents)} a unit (${dollars(pick.quote.totalCents)} in all)` : ""}.` : "";
   const amount = r.job && "cents" in r.job.amount ? dollars(r.job.amount.cents) : "the payment";
+  // Who the money is for comes from the payment itself, so a purchase from before the buyer's yes
+  // existed (no approval on record) still names its supplier and the model has nothing to guess.
+  const payee = r.job ? payeeOf(r) : "the supplier";
+  const dealt = !a && r.job ? `The deal was made with ${payee}.` : "";
   if (a?.state === "declined") return `${head} ${picked} The buyer said no. Nothing was locked and nothing was paid.`;
   if (a?.state === "waiting") return `${head} ${picked} It is waiting for the buyer's yes or no. Nothing is locked and nothing is paid.`;
   const yes = a?.state === "approved" ? " The buyer said yes." : "";
-  if (r.finish) return `${head} ${picked}${yes} ${amount} was locked and then paid to the supplier${r.inspection?.state === "attested" ? " after the inspector confirmed the shipment" : ""}.`;
-  if (r.cancel) return `${head} ${picked}${yes} ${amount} was locked and then refunded to the buyer${r.inspection?.state === "refused" ? " because the inspector did not confirm the shipment" : ""}. The supplier was not paid.`;
-  if (r.create) return `${head} ${picked}${yes} ${amount} is locked on the ledger. It has not been paid or refunded yet.`;
-  if (r.job) return `${head} ${picked}${yes} The payment of ${amount} is being locked. Nothing is paid.`;
+  if (r.finish) return `${head} ${picked}${dealt}${yes} ${amount} was locked and then paid to ${payee}${r.inspection?.state === "attested" ? " after the inspector confirmed the shipment" : ""}.`;
+  if (r.cancel) return `${head} ${picked}${dealt}${yes} ${amount} was locked and then refunded to the buyer${r.inspection?.state === "refused" ? " because the inspector did not confirm the shipment" : ""}. ${payee} was not paid.`;
+  if (r.create) return `${head} ${picked}${dealt}${yes} ${amount} is locked on the ledger. It has not been paid or refunded yet. If it is paid, it goes to ${payee}.`;
+  if (r.job) return `${head} ${picked}${dealt}${yes} The payment of ${amount} to ${payee} is being locked. Nothing is paid.`;
   const over = now >= Date.parse(r.sourcing.negotiationEndsAt);
   return `${head} ${over ? "The negotiation time is over and the Lead agent has not recommended a deal." : "The agents are still negotiating."} Nothing is locked and nothing is paid.`;
 }
@@ -78,7 +85,7 @@ export function factsOf(r: Rec) {
     })),
     buyerNotes: r.buyerNotes,
     approval: r.approval,
-    payment: r.job ? { state: r.job.state, amount: "cents" in r.job.amount ? dollars(r.job.amount.cents) : null } : null,
+    payment: r.job ? { state: r.job.state, amount: "cents" in r.job.amount ? dollars(r.job.amount.cents) : null, to: payeeOf(r) } : null,
     inspector: r.inspection,
     paperworkCheck: r.verify ? { outcome: r.verify.outcome, reasons: r.verify.reasonCodes } : null,
     ledger: { locked: r.create?.explorer ?? null, paid: r.finish?.explorer ?? null, refunded: r.cancel?.explorer ?? null },

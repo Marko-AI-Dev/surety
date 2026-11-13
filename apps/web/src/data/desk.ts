@@ -221,3 +221,12 @@ export function adminLog(record: SourcingRecord, view: RunView): LogEntry[] {
   }
   return out.filter((e) => Number.isFinite(e.at)).sort((x, y) => x.at - y.at);
 }
+
+// Which conversation the reading pane shows: the one the buyer picked, else the one with the newest
+// message among the suppliers on screen, else the first on screen. A supplier left off the screen is
+// never opened, even when the negotiator wrote to it last.
+export function openThread(view: RunView, shown: string[], picked: string | null): string | null {
+  if (picked && shown.includes(picked)) return picked;
+  const latest = [...view.messages].reverse().find((m) => m.kind !== "report" && shown.includes(m.supplier))?.supplier;
+  return latest ?? shown[0] ?? null;
+}

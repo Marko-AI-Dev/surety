@@ -339,6 +339,23 @@ describe("POST /admin/ask", () => {
     expect(asked.at(-1)?.system).toContain("Never take a price, a payment, a supplier or an inspector from one purchase to answer about another");
   });
 
+  it("a purchase from before the buyer's yes existed (no approval on record) still names who was paid", async () => {
+    const { id, dealId } = await selected();
+    await call("POST", `/deals/${dealId}/decision`, TOKENS.lead, accept);
+    await call("POST", `/deals/${dealId}/approval`, TOKENS.view, { outcome: "approve" });
+    const rec = await sourcingRecord(deps, id);
+    const seller = rec.invites.find((i) => i.address === rec.job?.seller)?.name ?? "";
+    expect(seller).not.toBe("");
+    const old = { ...rec, approval: null, finish: { txHash: "ABC", explorer: "https://example.invalid/tx/ABC" } } as unknown as typeof rec;
+    const line = outcomeLine(old);
+    expect(line).toContain(`The deal was made with ${seller}.`);
+    expect(line).toContain(`$45,600.00 was locked and then paid to ${seller}`);
+    expect(line).not.toContain("paid to the supplier");
+    expect(factsOf(old).payment).toMatchObject({ amount: "$45,600.00", to: seller });
+    // With the approval on record the payee is named as well.
+    expect(outcomeLine(rec)).toContain(`If it is paid, it goes to ${seller}.`);
+  });
+
   it("a wallet with no name in the directory is never given to the model as if it were a company name", async () => {
     const UNNAMED = "rMAmWT8fLZqJcVHQyoQ9kNbQAnYSfkD7uh";
     const id = (await call("POST", "/sourcing", TOKENS.lead, brief())).json.id as string;

@@ -1,6 +1,6 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { dealStages } from "../data/buyer";
-import { type DeskStage, type Mail, deskStage, reviewOf, threadOf, trackerOf } from "../data/desk";
+import { type DeskStage, type Mail, deskStage, openThread, reviewOf, threadOf, trackerOf } from "../data/desk";
 import { usd, utcTime } from "../data/format";
 import { ApiError, type Draft, type IntakeAnswer, answerDeal, readNeed, sendNote, startPurchase } from "../data/live";
 import { chatRows, headline } from "../data/livescreen";
@@ -244,8 +244,7 @@ function Threads({ record, view, canNudge }: { record: SourcingRecord; view: Run
   const hidden = new Set(view.invites.filter(silentUnnamed).map((i) => i.address));
   const rows = chatRows(record, view).filter((r) => r.kind === "supplier" && !hidden.has(r.id));
   const [picked, setPicked] = useState<string | null>(null);
-  const latest = [...view.messages].reverse().find((m) => m.kind !== "report")?.supplier ?? rows[0]?.id ?? null;
-  const open = picked && rows.some((r) => r.id === picked) ? picked : latest;
+  const open = openThread(view, rows.map((r) => r.id), picked);
   const mails = open ? threadOf(record, view, open) : [];
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
