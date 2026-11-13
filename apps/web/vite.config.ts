@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import { proxyDecision } from "./src/data/proxy-policy";
 
@@ -16,8 +17,13 @@ export default defineConfig({
   resolve: {
     // The bouncer's code rules run in the browser for practice mode, straight from packages/gate.
     // They use node:crypto (sha256) and Buffer, so both are served by one small shim.
-    alias: [{ find: /^node:crypto$/, replacement: here("./src/shims/node-crypto.ts") }],
+    alias: [
+      { find: /^node:crypto$/, replacement: here("./src/shims/node-crypto.ts") },
+      // shadcn/ui components import each other through "@/".
+      { find: /^@\//, replacement: `${here("./src")}/` },
+    ],
   },
+  plugins: [tailwindcss()],
   oxc: { jsx: { runtime: "automatic" } },
   server: {
     port: 5173,

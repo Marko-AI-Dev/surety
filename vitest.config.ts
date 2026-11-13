@@ -1,6 +1,9 @@
+import { fileURLToPath } from "node:url";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // The web app's "@/" (shadcn/ui components), for the tests that import its views.
+  resolve: { alias: [{ find: /^@\//, replacement: `${fileURLToPath(new URL("./apps/web/src", import.meta.url))}/` }] },
   test: {
     include: [
       "packages/*/test/**/*.test.ts",
