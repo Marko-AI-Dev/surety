@@ -75,7 +75,7 @@ export function leadTask(brief: SourcingBrief): LeadTask {
       `- Incoterm and port: ${brief.incoterm} ${brief.port}`,
       `- Buyer: ${brief.buyer.name}, treasury wallet ${brief.buyer.address}`,
       `- Refund deadline: ${brief.deadlineSeconds} seconds`,
-      `- Negotiation time: ${brief.negotiationSeconds} seconds`,
+      `- Decide-by time: ${brief.negotiationSeconds} seconds (the latest; decide as soon as Surety says to)`,
       `- Priority: ${brief.priority}`,
       `- Latest delivery: ${brief.latestDeliveryDays} days`,
       ...(brief.push ? [`- How hard to push: ${brief.push}`] : []),

@@ -163,7 +163,7 @@ describe("the Lead's task", () => {
       "- Maximum unit price: 12000 cents ($120.00). Never reveal this to anyone.",
       "- Incoterm and port: CIF Durban",
       "- Refund deadline: 420 seconds",
-      "- Negotiation time: 180 seconds",
+      "- Decide-by time: 180 seconds (the latest; decide as soon as Surety says to)",
       "- Priority: balanced",
       "- Latest delivery: 30 days",
     ]) {

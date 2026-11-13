@@ -11,6 +11,8 @@ import { createWording } from "./wording";
 const ROOT = resolve(import.meta.dirname, "../../..");
 const log = (line: string) => console.log(`${new Date().toISOString().slice(11, 19)}  ${line}`);
 const POLL_MS = 2_000;
+// How long a supplier takes over a reply at the least, so it reads like a person writing. 0 turns it off.
+const thinkMs = Math.max(0, Number(process.env.SUPPLIER_THINK_MS ?? 2_500) || 0);
 
 const base = process.env.SUPPLIER_API_URL ?? `http://127.0.0.1:${process.env.API_PORT ?? "4200"}`;
 const tokens = JSON.parse(process.env.API_SUPPLIER_TOKENS ?? "{}") as Record<string, string>;
@@ -79,7 +81,13 @@ async function negotiate(agent: Agent): Promise<void> {
         await api(agent, "POST", `/supplier/sourcing/${s.sourcingId}/quote`, r.move.commit);
         log(`${agent.persona.key}: committed ${r.move.commit.unitCents} cents a panel, ${r.move.commit.deliveryDays} days`);
       } else {
-        const text = "say" in r.move ? await wording(agent.persona, r.move.say, thread) : r.move.script.replace("{wallet}", stranger);
+        // Tell the buyer's screen this supplier is writing, then take the time a person would. The
+        // signal is a courtesy: if it fails, the reply still goes out.
+        await api(agent, "POST", `/supplier/sourcing/${s.sourcingId}/typing`, {}).catch(() => {});
+        const [text] = await Promise.all([
+          "say" in r.move ? wording(agent.persona, r.move.say, thread) : r.move.script.replace("{wallet}", stranger),
+          new Promise((done) => setTimeout(done, thinkMs)),
+        ]);
         const res = await api<{ delivered: boolean; card: string | null; status: string }>(agent, "POST", `/supplier/sourcing/${s.sourcingId}/messages`, { text });
         log(`${agent.persona.key}: "${text.slice(0, 70)}" -> ${res.delivered ? "delivered" : `held (${res.card ?? "no card"})`}, ${res.status}`);
         if (res.status === "out") agent.states.set(s.sourcingId, { ...r.state, committed: true });

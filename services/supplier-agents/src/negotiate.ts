@@ -66,6 +66,9 @@ const AMOUNT = /\$\s?(\d[\d,]*(?:\.\d{1,2})?)|\bUSD\s?(\d[\d,]*(?:\.\d{1,2})?)|\
 const DAYS = /\b(\d{1,3})\s?-?\s?days?\b/i;
 const COMPETITOR = /\banother\b|\bother supplier|\bcompeting\b|\bcompetitor|\boffered\b|\belsewhere\b|\bon the table\b|\bother quote|\bbest offer\b/i;
 const FASTER = /\bfaster\b|\bsooner\b|\bquicker\b|\bearlier\b/i;
+// The buyer's side asks for the binding quote: the word "final", or a request to use the quote form.
+// With no countdown to force a commit, this is what closes a negotiation.
+const FINAL = /\bfinal\b|\bquote form\b/i;
 // A push on price in words, without a number.
 const PUSH = /\bbetter\b|\blower\b|\bdiscount|\bsharpen|\bcome down\b|\breduce\b|\bcheaper\b|\bimprove\b|\bbest price\b|\bbeat\b|\bmove on (the )?price\b/i;
 const cents = (s: string) => Math.round(Number(s.replace(/,/g, "")) * 100);
@@ -73,7 +76,7 @@ const cents = (s: string) => Math.round(Number(s.replace(/,/g, "")) * 100);
 // What a negotiator's message says, by sentence: a sentence about another supplier gives the competing
 // price and days; any other sentence gives the buyer's ask.
 export function readLeverage(text: string): Leverage {
-  const out: Leverage = { wantsFaster: FASTER.test(text), final: /\bfinal\b/i.test(text) };
+  const out: Leverage = { wantsFaster: FASTER.test(text), final: FINAL.test(text) };
   for (const sentence of text.split(/(?<=[.!?])\s+/)) {
     const amount = AMOUNT.exec(sentence);
     const value = amount ? cents(amount[1] ?? amount[2] ?? amount[3] ?? "") : undefined;

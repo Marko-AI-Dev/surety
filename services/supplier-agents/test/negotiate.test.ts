@@ -129,6 +129,15 @@ describe("nextMove over several rounds", () => {
     });
   });
 
+  it("a request to use the quote form commits too, so a negotiation with no countdown can close (14 Nov)", () => {
+    expect(readLeverage("That works for us. Please put the offer on the Surety quote form now.").final).toBe(true);
+    expect(readLeverage("Can you quote a better price?").final).toBe(false);
+    const { moves } = play(PERSONAS.sunpeak, ["Price?", "That works. I will take it to the buyer. Please put the offer on the Surety quote form now."]);
+    expect(moves[1]).toMatchObject({ commit: { unitCents: PERSONAS.sunpeak.openingUnitCents, deliveryDays: PERSONAS.sunpeak.deliveryDays } });
+    // With a month still to run, nothing but being asked makes a supplier commit.
+    expect(nextMove(PERSONAS.brightway, { ...fresh, priceCents: 11_800 }, [ask("Price?"), said("x")], 30 * 86_400)).toBeNull();
+  });
+
   it("everyone commits with 15 s left, at their standard days when nothing was traded", () => {
     for (const p of [PERSONAS.brightway, PERSONAS.sunpeak]) {
       const r = nextMove(p, { ...fresh, priceCents: p.openingUnitCents }, [ask("Price?"), said("x")], 15);
