@@ -124,6 +124,11 @@ describe("the negotiator's one-call helper (12 Nov)", () => {
     expect(negotiator).not.toMatch(/in these words/i);
   });
 
+  it("the negotiator keeps the word final and the quote form for the final call or a met brief (13 Nov: 'best final terms' in round two ended the haggling)", () => {
+    expect(negotiator).toMatch(/never say "final"/i);
+    expect(negotiator).toMatch(/before the phase is `final_call`/i);
+  });
+
   it("the negotiator never takes a price at face value: it asks what the price includes", () => {
     for (const w of [/freight/i, /insurance/i, /duties/i, /VAT/, /surcharge/i]) expect(negotiator).toMatch(w);
   });

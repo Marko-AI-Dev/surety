@@ -89,6 +89,31 @@ describe("wording that reads like a real supplier (12 Nov)", () => {
     expect(await w("Certified, and we can ship in 10 days.")(PERSONAS.brightway, answer, thread)).toBe(templateWording(PERSONAS.brightway, answer));
   });
 
+  it("a text that pushes the buyer to lock or pay falls back to the template (13 Nov: the bouncer held 'lock this in')", async () => {
+    const open = { unitCents: 12_600, deliveryDays: 14, intent: "open" as const };
+    const w = (text: string) => createWording({ apiKey: "k", model: "m", maxCalls: 60, fetchImpl: stubFetch(() => completion(text)).impl });
+    for (const text of [
+      "$126.00 per panel, delivery in 14 days. Let me know if you'd like to lock this in!",
+      "$126.00 per panel, 14 days. Send payment today and we ship.",
+      "$126.00 per panel, 14 days, with a 30% deposit.",
+    ]) {
+      expect(await w(text)(PERSONAS.sunpeak, open), text).toBe(templateWording(PERSONAS.sunpeak, open));
+    }
+    expect(await w("$126.00 per panel, delivery in 14 days. Stock is ready in our bonded warehouse.")(PERSONAS.sunpeak, open)).toBe(
+      "$126.00 per panel, delivery in 14 days. Stock is ready in our bonded warehouse.",
+    );
+  });
+
+  it("the model is told never to push the buyer to lock, pay or send money", async () => {
+    let body = "";
+    const impl = (async (_u: string, init: { body: string }) => {
+      body = init.body;
+      return completion("$118.00 per panel, 21 days.");
+    }) as unknown as typeof fetch;
+    await createWording({ apiKey: "k", model: "m", maxCalls: 60, fetchImpl: impl })(PERSONAS.brightway, { unitCents: 11_800, deliveryDays: 21, intent: "open" });
+    expect(body).toMatch(/never ask the buyer to lock/i);
+  });
+
   it("the answer template states the supplier's certifications and keeps the offer", () => {
     const t = templateWording(PERSONAS.brightway, answer);
     expect(t).toMatch(/IEC 61215/);
