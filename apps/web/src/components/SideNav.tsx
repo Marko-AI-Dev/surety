@@ -1,4 +1,4 @@
-import { CircleHelp, FileText, FlaskConical, History, LayoutDashboard, type LucideIcon, MessageSquare, Moon, PlayCircle, ShieldCheck, ShoppingBag, SlidersHorizontal, Smartphone, Sun, TriangleAlert } from "lucide-react";
+import { CircleHelp, FileText, FlaskConical, History, Landmark, LayoutDashboard, type LucideIcon, MessageSquare, Moon, PlayCircle, ShieldCheck, ShoppingBag, SlidersHorizontal, Smartphone, Sun, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The menu down the left side on a wide screen, for the buyer's screen and for the admin. Related
@@ -35,7 +35,13 @@ const BUYER: { label: string; items: Item[] }[] = [
       { label: "Suppliers and limits", icon: ShieldCheck, panel: "limits" },
     ],
   },
-  { label: "Records", items: [{ label: "What happened", icon: FileText, href: "#/admin" }] },
+  {
+    label: "Admin",
+    items: [
+      { label: "Admin portal", icon: LayoutDashboard, href: "#/admin" },
+      { label: "Escrow ledger", icon: Landmark, href: "#/admin/ledger" },
+    ],
+  },
 ];
 
 const ADMIN: { label: string; items: Item[] }[] = [
@@ -43,6 +49,7 @@ const ADMIN: { label: string; items: Item[] }[] = [
     label: "Records",
     items: [
       { label: "What happened", icon: FileText, href: "#/admin", tab: "log" },
+      { label: "Escrow ledger", icon: Landmark, href: "#/admin/ledger", tab: "ledger" },
       { label: "Ask the records", icon: CircleHelp, href: "#/admin/ask", tab: "ask" },
     ],
   },

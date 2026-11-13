@@ -10,6 +10,7 @@ import { Control } from "./views/Control";
 import { SideNav } from "./components/SideNav";
 import { Audit } from "./views/Audit";
 import { Chat } from "./views/Chat";
+import { Ledger } from "./views/Ledger";
 import { Purchases } from "./views/Purchases";
 import { Desk } from "./views/Desk";
 import { Inspector } from "./views/Inspector";
@@ -233,6 +234,8 @@ export function App() {
           ) : (
             <Chat record={record} view={view} canAct={liveOk} now={liveOk || !view || !Number.isFinite(view.t) ? Date.now() : view.t} earlier={liveOk && record !== null && run.purchases[0] !== undefined && run.purchases[0].id !== record.sourcing.id} />
           )
+        ) : tab === "ledger" ? (
+          <Ledger purchases={run.purchases} live={liveOk} />
         ) : tab === "classic" ? (
           <Desk record={record} view={view} canAct={liveOk} now={liveOk || !view || !Number.isFinite(view.t) ? Date.now() : view.t} />
         ) : tab === "attacks" ? (

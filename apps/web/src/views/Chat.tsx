@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUp, ChevronRight, Eye, FileText, type LucideIcon, MessageSquare, Plus, Search, Send, Settings2, ShieldCheck, ShoppingBag, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, ArrowUp, ChevronRight, Eye, FileText, Landmark, type LucideIcon, MessageSquare, Plus, Search, Send, Settings2, ShieldCheck, ShoppingBag, SlidersHorizontal } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { OPEN_PANEL, type PanelName } from "@/components/SideNav";
 import { Button } from "@/components/ui/button";
@@ -617,10 +617,18 @@ export function Chat({
     { group: "Go to", label: "Suppliers and limits", icon: ShieldCheck, run: () => setLimits(true) },
     {
       group: "Go to",
-      label: "What happened, step by step",
+      label: "Admin portal: what happened, step by step",
       icon: FileText,
       run: () => {
         window.location.hash = "#/admin";
+      },
+    },
+    {
+      group: "Go to",
+      label: "Escrow ledger: every transaction",
+      icon: Landmark,
+      run: () => {
+        window.location.hash = "#/admin/ledger";
       },
     },
   ];

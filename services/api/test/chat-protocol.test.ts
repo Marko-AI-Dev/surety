@@ -373,6 +373,10 @@ describe("the list of purchases says where each one stands", () => {
     expect(await newest()).toMatchObject({ stage: "waiting", supplier: SUPPLIER_NAME, totalCents: null });
     await call("POST", `/deals/${dealId}/approval`, TOKENS.view, { outcome: "approve" });
     expect(await newest()).toMatchObject({ stage: "locked", supplier: SUPPLIER_NAME, totalCents: 4_560_000 });
+    // The escrow ledger reads its rows from here: a transaction is listed only once the ledger validated it.
+    const ledger = (await newest()).ledger;
+    expect(ledger).toMatchObject({ finish: null, cancel: null });
+    if (ledger.create) expect(ledger.create).toMatchObject({ validated: true, txHash: expect.any(String), explorer: expect.stringContaining(ledger.create.txHash) });
   });
 
   it("a purchase the buyer turned down says so, and shows no amount", async () => {

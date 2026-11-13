@@ -182,6 +182,12 @@ export async function sourcingList(deps: SourcingDeps, limit: number) {
       const declined = earlier.find((d) => d.state === "DECLINED") ?? null;
       const deal = current ?? declined;
       const job = current?.jobId ? await repo.getJob(current.jobId) : null;
+      // Only a validated transaction is listed; the result is the ledger's own.
+      const txs = job ? await repo.listTransactions(job.id) : [];
+      const tx = (type: string) => {
+        const t = txs.find((x) => x.type === type && x.status === "validated" && x.txHash);
+        return t?.txHash ? { txHash: t.txHash, validated: true, result: t.result, ledgerIndex: t.ledgerIndex, feeDrops: t.feeDrops, explorer: explorerTxUrl(t.txHash) } : null;
+      };
       const stage: PurchaseStage = job
         ? job.state === "PAID"
           ? "paid"
@@ -214,6 +220,7 @@ export async function sourcingList(deps: SourcingDeps, limit: number) {
         // The supplier of the recommended (or turned down) deal, and the amount once a payment exists.
         supplier: deal ? deal.intent.supplier.name : null,
         totalCents: job && "cents" in job.amount ? Number(job.amount.cents) : null,
+        ledger: { create: tx("create"), finish: tx("finish"), cancel: tx("cancel") },
       };
     }),
   );

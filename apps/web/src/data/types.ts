@@ -164,4 +164,6 @@ export interface SourcingListItem {
   stage?: "negotiating" | "waiting" | "declined" | "locked" | "paid" | "refunded" | "stopped" | "closed";
   supplier?: string | null;
   totalCents?: number | null;
+  // Each validated escrow transaction of the purchase (13 Nov).
+  ledger?: { create: LedgerTx | null; finish: LedgerTx | null; cancel: LedgerTx | null };
 }
