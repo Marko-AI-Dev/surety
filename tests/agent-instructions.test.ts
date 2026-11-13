@@ -109,6 +109,12 @@ describe("the negotiator's one-call helper (12 Nov)", () => {
     expect(negotiator).toMatch(/never use `sleep`/i);
   });
 
+  it("the negotiator asks again once when a supplier's only replies were withheld, without mentioning them (13 Nov: Coastline got one turn, so no red card)", () => {
+    expect(negotiator).toMatch(/no usable answer yet/i);
+    expect(negotiator).toMatch(/write to it once more as if its answer never arrived/i);
+    expect(negotiator).toMatch(/never mention the withheld message/i);
+  });
+
   it("the negotiator opens a supplier invited after it started (13 Nov: it started 9 s before the invites)", () => {
     expect(negotiator).toMatch(/supplier_invited/);
     expect(negotiator).toMatch(/thread is empty, open it/i);
