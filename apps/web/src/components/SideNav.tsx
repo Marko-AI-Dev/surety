@@ -38,18 +38,25 @@ const BUYER: { label: string; items: Item[] }[] = [
   {
     label: "Admin",
     items: [
-      { label: "Admin portal", icon: LayoutDashboard, href: "#/admin" },
+      { label: "How Surety works", icon: ShieldCheck, href: "#/admin/how" },
       { label: "Escrow ledger", icon: Landmark, href: "#/admin/ledger" },
+      { label: "Admin portal", icon: LayoutDashboard, href: "#/admin" },
     ],
   },
 ];
 
 const ADMIN: { label: string; items: Item[] }[] = [
   {
+    label: "Surety",
+    items: [
+      { label: "How Surety works", icon: ShieldCheck, href: "#/admin/how", tab: "how" },
+      { label: "Escrow ledger", icon: Landmark, href: "#/admin/ledger", tab: "ledger" },
+    ],
+  },
+  {
     label: "Records",
     items: [
       { label: "What happened", icon: FileText, href: "#/admin", tab: "log" },
-      { label: "Escrow ledger", icon: Landmark, href: "#/admin/ledger", tab: "ledger" },
       { label: "Ask the records", icon: CircleHelp, href: "#/admin/ask", tab: "ask" },
     ],
   },

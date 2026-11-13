@@ -126,21 +126,30 @@ describe("the admin's audit", () => {
 });
 
 describe("the escrow ledger", () => {
-  it("lists only what the ledger validated, with the record's own hashes, and adds up", async () => {
-    const { ledgerTotals, recordedLedger, liveLedger } = await import("../src/data/ledger");
+  it("groups validated transactions by purchase, with the record's own hashes", async () => {
+    const { recordedLedger, liveLedger } = await import("../src/data/ledger");
     const { record } = recordingOf("paid");
-    const rows = recordedLedger().filter((r) => r.purchase === record.sourcing.ref);
-    expect(rows.map((r) => [r.kind, r.ledgerType, r.tx.txHash])).toEqual([
+    const paid = recordedLedger().find((p) => p.ref === record.sourcing.ref);
+    expect(paid).toMatchObject({ state: "paid", cents: Number(record.job?.amount.cents), supplier: "Sunpeak Energy Ltd" });
+    expect(paid?.rows.map((r) => [r.kind, r.ledgerType, r.tx.txHash])).toEqual([
       ["lock", "EscrowCreate", record.create?.txHash],
       ["release", "EscrowFinish", record.finish?.txHash],
     ]);
-    expect(rows.every((r) => r.tx.explorer.includes(r.tx.txHash) && r.cents === Number(record.job?.amount.cents))).toBe(true);
-    const refused = recordedLedger().filter((r) => r.purchase === recordingOf("refused").record.sourcing.ref);
-    expect(refused.map((r) => r.kind)).toEqual(["lock", "refund"]);
-    const t = ledgerTotals(recordedLedger());
-    expect(t.locked).toBe(t.released + t.refunded);
-    expect(t.transactions).toBe(recordedLedger().length);
-    // A purchase with no validated transaction adds no row.
+    expect(paid?.rows.every((r) => r.tx.explorer.includes(r.tx.txHash))).toBe(true);
+    const refused = recordedLedger().find((p) => p.ref === recordingOf("refused").record.sourcing.ref);
+    expect(refused).toMatchObject({ state: "refunded" });
+    expect(refused?.rows.map((r) => r.kind)).toEqual(["lock", "refund"]);
+    // A purchase with no validated transaction is not listed.
     expect(liveLedger([{ id: "x", ref: "SR-1", state: "OPEN", ledger: { create: null, finish: null, cancel: null } }])).toEqual([]);
+  });
+
+  it("never adds purchases up as if they were held at once: settled purchases hold nothing", async () => {
+    const { ledgerTotals, recordedLedger } = await import("../src/data/ledger");
+    const t = ledgerTotals(recordedLedger());
+    expect(t).toMatchObject({ inEscrowCents: 0, inEscrow: 0 });
+    expect(t.paid + t.refunded).toBe(recordedLedger().length);
+    // A purchase that is locked and not yet settled is the only thing that counts as held.
+    const open = ledgerTotals([{ ref: "SR-1", about: "x", when: null, cents: 4_640_000, supplier: "S", state: "in_escrow", rows: [] }]);
+    expect(open).toMatchObject({ inEscrowCents: 4_640_000, inEscrow: 1, paidCents: 0, refundedCents: 0 });
   });
 });
