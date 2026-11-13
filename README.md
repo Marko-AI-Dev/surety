@@ -4,6 +4,8 @@
 
 A team of AI agents finds suppliers, negotiates and chooses a quote. They never hold the money. The payment locks in XRP Ledger escrow, to a supplier a person approved, under limits a person set. It is released only when the supplier's paperwork passes and an independent inspector, a person with a phone, confirms the shipment. If either fails, or the deadline passes, the ledger refunds the buyer.
 
+**See it now, no install: [surety-demo.vercel.app](https://surety-demo.vercel.app)** (recorded real test purchases; start with [How Surety works](https://surety-demo.vercel.app/#/admin/how) and the [escrow ledger](https://surety-demo.vercel.app/#/admin/ledger), where every transaction opens on the public XRPL explorer).
+
 > **TESTNET ONLY.** Surety runs on XRPL Testnet with a valueless test dollar (TESTUSD) and synthetic data. It is a hackathon prototype for W3NODE 2026 (Agentic Finance track), not a financial product.
 
 ![The Surety web app at the end of a recorded purchase: the price negotiated down, the money paid, both ledger links, and the inspector's confirmation](docs/img/app-purchase.png)
@@ -43,6 +45,26 @@ flowchart LR
 
 ## See it
 
+Online: [surety-demo.vercel.app](https://surety-demo.vercel.app). It has no backend, so it plays the recorded testnet runs and says so.
+
+What is on screen (13 Nov 2026):
+
+- **The buyer's screen is one chat with their agent.** One sentence starts a purchase. Every price, every stopped message and the recommendation arrive as messages, and the deal sits beside the chat as six steps in order.
+- **Only the buyer's yes locks the payment.** The Lead agent recommends; a no moves nothing.
+- **No countdown.** The agents negotiate until a quote meets the brief, or the buyer asks for what they have.
+- **Approve-first mode.** Every message to a supplier can wait as a draft the buyer rewords, sends or discards.
+- **Admin:** How Surety works, the escrow ledger (each purchase's lock, release or refund with hash, ledger index, fee and result), and one purchase step by step.
+
+To try the full chat on your own machine with no keys, ledger or agents (a scripted team on an in-memory store; its ledger links are not real):
+
+```bash
+pnpm install
+PRACTICE_PORT=4227 pnpm practice
+SURETY_API_URL=http://127.0.0.1:4227 API_TOKEN_VIEW=VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV pnpm --filter @surety/web exec vite --port 5199 --strictPort
+```
+
+The recorded runs alone:
+
 ```bash
 pnpm install
 pnpm web     # http://localhost:5173
@@ -65,6 +87,8 @@ With no backend running, the app says so and plays four recorded testnet runs, b
 - **RLUSD itself is not used,** for the reason above.
 - **The signer runs on the same machine as everything else.** It is a separate process with separate secrets, and the agents are sandboxed away from it, but it is not yet a separate device.
 - **No real money, no KYC, no legal standing.** The approved-supplier list is a demo list.
+- **The chat screen, the no-countdown protocol and approve-first mode (13 Nov) are tested in unit tests and on a scripted practice backend, not yet on a live run** with the real agents and ledger. The recorded runs of 9 to 13 Nov used the earlier protocol.
+- **The negotiator still presses on price round after round.** A calmer method (ask everyone once, drop the dear ones, tell the rest the best price, ask once more) is designed, not built.
 
 ## Evidence on XRPL Testnet
 
@@ -180,7 +204,7 @@ Requires Node 24 and pnpm 10. On Windows, clone into a short path such as `C:\de
 ```bash
 pnpm install
 pnpm check                # everything below in one go; must pass before every commit (see AGENTS.md)
-pnpm test                 # the unit tests, no Docker needed, no network
+pnpm test                 # 1236 unit tests, no Docker needed, no network
 pnpm typecheck
 pnpm check:boundaries     # lint: flags key-handling code outside the signer
 
