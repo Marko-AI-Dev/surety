@@ -81,6 +81,19 @@ describe("digest: one compact picture of the negotiation", () => {
     expect(JSON.stringify(d.suppliers[1]?.bestCompetingOffer)).not.toMatch(/Alpha|rA/);
   });
 
+  it("never hands a supplier a competing offer that is worse than its own for the buyer's priority (13 Nov: citing $126 to a $114 supplier raised its price)", () => {
+    const two = [
+      { supplier: A, unitCents: 11400, deliveryDays: 21, source: "reported" as const, at: null },
+      { supplier: B, unitCents: 12600, deliveryDays: 14, source: "reported" as const, at: null },
+    ];
+    const price = digest(view({ priority: "price", offers: two }), [], 0);
+    expect(price.suppliers[0]?.bestCompetingOffer).toBeNull();
+    expect(price.suppliers[1]?.bestCompetingOffer).toEqual({ unitCents: 11400, deliveryDays: 21 });
+    const speed = digest(view({ priority: "speed", offers: two }), [], 0);
+    expect(speed.suppliers[0]?.bestCompetingOffer).toEqual({ unitCents: 12600, deliveryDays: 14 });
+    expect(speed.suppliers[1]?.bestCompetingOffer).toBeNull();
+  });
+
   it("flags a supplier whose latest offer already meets the buyer's target price and latest delivery (the good-enough rule)", () => {
     const meets = [
       { supplier: A, unitCents: 10000, deliveryDays: 21, source: "reported" as const, at: null },

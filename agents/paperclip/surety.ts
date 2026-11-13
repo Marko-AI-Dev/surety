@@ -109,7 +109,11 @@ export function digest(view: View, inbox: Inbox, since: number): Digest {
     .map((i): SupplierDigest => {
       const mine = inbox.map((m, index) => ({ m, index })).filter(({ m }) => m.supplier === i.address);
       const report = view.offers.find((o) => o.supplier === i.address);
-      const best = bestOtherOffer(view.priority, view.offers, i.address, view.latestDeliveryDays);
+      const other = bestOtherOffer(view.priority, view.offers, i.address, view.latestDeliveryDays);
+      // Cite it only when it beats this supplier's own latest offer for the buyer's priority: a worse
+      // offer is no leverage, and a supplier told of a faster but dearer quote raises its price.
+      // Ranked with the supplier's own offer first, so a tie is not cited either.
+      const best = other && report ? (bestOtherOffer(view.priority, [{ ...report, supplier: i.address }, other], "", view.latestDeliveryDays) === other ? other : null) : other;
       return {
         address: i.address,
         name: i.name,
