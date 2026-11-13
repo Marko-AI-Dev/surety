@@ -9,6 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json && pnpm --filter @surety/web typecheck",
+    "check": "pnpm typecheck && pnpm test && pnpm check:boundaries && pnpm web:build",
     "check:boundaries": "tsx scripts/check-boundaries.ts",
     "signer": "pnpm --filter @surety/signer start",
     "worker": "pnpm --filter @surety/worker start",

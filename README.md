@@ -179,7 +179,8 @@ Requires Node 24 and pnpm 10. On Windows, clone into a short path such as `C:\de
 
 ```bash
 pnpm install
-pnpm test                 # 1146 unit tests, no Docker needed, no network
+pnpm check                # everything below in one go; must pass before every commit (see AGENTS.md)
+pnpm test                 # the unit tests, no Docker needed, no network
 pnpm typecheck
 pnpm check:boundaries     # lint: flags key-handling code outside the signer
 
