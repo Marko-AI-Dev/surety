@@ -364,7 +364,14 @@ export function Review({ record, canAct }: { record: SourcingRecord; canAct: boo
       {canAct && pick ? (
         <div className="review-actions">
           <button type="button" className="btn btn-primary btn-big" onClick={() => answer("approve")} disabled={busy !== null}>
-            {busy === "approve" ? "Locking the payment" : `Yes, buy from ${pick.name}`}
+            {busy === "approve" ? (
+              "Locking the payment"
+            ) : (
+              <span className="btn-win">
+                <span className="rest">Yes, buy from {pick.name}</span>
+                <span className="win">Lock in {usd(pick.unitCents)} a panel</span>
+              </span>
+            )}
           </button>
           <button type="button" className="btn btn-big" onClick={() => answer("decline")} disabled={busy !== null}>
             {busy === "decline" ? "Saying no" : "No, don't buy"}

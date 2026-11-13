@@ -35,6 +35,7 @@
     "sourcing:status": "node --env-file=.env --import tsx scripts/sourcing-status.ts",
     "inspector:attest": "node --env-file=.env.api --import tsx services/api/scripts/inspector-attest.ts",
     "evidence:sourcing": "node --env-file=.env --env-file=.env.api --import tsx scripts/sourcing-evidence.ts",
+    "practice": "tsx scripts/practice-backend.ts",
     "web": "pnpm --filter @surety/web dev",
     "web:build": "pnpm --filter @surety/web build"
   },

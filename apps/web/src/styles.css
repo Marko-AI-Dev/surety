@@ -3426,3 +3426,68 @@ main > .desk-card {
 .app[data-route="desk"]:not(:has(.replay)) {
   padding-bottom: 1rem;
 }
+
+/* ---------- round 2: the side menu, the deal steps and the buttons that say what they win */
+@media (min-width: 1024px) {
+  .app[data-shell="side"] {
+    max-width: none;
+    padding-left: 272px;
+    padding-top: 16px;
+  }
+  .app[data-shell="side"] > header.top,
+  .app[data-shell="side"] > .admin-nav {
+    display: none;
+  }
+}
+@media (max-width: 1023.98px) {
+  .side-nav {
+    display: none;
+  }
+}
+.deal-step > summary::-webkit-details-marker {
+  display: none;
+}
+.deal-step[open] .deal-chev {
+  rotate: 90deg;
+}
+.deal-chev {
+  transition: rotate 0.15s var(--glide);
+}
+.btn-win .win {
+  display: none;
+}
+button:hover > .btn-win .rest {
+  display: none;
+}
+button:hover > .btn-win .win {
+  display: inline;
+}
+.plane-loop {
+  animation: plane-loop 1.6s var(--glide) infinite;
+}
+@keyframes plane-loop {
+  0% {
+    translate: 0 0;
+    opacity: 1;
+  }
+  45% {
+    translate: 12px -12px;
+    opacity: 0;
+  }
+  46% {
+    translate: -10px 10px;
+    opacity: 0;
+  }
+  100% {
+    translate: 0 0;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plane-loop {
+    animation: none;
+  }
+  .deal-chev {
+    transition: none;
+  }
+}

@@ -47,4 +47,4 @@ These are the target. New work follows them; older code is moved over step by st
 - **The kit rule.** New UI is built from `apps/web/src/components/ui` and the tokens in `DESIGN.md`: no raw colours and no one-off font sizes. The older screens still style themselves in `apps/web/src/styles.css`. There is no test for this yet.
 - **Module boundaries in the web app.** Screens should not call the API themselves; that belongs in `src/data`. Several older screens still do.
 - **Browser tests** for the main flows, accessibility and visual baselines. None are in the repo yet.
-- **AI journey testing** (an AI agent uses the running app like a new user, with a check against the record). Not set up yet. When it is, every shipped feature gets a journey.
+- **AI journey testing** (an AI agent uses the running app like a new user, with a check against the record). Set up for the buyer's chat: `journeys/surety_journeys.py`, against `pnpm practice` only, reports in `journeys/runs/`. See `docs/plans/2026-11-13-journeys.md`. It is not part of `pnpm check`. Every newly shipped feature gets a journey; the older screens have none yet.

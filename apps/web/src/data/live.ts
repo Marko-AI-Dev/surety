@@ -113,6 +113,8 @@ export interface IntakeAnswer {
   draft: Draft;
   question: { field: DraftField; ask: string } | null;
   ready: boolean;
+  // What the buyer did not say and was assumed (13 Nov). Absent from an older backend.
+  assumed?: DraftField[];
   readBy: "code" | "code and model";
 }
 const post = <T>(fetchFn: FetchFn, url: string, body: unknown) =>

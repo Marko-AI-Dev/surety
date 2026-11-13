@@ -153,7 +153,7 @@ The record (`GET /sourcing/:id/record`) also carries `controls: { autonomy, push
 
 ### `POST /buyer/intake` (view)
 
-Plain words in, the numbers of a purchase out. Body `{ "text": "...", "draft"?: {...}, "field"?: "quantity" | ... }`. Returns `{ draft, question: { field, ask } | null, ready, readBy }`. Code reads the obvious; a small model (`API_CHAT_MODEL`, default `openai/gpt-4o-mini`, through OpenRouter) fills in what code missed, and its answer is checked like any input. It opens nothing.
+Plain words in, the numbers of a purchase out. Body `{ "text": "...", "draft"?: {...}, "field"?: "quantity" | ... }`. Returns `{ draft, question: { field, ask } | null, ready, assumed, readBy }`. One complete sentence is enough: quantity, the most to pay, the price hoped for and the delivery time are asked for when missing; what matters most and how hard to push are not asked. When the buyer does not say them, `priority` is set to `balanced`, `push` is left out (the brief reads that as firm), and `assumed` lists which of the two were assumed so the screen can show them and let the buyer change them. Code reads the obvious; a small model (`API_CHAT_MODEL`, default `openai/gpt-4o-mini`, through OpenRouter) fills in what code missed, and its answer is checked like any input. It opens nothing.
 
 ### `POST /admin/ask` (view)
 

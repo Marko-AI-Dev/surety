@@ -233,12 +233,23 @@ describe("POST /buyer/intake", () => {
   it("reads a plain sentence with code alone and asks for what is missing, one thing at a time", async () => {
     const r = await call("POST", "/buyer/intake", TOKENS.view, { text: "I need 400 solar panels, ideally $110 each and no more than $120, within 30 days." });
     expect(r.status).toBe(200);
-    expect(r.json.draft).toEqual({ quantity: 400, targetUnitCents: 11_000, maxUnitCents: 12_000, latestDeliveryDays: 30 });
-    expect(r.json).toMatchObject({ ready: false, question: { field: "priority" } });
-    const next = await call("POST", "/buyer/intake", TOKENS.view, { text: "fastest please", draft: r.json.draft, field: "priority" });
-    expect(next.json).toMatchObject({ draft: { priority: "speed" }, question: { field: "push" }, ready: false });
-    const done = await call("POST", "/buyer/intake", TOKENS.view, { text: "firm", draft: next.json.draft, field: "push" });
-    expect(done.json).toMatchObject({ ready: true, question: null, draft: { quantity: 400, targetUnitCents: 11_000, maxUnitCents: 12_000, latestDeliveryDays: 30, priority: "speed", push: "firm" } });
+    // One complete sentence is enough to start (13 Nov): what matters most and how hard to push are
+    // assumed, the answer says which were assumed, and nothing more is asked.
+    expect(r.json.draft).toEqual({ quantity: 400, targetUnitCents: 11_000, maxUnitCents: 12_000, latestDeliveryDays: 30, priority: "balanced" });
+    expect(r.json).toMatchObject({ ready: true, question: null, assumed: ["priority", "push"] });
+    // The buyer can still say either one; then it is theirs, not assumed.
+    const next = await call("POST", "/buyer/intake", TOKENS.view, { text: "fastest please", draft: { quantity: 400, targetUnitCents: 11_000, maxUnitCents: 12_000, latestDeliveryDays: 30 }, field: "priority" });
+    expect(next.json).toMatchObject({ draft: { priority: "speed" }, ready: true, question: null, assumed: ["push"] });
+    const done = await call("POST", "/buyer/intake", TOKENS.view, { text: "gentle", draft: next.json.draft, field: "push" });
+    expect(done.json).toMatchObject({ ready: true, question: null, assumed: [], draft: { quantity: 400, targetUnitCents: 11_000, maxUnitCents: 12_000, latestDeliveryDays: 30, priority: "speed", push: "gentle" } });
+  });
+
+  it("still asks, one thing at a time, for a number the purchase cannot do without", async () => {
+    const r = await call("POST", "/buyer/intake", TOKENS.view, { text: "I need 400 solar panels" });
+    expect(r.json).toMatchObject({ ready: false, question: { field: "maxUnitCents" }, assumed: [] });
+    expect(r.json.draft).toEqual({ quantity: 400 });
+    const price = await call("POST", "/buyer/intake", TOKENS.view, { text: "120", draft: r.json.draft, field: "maxUnitCents" });
+    expect(price.json).toMatchObject({ ready: false, question: { field: "targetUnitCents" } });
   });
 
   it("a bare number answers the question that was asked", () => {
