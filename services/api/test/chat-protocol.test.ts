@@ -356,3 +356,35 @@ describe("a supplier says it is writing", () => {
     expect((await call("POST", `/supplier/sourcing/${other}/typing`, SUPPLIER_TOKENS[SUPPLIER], {})).status).toBe(404);
   });
 });
+
+describe("the list of purchases says where each one stands", () => {
+  const newest = async () => (await call("GET", "/sourcing", TOKENS.view)).json[0];
+  const recommended = async (id: string) => {
+    await call("POST", `/supplier/sourcing/${id}/quote`, SUPPLIER_TOKENS[SUPPLIER], quote(11_400, 21, "Q-1"));
+    const dealId = (await call("POST", `/sourcing/${id}/select`, TOKENS.lead, { supplier: SUPPLIER })).json.id as string;
+    await call("POST", `/deals/${dealId}/decision`, TOKENS.lead, { outcome: "accept", reason: "First in the ranking." });
+    return dealId;
+  };
+
+  it("negotiating, then waiting for the buyer, then locked, with the supplier and the amount once they are known", async () => {
+    const id = await opened();
+    expect(await newest()).toMatchObject({ id, stage: "negotiating", supplier: null, totalCents: null });
+    const dealId = await recommended(id);
+    expect(await newest()).toMatchObject({ stage: "waiting", supplier: SUPPLIER_NAME, totalCents: null });
+    await call("POST", `/deals/${dealId}/approval`, TOKENS.view, { outcome: "approve" });
+    expect(await newest()).toMatchObject({ stage: "locked", supplier: SUPPLIER_NAME, totalCents: 4_560_000 });
+  });
+
+  it("a purchase the buyer turned down says so, and shows no amount", async () => {
+    const id = await opened();
+    const dealId = await recommended(id);
+    await call("POST", `/deals/${dealId}/approval`, TOKENS.view, { outcome: "decline" });
+    expect(await newest()).toMatchObject({ id, stage: "declined", supplier: SUPPLIER_NAME, totalCents: null });
+    expect(locks()).toBe(0);
+  });
+
+  it("never carries the maximum price", async () => {
+    await opened();
+    expect(JSON.stringify((await call("GET", "/sourcing", TOKENS.lead)).json)).not.toMatch(/maxUnitCents|12000/);
+  });
+});
