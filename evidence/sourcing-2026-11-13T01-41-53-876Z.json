@@ -1,0 +1,440 @@
+{
+  "network": "XRPL Testnet",
+  "recordedAt": "2026-11-13T01:41:53.876Z",
+  "sourcing": {
+    "id": "df1b563d-33b3-483f-b905-e24050f077be",
+    "ref": "SR-261112-ZVZM",
+    "state": "SELECTED",
+    "brief": {
+      "buyer": {
+        "name": "Karoo Solar Imports (Pty) Ltd",
+        "address": "rHVVH877c6yuRMFuqVarsh8v3PkvxdCgk5"
+      },
+      "goods": {
+        "description": "Monocrystalline solar panel 550 W",
+        "quantity": 400,
+        "targetUnitCents": 11000,
+        "maxUnitCents": 12000
+      },
+      "incoterm": "CIF",
+      "port": "Durban",
+      "deadlineSeconds": 420,
+      "negotiationSeconds": 180,
+      "priority": "balanced",
+      "latestDeliveryDays": 30,
+      "push": "firm"
+    },
+    "negotiationEndsAt": "2026-11-12T23:04:05.291Z"
+  },
+  "invites": [
+    {
+      "address": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+      "name": "Shenzhen Brightway Solar Co., Ltd",
+      "status": "in",
+      "cards": [],
+      "quote": {
+        "unitCents": 11800,
+        "quantity": 400,
+        "totalCents": 4720000
+      },
+      "deliveryDays": 21,
+      "dealId": "f1ae5238-f0e7-4b78-8e68-6ce5f2985534"
+    },
+    {
+      "address": "rsFJVsZ2u3c57X53pPfdJq1XApXzJ3BPUx",
+      "name": "Sunpeak Energy Ltd",
+      "status": "in",
+      "cards": [],
+      "quote": {
+        "unitCents": 12600,
+        "quantity": 400,
+        "totalCents": 5040000
+      },
+      "deliveryDays": 14,
+      "dealId": null
+    },
+    {
+      "address": "rMAmWT8fcWppmYenNLReZ69TfHJxDKkD7u",
+      "name": "rMAmWT8fcWppmYenNLReZ69TfHJxDKkD7u",
+      "status": "in",
+      "cards": [],
+      "quote": null,
+      "deliveryDays": null,
+      "dealId": null
+    }
+  ],
+  "suggestions": [],
+  "messages": [
+    {
+      "at": "2026-11-12T23:02:39.300Z",
+      "kind": "to_supplier",
+      "supplier": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+      "body": "Please quote your best unit price and delivery days for 400 x 550 W panels, CIF Durban. Confirm IEC 61215/61730, South African NRCS authority and warranty; does price include freight, insurance, packing, documents and handling, with any extras stated and duties/VAT separate? Please submit your final committed quote on Surety now.",
+      "delivered": true,
+      "card": null,
+      "offer": null,
+      "screen": null
+    },
+    {
+      "at": "2026-11-12T23:02:39.317Z",
+      "kind": "to_supplier",
+      "supplier": "rsFJVsZ2u3c57X53pPfdJq1XApXzJ3BPUx",
+      "body": "For 400 x 550 W panels CIF Durban, what's your best unit price and delivery time? Please confirm IEC 61215/61730, South African NRCS authority and warranty, plus freight/insurance inclusion, any packing, document or handling extras and separate duties/VAT. Time is short: please put your final committed quote on Surety now.",
+      "delivered": true,
+      "card": null,
+      "offer": null,
+      "screen": null
+    },
+    {
+      "at": "2026-11-12T23:02:39.328Z",
+      "kind": "to_supplier",
+      "supplier": "rMAmWT8fcWppmYenNLReZ69TfHJxDKkD7u",
+      "body": "Can you offer your best price and delivery days for 400 x 550 W panels CIF Durban? Confirm IEC 61215/61730 certification, South African NRCS authority and warranty, freight and insurance inclusion, all extra packing/document/handling fees and separate duties/VAT. Please enter your final committed quote on Surety now.",
+      "delivered": true,
+      "card": null,
+      "offer": null,
+      "screen": null
+    },
+    {
+      "at": "2026-11-12T23:02:44.582Z",
+      "kind": "from_supplier",
+      "supplier": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+      "body": "$118.00 per panel, delivery in 21 days. Price includes freight, insurance, packing, documents, and handling. IEC 61215/61730 certified, NRCS LOA for South Africa, 12-year product, and 25-year linear power warranty all confirmed. Noted any duties/VAT are separate. Will send PI shortly.",
+      "delivered": true,
+      "card": null,
+      "offer": null,
+      "screen": {
+        "links": [],
+        "rules": {
+          "passed": true,
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "wallet",
+              "status": "pass"
+            },
+            {
+              "id": "bank_details",
+              "status": "pass"
+            }
+          ]
+        },
+        "costUsd": 0.000024864,
+        "samples": null,
+        "reasonCodes": [
+          "approved"
+        ],
+        "satisfaction": 0.98,
+        "injectionRisk": 0.04
+      }
+    },
+    {
+      "at": "2026-11-12T23:02:48.082Z",
+      "kind": "from_supplier",
+      "supplier": "rsFJVsZ2u3c57X53pPfdJq1XApXzJ3BPUx",
+      "body": "Hello! We can offer you the 400 x 550 W panels at $126.00 per panel, with delivery within 14 days. All panels are IEC 61215 and IEC 61730 certified, and we have the NRCS LOA for South Africa. You'll receive a 15-year product warranty and a 30-year performance warranty, plus datasheets and test reports with the proforma invoice. No extra charges for packing or handling, but duties and VAT will apply. Let me know if you’d like to lock this in!",
+      "delivered": false,
+      "card": null,
+      "offer": null,
+      "screen": {
+        "links": [],
+        "rules": {
+          "passed": true,
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "wallet",
+              "status": "pass"
+            },
+            {
+              "id": "bank_details",
+              "status": "pass"
+            }
+          ]
+        },
+        "costUsd": 0.000026502,
+        "samples": null,
+        "reasonCodes": [
+          "uncertain"
+        ],
+        "satisfaction": 0.98,
+        "injectionRisk": 0.37
+      }
+    },
+    {
+      "at": "2026-11-12T23:03:01.485Z",
+      "kind": "to_supplier",
+      "supplier": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+      "body": "Thanks for confirming the coverage and warranty. Can you reach $110 per panel while keeping delivery within 21 days? Please put your best final terms on the Surety quote form.",
+      "delivered": true,
+      "card": null,
+      "offer": null,
+      "screen": null
+    },
+    {
+      "at": "2026-11-12T23:03:02.094Z",
+      "kind": "report",
+      "supplier": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+      "body": "Supplier confirms IEC 61215/61730 and South African NRCS LOA; 12-year product/25-year linear power warranty; CIF includes freight, insurance, packing, documentation and handling, with duties/VAT separate.",
+      "delivered": true,
+      "card": null,
+      "offer": {
+        "summary": "Supplier confirms IEC 61215/61730 and South African NRCS LOA; 12-year product/25-year linear power warranty; CIF includes freight, insurance, packing, documentation and handling, with duties/VAT separate.",
+        "quantity": 400,
+        "supplier": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+        "unitCents": 11800,
+        "deliveryDays": 21
+      },
+      "screen": {
+        "links": [],
+        "rules": {
+          "passed": true,
+          "results": [
+            {
+              "id": "size",
+              "status": "pass"
+            },
+            {
+              "id": "wallet",
+              "status": "pass"
+            },
+            {
+              "id": "bank_details",
+              "status": "pass"
+            }
+          ]
+        },
+        "costUsd": 0.000023604,
+        "samples": null,
+        "reasonCodes": [
+          "approved"
+        ],
+        "satisfaction": 0.93,
+        "injectionRisk": 0.03
+      }
+    },
+    {
+      "at": "2026-11-12T23:03:47.356Z",
+      "kind": "to_supplier",
+      "supplier": "rsFJVsZ2u3c57X53pPfdJq1XApXzJ3BPUx",
+      "body": "Final call: a competing quote is $118 per panel with 21-day delivery. Can you reach $110 with delivery within 30 days? Please submit your final committed price and delivery days on the Surety quote form now, with certification, warranty and CIF inclusions confirmed.",
+      "delivered": true,
+      "card": null,
+      "offer": null,
+      "screen": null
+    },
+    {
+      "at": "2026-11-12T23:03:47.370Z",
+      "kind": "to_supplier",
+      "supplier": "rMAmWT8fcWppmYenNLReZ69TfHJxDKkD7u",
+      "body": "We're closing shortly; another approved supplier offers $118 per panel and 21 days. Can you meet $110 and deliver within 30 days? Please enter your final committed quote and delivery days on Surety now, confirming certification, warranty and what the CIF price covers.",
+      "delivered": true,
+      "card": null,
+      "offer": null,
+      "screen": null
+    }
+  ],
+  "deals": [
+    {
+      "id": "f1ae5238-f0e7-4b78-8e68-6ce5f2985534",
+      "ref": "PO-261112-ZVZM-S1",
+      "state": "ACCEPTED",
+      "supplier": {
+        "name": "Shenzhen Brightway Solar Co., Ltd",
+        "address": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U"
+      },
+      "quote": {
+        "port": "Durban",
+        "notes": "",
+        "currency": "USD",
+        "incoterm": "CIF",
+        "quantity": 400,
+        "unitCents": 11800,
+        "totalCents": 4720000,
+        "quoteNumber": "Q-BRIG-E5LPKU",
+        "supplierAddress": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U"
+      },
+      "decision": {
+        "agent": {
+          "kind": "agent",
+          "model": "paperclip:lead",
+          "reason": "First in the balanced ranking: 400 panels at $118 each, CIF Durban, with 21-day delivery within the brief.",
+          "outcome": "accept"
+        },
+        "final": "accept",
+        "reasonCodes": [
+          "agent_accepted"
+        ]
+      }
+    }
+  ],
+  "job": {
+    "id": "03131081-9a91-42b5-bbbc-1e43db195fde",
+    "ref": "PO-261112-ZVZM-S1",
+    "state": "PAID",
+    "amount": {
+      "asset": "TESTUSD",
+      "cents": "4720000"
+    },
+    "seller": "rMzXuRSTGEhVpvhXa9CyFVU86o4Q3nzJ4U",
+    "policyVersion": "policy-v4-trade"
+  },
+  "verify": {
+    "outcome": "APPROVE",
+    "satisfaction": 0.96,
+    "injectionRisk": 0.07,
+    "reasonCodes": [
+      "approved"
+    ],
+    "policyVersion": "policy-v4-trade"
+  },
+  "inspection": {
+    "state": "attested",
+    "inspector": "Port inspector (demo)",
+    "blNumber": "SZXDUR-46337",
+    "note": "400 cartons counted, seal intact",
+    "at": "2026-11-13T01:26:23.760Z"
+  },
+  "notes": [
+    {
+      "at": "2026-11-12T23:06:32.812Z",
+      "actor": "paperclip:lead",
+      "reasonCodes": [
+        "lead_recommends"
+      ],
+      "detail": {
+        "reason": "First in the balanced ranking: 400 panels at $118 each, CIF Durban, with 21-day delivery within the brief."
+      }
+    },
+    {
+      "at": "2026-11-13T01:24:47.135Z",
+      "actor": "buyer",
+      "reasonCodes": [
+        "buyer_approved"
+      ],
+      "detail": {
+        "reason": ""
+      }
+    }
+  ],
+  "events": [
+    {
+      "at": "2026-11-13T01:24:47.201Z",
+      "actor": "deal-agent",
+      "from": "DRAFT",
+      "to": "CREATE_PENDING",
+      "reasonCodes": [
+        "fund_requested"
+      ]
+    },
+    {
+      "at": "2026-11-13T01:25:44.784Z",
+      "actor": "expiry-worker",
+      "from": "CREATE_PENDING",
+      "to": "LOCKED",
+      "reasonCodes": [
+        "validated_tesSUCCESS"
+      ]
+    },
+    {
+      "at": "2026-11-13T01:25:46.350Z",
+      "actor": "seller",
+      "from": "LOCKED",
+      "to": "IN_PROGRESS",
+      "reasonCodes": [
+        "work_started"
+      ]
+    },
+    {
+      "at": "2026-11-13T01:25:46.357Z",
+      "actor": "seller",
+      "from": "IN_PROGRESS",
+      "to": "DELIVERED",
+      "reasonCodes": [
+        "deliverable_received"
+      ]
+    },
+    {
+      "at": "2026-11-13T01:26:24.997Z",
+      "actor": "gate",
+      "from": "DELIVERED",
+      "to": "EVALUATING",
+      "reasonCodes": [
+        "evaluation_started"
+      ]
+    },
+    {
+      "at": "2026-11-13T01:26:26.140Z",
+      "actor": "gate",
+      "from": "EVALUATING",
+      "to": "APPROVED",
+      "reasonCodes": [
+        "approved"
+      ]
+    },
+    {
+      "at": "2026-11-13T01:26:26.458Z",
+      "actor": "gate",
+      "from": "APPROVED",
+      "to": "FINISH_PENDING",
+      "reasonCodes": [
+        "settlement_started"
+      ]
+    },
+    {
+      "at": "2026-11-13T01:26:33.628Z",
+      "actor": "gate",
+      "from": "FINISH_PENDING",
+      "to": "PAID",
+      "reasonCodes": [
+        "validated_tesSUCCESS"
+      ]
+    }
+  ],
+  "expect": "paid",
+  "create": {
+    "txHash": "A1C9F093A4BD4DD44099C8DBF530EBF9EB9CDD4341B35F9856A57CCEF9E8D1D5",
+    "validated": true,
+    "result": "tesSUCCESS",
+    "ledgerIndex": 22281165,
+    "feeDrops": "12",
+    "explorer": "https://testnet.xrpl.org/transactions/A1C9F093A4BD4DD44099C8DBF530EBF9EB9CDD4341B35F9856A57CCEF9E8D1D5"
+  },
+  "finish": {
+    "txHash": "174AD810E065D57CEBD19E1A647FB3C0B6333D6AB24D1C95DF5E9C4DD18AA72A",
+    "validated": true,
+    "result": "tesSUCCESS",
+    "ledgerIndex": 22281179,
+    "feeDrops": "423",
+    "explorer": "https://testnet.xrpl.org/transactions/174AD810E065D57CEBD19E1A647FB3C0B6333D6AB24D1C95DF5E9C4DD18AA72A"
+  },
+  "cancel": null,
+  "treasuryCents": {
+    "before": "981220000",
+    "after": "976500000"
+  },
+  "costUsd": {
+    "bouncer": 0.00007497,
+    "verify": 0.00004662
+  },
+  "checks": {
+    "crookKeptOut": true,
+    "quarantinedNeverInInbox": true,
+    "maxNeverShownToNegotiator": true,
+    "strangerSuggestedNotInvited": false,
+    "everyLeadDecisionHasReason": true,
+    "winnerBestForPriorityOrNoted": true,
+    "negotiationMovedPrice": false,
+    "leverageCitedAnonymously": true,
+    "committedQuotesCarryDeliveryDays": true,
+    "paidFinishValidated": true,
+    "treasuryDownByExactlyTotal": true,
+    "inspectionAttestedBeforePaid": true
+  }
+}
