@@ -12,6 +12,7 @@
 
 export type Priority = "price" | "speed" | "balanced";
 export type Push = "gentle" | "firm";
+export type Autonomy = "full" | "approve";
 export type BuyerNote = { text: string; at: string };
 
 export interface Offer {
@@ -34,6 +35,11 @@ export interface View {
   // How hard the buyer wants the push, and what the buyer told its negotiator. Absent before 13 Nov.
   push?: Push;
   buyerNotes?: BuyerNote[];
+  // Whether each message waits for the buyer, whether the buyer asked for what there is now, and the
+  // messages that wait. Absent before 14 Nov.
+  autonomy?: Autonomy;
+  wrapUp?: boolean;
+  pendingDrafts?: { supplier: string; at: string }[];
   negotiationEndsAt: string;
   secondsLeft: number;
   invites: { address: string; name: string; status: "in" | "out"; committed: boolean }[];
@@ -41,11 +47,12 @@ export interface View {
 }
 
 export type Inbox = (
-  | { supplier: string; kind: "to_supplier" | "from_supplier"; text: string; at: string }
+  | { supplier: string; kind: "to_supplier" | "from_supplier"; text: string; at: string; byBuyer?: true }
   | { supplier: string; kind: "from_supplier"; withheld: true; card: string | null; at: string }
 )[];
 
-type Line = { from: "you" | "supplier"; text: string } | { from: "supplier"; withheld: true };
+// "buyer": the buyer wrote this message to the supplier themself.
+type Line = { from: "you" | "buyer" | "supplier"; text: string } | { from: "supplier"; withheld: true };
 
 export interface SupplierDigest {
   address: string;
@@ -56,6 +63,8 @@ export interface SupplierDigest {
   // The latest offer is at or under the target price and within the latest delivery: stop pushing.
   meetsBrief: boolean;
   awaitingReply: boolean;
+  // A message of yours to this supplier waits for the buyer: write nothing more to it until it is decided.
+  draftWaiting: boolean;
   newMessages: number;
   thread: Line[];
 }
@@ -72,6 +81,9 @@ export interface Digest {
   priority: Priority;
   latestDeliveryDays: number | null;
   push: Push;
+  autonomy: Autonomy;
+  // The buyer asked for what you have: the phase is final_call from then on.
+  wrapUp: boolean;
   buyerNotes: BuyerNote[];
   cursor: number;
   suppliers: SupplierDigest[];
@@ -100,11 +112,13 @@ export function bestOtherOffer(priority: Priority, offers: Offer[], self: string
 }
 
 const lineOf = (m: Inbox[number]): Line =>
-  "withheld" in m ? { from: "supplier", withheld: true } : { from: m.kind === "to_supplier" ? "you" : "supplier", text: m.text };
+  "withheld" in m ? { from: "supplier", withheld: true } : { from: m.kind === "to_supplier" ? (m.byBuyer ? "buyer" : "you") : "supplier", text: m.text };
 
 export function digest(view: View, inbox: Inbox, since: number): Digest {
-  // The API sends the sourcing's own state: OPEN while suppliers can be talked to.
-  const phase = view.state !== "OPEN" || view.secondsLeft <= 0 ? "closed" : view.secondsLeft <= FINAL_CALL_SECONDS ? "final_call" : "negotiate";
+  // The API sends the sourcing's own state: OPEN while suppliers can be talked to. The final call
+  // starts when the buyer asks for what there is, or shortly before the buyer's decide-by time.
+  const phase = view.state !== "OPEN" || view.secondsLeft <= 0 ? "closed" : view.wrapUp === true || view.secondsLeft <= FINAL_CALL_SECONDS ? "final_call" : "negotiate";
+  const waiting = new Set((view.pendingDrafts ?? []).map((d) => d.supplier));
   const suppliers = view.invites
     .filter((i) => i.status === "in")
     .map((i): SupplierDigest => {
@@ -126,7 +140,8 @@ export function digest(view: View, inbox: Inbox, since: number): Digest {
           report.unitCents <= view.goods.targetUnitCents &&
           report.deliveryDays !== null &&
           (view.latestDeliveryDays === null || report.deliveryDays <= view.latestDeliveryDays),
-        awaitingReply: mine.at(-1)?.m.kind === "to_supplier",
+        awaitingReply: mine.at(-1)?.m.kind === "to_supplier" || waiting.has(i.address),
+        draftWaiting: waiting.has(i.address),
         newMessages: mine.filter(({ m, index }) => index >= since && m.kind === "from_supplier").length,
         thread: mine.slice(-THREAD_LINES).map(({ m }) => lineOf(m)),
       };
@@ -143,6 +158,8 @@ export function digest(view: View, inbox: Inbox, since: number): Digest {
     priority: view.priority,
     latestDeliveryDays: view.latestDeliveryDays,
     push: view.push ?? "firm",
+    autonomy: view.autonomy ?? "full",
+    wrapUp: view.wrapUp === true,
     buyerNotes: view.buyerNotes ?? [],
     cursor: inbox.length,
     suppliers,
@@ -235,6 +252,7 @@ export async function run(argv: string[], io: Io): Promise<string> {
     const startedInFinalCall = d.phase === "final_call";
     const notesAtStart = d.buyerNotes.length;
     const suppliersAtStart = new Set(d.suppliers.map((s) => s.address));
+    const draftsAtStart = d.suppliers.filter((s) => s.draftWaiting).length;
     for (let waited = 0; ; waited += POLL_MS / 1000) {
       const woke =
         d.phase === "closed" ? "closed"
@@ -242,6 +260,7 @@ export async function run(argv: string[], io: Io): Promise<string> {
         : d.buyerNotes.length > notesAtStart ? "buyer_note"
         : d.suppliers.some((s) => !suppliersAtStart.has(s.address)) ? "supplier_invited"
         : d.suppliers.some((s) => s.newMessages > 0) ? "supplier_replied"
+        : d.suppliers.filter((s) => s.draftWaiting).length < draftsAtStart ? "draft_decided"
         : waited >= max ? "timeout"
         : null;
       if (woke) return JSON.stringify({ woke, ...d }, null, 1);
@@ -251,10 +270,12 @@ export async function run(argv: string[], io: Io): Promise<string> {
   }
 
   const actions = parseActions(await io.stdin());
-  const results: { kind: "message" | "report"; supplier: string; ok: boolean; error?: string }[] = [];
+  const results: { kind: "message" | "report"; supplier: string; ok: boolean; held?: "buyer_review"; error?: string }[] = [];
   for (const m of actions.messages) {
     const r = await call("POST", `/sourcing/${sid}/messages`, m);
-    results.push(r.ok ? { kind: "message", supplier: m.supplier, ok: true } : { kind: "message", supplier: m.supplier, ok: false, error: `${r.json.error ?? r.status}: ${r.json.message ?? ""}`.trim() });
+    // Held for the buyer: it has not gone out. The buyer may send it, reword it or throw it away.
+    const held = (r.json as { held?: string }).held === "buyer_review";
+    results.push(r.ok ? { kind: "message", supplier: m.supplier, ok: true, ...(held ? { held: "buyer_review" as const } : {}) } : { kind: "message", supplier: m.supplier, ok: false, error: `${r.json.error ?? r.status}: ${r.json.message ?? ""}`.trim() });
   }
   for (const rep of actions.reports) {
     const r = await call("POST", `/sourcing/${sid}/reports`, rep);

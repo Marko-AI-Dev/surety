@@ -221,6 +221,49 @@ describe("run: the command line, against a fake Surety API", () => {
     expect(JSON.parse(await run(["wait", "s-1", "--since", "0"], io(api.fetch))).woke).toBe("closed");
   });
 
+  it("the buyer asking for what there is starts the final call, with no countdown involved (14 Nov)", async () => {
+    expect(digest(view({ wrapUp: true, secondsLeft: 86_400 }), [], 0)).toMatchObject({ phase: "final_call", wrapUp: true });
+    expect(digest(view({ secondsLeft: 86_400 }), [], 0)).toMatchObject({ phase: "negotiate", wrapUp: false, autonomy: "full" });
+    // A closed purchase stays closed whatever the buyer asked.
+    expect(digest(view({ wrapUp: true, state: "SELECTED" }), [], 0).phase).toBe("closed");
+    const api = fakeApi([view({ secondsLeft: 86_400 }), view({ secondsLeft: 86_400, wrapUp: true })], [[], []]);
+    expect(JSON.parse(await run(["wait", "s-1", "--since", "0"], io(api.fetch))).woke).toBe("final_call");
+  });
+
+  it("a message that waits for the buyer: the supplier is awaited, and wait wakes when the buyer answers", async () => {
+    const d = digest(view({ autonomy: "approve", pendingDrafts: [{ supplier: A, at: "t" }] }), [], 0);
+    expect(d.autonomy).toBe("approve");
+    expect(d.suppliers.map((s) => [s.address, s.draftWaiting, s.awaitingReply])).toEqual([
+      [A, true, true],
+      [B, false, false],
+    ]);
+    const api = fakeApi([view({ autonomy: "approve", pendingDrafts: [{ supplier: A, at: "t" }] }), view({ autonomy: "approve", pendingDrafts: [] })], [[], []]);
+    expect(JSON.parse(await run(["wait", "s-1", "--since", "0"], io(api.fetch))).woke).toBe("draft_decided");
+  });
+
+  it("a message the buyer wrote shows as the buyer's, not as the negotiator's own", () => {
+    const d = digest(view(), [{ supplier: A, kind: "to_supplier", text: "Hi, the buyer here.", at: "t", byBuyer: true }, { supplier: A, kind: "to_supplier", text: "Following up.", at: "t" }], 0);
+    expect(d.suppliers[0]?.thread).toEqual([
+      { from: "buyer", text: "Hi, the buyer here." },
+      { from: "you", text: "Following up." },
+    ]);
+  });
+
+  it("act says when a message was held for the buyer instead of sent", async () => {
+    const calls: string[] = [];
+    const fetch = async (url: string, init?: { method?: string }) => {
+      const path = url.replace("http://api", "");
+      calls.push(`${init?.method ?? "GET"} ${path}`);
+      const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
+      if (path === "/sourcing/s-1") return ok(view({ autonomy: "approve", pendingDrafts: [{ supplier: A, at: "t" }] }));
+      if (path === "/sourcing/s-1/inbox") return ok([]);
+      return ok({ held: "buyer_review", draftId: "d-1", supplier: A });
+    };
+    const out = JSON.parse(await run(["act", "s-1"], io(fetch, JSON.stringify({ messages: [{ supplier: A, text: "What is your best price?" }] }))));
+    expect(out.results).toEqual([{ kind: "message", supplier: A, ok: true, held: "buyer_review" }]);
+    expect(out.after.suppliers[0]).toMatchObject({ draftWaiting: true, thread: [] });
+  });
+
   it("act sends every message and report in one call and reports each result", async () => {
     const api = fakeApi([view()], [[]]);
     const batch = { messages: [{ supplier: A, text: "Can you beat $111 in 21 days?" }, { supplier: B, text: "Alpha offered less" }], reports: [{ supplier: A, unitCents: 11800, quantity: 400, deliveryDays: 21, summary: "$118, 21 days" }] };

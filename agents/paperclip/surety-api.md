@@ -60,7 +60,7 @@ curl -s -X POST "$SURETY_API_URL/sourcing/$SOURCING_ID/suggestions" -H "Authoriz
 
 ## Negotiator
 
-`GET /sourcing/<id>` shows you the buyer's `priority`, `latestDeliveryDays`, `push` (`"gentle"` or `"firm"`), `buyerNotes` (`[{ "text", "at" }]`, what the buyer told you during the negotiation) and `offers`: each supplier's latest reported price or committed quote, with delivery days. A message that names another invited supplier is refused with `400 refused`.
+`GET /sourcing/<id>` shows you the buyer's `priority`, `latestDeliveryDays`, `push` (`"gentle"` or `"firm"`), `buyerNotes` (`[{ "text", "at" }]`, what the buyer told you during the negotiation) and `offers`: each supplier's latest reported price or committed quote, with delivery days. It also shows `autonomy` (`"full"` or `"approve"`), `wrapUp` (the buyer asked for what you have) and `pendingDrafts` (`[{ "supplier", "at" }]`). When `autonomy` is `"approve"`, `POST /sourcing/<id>/messages` answers `{ "held": "buyer_review", "draftId", "supplier" }`: the message waits for the buyer and has not gone out. A message that names another invited supplier is refused with `400 refused`.
 
 ```bash
 curl -s -X GET "$SURETY_API_URL/sourcing/$SOURCING_ID" -H "Authorization: Bearer $SURETY_API_TOKEN"

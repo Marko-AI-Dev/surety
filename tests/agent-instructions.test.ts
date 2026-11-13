@@ -189,3 +189,43 @@ describe("no agent process is started with role tokens (final review, 10 Nov)", 
     expect(pkg.scripts["inspector:attest"]).not.toMatch(/--env-file=\.env(\s|$)/);
   });
 });
+
+describe("no countdown, and messages the buyer approves first (14 Nov)", () => {
+  const negotiator = files["negotiator.md"] ?? "";
+  const lead = files["lead.md"] ?? "";
+  const api = files["surety-api.md"] ?? "";
+  const helper = readFileSync(resolve(DIR, "surety.ts"), "utf8");
+
+  it("the lead decides when Surety says so, not when a clock runs out", () => {
+    expect(lead).toMatch(/`decideNow`/);
+    for (const why of ["criteria_met", "buyer_asked", "time_over"]) expect(lead).toContain(why);
+    expect(lead).not.toMatch(/until the negotiation time is over/i);
+    expect(lead).not.toMatch(/before the time runs out/i);
+    expect(lead).toMatch(/`autonomy`/);
+  });
+
+  it("the negotiator has no countdown to work against, and closes a supplier that meets the brief", () => {
+    expect(negotiator).toMatch(/there is no countdown/i);
+    expect(negotiator).toMatch(/`wrapUp`/);
+    expect(negotiator).toMatch(/final committed quote on the Surety quote form now/);
+  });
+
+  it("the negotiator knows a held message has not gone out, and what to do after the buyer answers", () => {
+    expect(negotiator).toMatch(/`autonomy` is `approve`/);
+    expect(negotiator).toMatch(/held: "buyer_review"/);
+    expect(negotiator).toMatch(/`draftWaiting`/);
+    expect(negotiator).toMatch(/draft_decided/);
+    expect(negotiator).toMatch(/never send the same message again/i);
+    expect(negotiator).toMatch(/what the supplier actually received/i);
+    expect(api).toMatch(/"held": "buyer_review"/);
+  });
+
+  it("the negotiator treats a message the buyer wrote as the buyer's position", () => {
+    expect(negotiator).toMatch(/from: "buyer"/);
+    expect(negotiator).toMatch(/never contradict it/i);
+  });
+
+  it("the helper offers what the instructions name", () => {
+    for (const name of ["draftWaiting", "draft_decided", "wrapUp", "autonomy", "buyer_review"]) expect(helper).toContain(name);
+  });
+});
