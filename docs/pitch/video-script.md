@@ -1,5 +1,7 @@
 # Surety: the 3-minute film, the 3-minute live pitch and the hard questions
 
+> **13 Nov 2026: the film section below is out of date.** It describes screens that no longer exist. Use `video-script-v2.md` for the film. The live pitch and the hard questions here still stand.
+
 Anything in [square brackets] is for Marko to fill. Every number is from `evidence/` or from the live run of 12 Nov (SR-261112-BDHD). Nothing here is invented. The outside figures are the sourced ones in [business-brief.md](business-brief.md), with the same warnings.
 
 ## The spine
