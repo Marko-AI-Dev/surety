@@ -253,3 +253,7 @@ pnpm inspector:attest <dealId> <blNumber> attested "400 cartons counted, seal in
 5. The web app (`apps/web`): a live purchase screen, the Control room, the Attack lab, the supplier seat and the inspector's phone page, with ledger-linked proof: **done**, tested on recorded runs and a simulated feed; a live run against the backend is the last check
 
 Plan: [`docs/step1-plan-review.md`](docs/step1-plan-review.md). Disclosures: [`PRIOR_WORK.md`](PRIOR_WORK.md).
+
+## Who built it
+
+Surety is built by Marko Kruger, solo, for W3NODE 2026 (Ripple Agentic Finance track). Contact: [marko-dev.uk](https://marko-dev.uk).
