@@ -124,3 +124,23 @@ describe("the admin's audit", () => {
     expect(decision?.events.map((e) => e.key)).toEqual(expect.arrayContaining(["approval:asked", "approval:answered"]));
   });
 });
+
+describe("the escrow ledger", () => {
+  it("lists only what the ledger validated, with the record's own hashes, and adds up", async () => {
+    const { ledgerTotals, recordedLedger, liveLedger } = await import("../src/data/ledger");
+    const { record } = recordingOf("paid");
+    const rows = recordedLedger().filter((r) => r.purchase === record.sourcing.ref);
+    expect(rows.map((r) => [r.kind, r.ledgerType, r.tx.txHash])).toEqual([
+      ["lock", "EscrowCreate", record.create?.txHash],
+      ["release", "EscrowFinish", record.finish?.txHash],
+    ]);
+    expect(rows.every((r) => r.tx.explorer.includes(r.tx.txHash) && r.cents === Number(record.job?.amount.cents))).toBe(true);
+    const refused = recordedLedger().filter((r) => r.purchase === recordingOf("refused").record.sourcing.ref);
+    expect(refused.map((r) => r.kind)).toEqual(["lock", "refund"]);
+    const t = ledgerTotals(recordedLedger());
+    expect(t.locked).toBe(t.released + t.refunded);
+    expect(t.transactions).toBe(recordedLedger().length);
+    // A purchase with no validated transaction adds no row.
+    expect(liveLedger([{ id: "x", ref: "SR-1", state: "OPEN", ledger: { create: null, finish: null, cancel: null } }])).toEqual([]);
+  });
+});

@@ -78,7 +78,7 @@ The lead's and the view's answer carries `decideNow: { ready, why }`, worked out
 
 The 20 newest sourcings: `[{ id, ref, state, goods, quantity, incoterm, port, negotiationEndsAt, dealId, createdAt }]`. No prices.
 
-Each item also says where the purchase stands: `stage` (`negotiating`, `waiting` for the buyer's yes, `declined`, `locked`, `paid`, `refunded`, `stopped` or `closed`), `supplier` (the name on the recommended or turned-down deal, else null) and `totalCents` (once a payment exists, else null).
+Each item also says where the purchase stands: `stage` (`negotiating`, `waiting` for the buyer's yes, `declined`, `locked`, `paid`, `refunded`, `stopped` or `closed`), `supplier` (the name on the recommended or turned-down deal, else null) and `totalCents` (once a payment exists, else null). `ledger: { create, finish, cancel }` carries each validated escrow transaction (`txHash`, `result`, `ledgerIndex`, `feeDrops`, `explorer`), or null.
 
 ### `GET /sourcing/:id/record` (view)
 
