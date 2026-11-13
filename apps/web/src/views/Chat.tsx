@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUp, ChevronRight, Eye, FileText, type LucideIcon, MessageSquare, Plus, Search, Send, Settings2, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, ArrowUp, ChevronRight, Eye, FileText, type LucideIcon, MessageSquare, Plus, Search, Send, Settings2, ShieldCheck, ShoppingBag, SlidersHorizontal } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { OPEN_PANEL, type PanelName } from "@/components/SideNav";
 import { Button } from "@/components/ui/button";
@@ -462,12 +462,15 @@ export function Chat({
   view,
   canAct,
   now,
+  earlier = false,
 }: {
   record: SourcingRecord | null;
   view: RunView | null;
   // True only on the live backend: a recording or a simulated feed can be watched, not acted on.
   canAct: boolean;
   now: number;
+  // This is not the newest purchase: the buyer opened an earlier one from My purchases.
+  earlier?: boolean;
 }) {
   const stage = deskStage(record, view);
   const finished = stage === "done" || stage === "refunded" || stage === "declined";
@@ -602,6 +605,14 @@ export function Chat({
     ...(live && record ? [{ group: "This purchase" as const, label: approving ? "Stop asking me before each message" : "Approve every message first", icon: Eye, run: () => setControls(api, record.sourcing.id, { autonomy: approving ? "full" : "approve" }) }] : []),
     ...cards.map((c) => ({ group: "This purchase" as const, label: `Open ${c.name}'s conversation`, icon: MessageSquare, run: () => setOpenSupplier(c.address) })),
     ...(canAct && finished && !again ? [{ group: "This purchase" as const, label: "Buy something else", icon: Plus, run: () => setAgain(true) }] : []),
+    {
+      group: "Go to",
+      label: "My purchases",
+      icon: ShoppingBag,
+      run: () => {
+        window.location.hash = "#/purchases";
+      },
+    },
     { group: "Go to", label: "Negotiator settings", icon: SlidersHorizontal, run: () => setSettings(true) },
     { group: "Go to", label: "Suppliers and limits", icon: ShieldCheck, run: () => setLimits(true) },
     {
@@ -677,6 +688,20 @@ export function Chat({
               </button>
             ))}
           </nav>
+        ) : null}
+
+        {earlier && record ? (
+          <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-solid bg-secondary/60 px-4 py-2 text-sm">
+            <span>
+              You are looking at an earlier purchase, <span className="mono text-xs">{record.sourcing.ref}</span>.
+            </span>
+            <a href="#/" className="font-medium text-primary">
+              Back to the latest
+            </a>
+            <a href="#/purchases" className="font-medium text-primary">
+              All my purchases
+            </a>
+          </p>
         ) : null}
 
         <ol className="m-0 flex flex-1 list-none flex-col gap-3 overflow-y-auto px-4 py-4" aria-live="polite">

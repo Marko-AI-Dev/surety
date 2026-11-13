@@ -158,4 +158,10 @@ export interface SourcingListItem {
   ref: string;
   state: string;
   createdAt?: string;
+  goods?: string;
+  quantity?: number;
+  // Where the purchase stands (13 Nov). Absent from an older backend.
+  stage?: "negotiating" | "waiting" | "declined" | "locked" | "paid" | "refunded" | "stopped" | "closed";
+  supplier?: string | null;
+  totalCents?: number | null;
 }
