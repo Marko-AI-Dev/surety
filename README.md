@@ -4,6 +4,8 @@
 
 A team of AI agents finds suppliers, negotiates and chooses a quote. They never hold the money. The payment locks in XRP Ledger escrow, to a supplier a person approved, under limits a person set. It is released only when the supplier's paperwork passes and an independent inspector, a person with a phone, confirms the shipment. If either fails, or the deadline passes, the ledger refunds the buyer.
 
+**Watch the 3-minute film: [youtu.be/rc5jSm4Nuxk](https://youtu.be/rc5jSm4Nuxk)**
+
 **See it now, no install: [surety-demo.vercel.app](https://surety-demo.vercel.app)** (recorded real test purchases; start with [How Surety works](https://surety-demo.vercel.app/#/admin/how) and the [escrow ledger](https://surety-demo.vercel.app/#/admin/ledger), where every transaction opens on the public XRPL explorer).
 
 > **TESTNET ONLY.** Surety runs on XRPL Testnet with a valueless test dollar (TESTUSD) and synthetic data. It is a hackathon prototype for W3NODE 2026 (Agentic Finance track), not a financial product.
